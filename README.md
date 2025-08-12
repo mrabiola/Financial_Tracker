@@ -78,7 +78,7 @@ This project transforms a single-user localStorage-based financial tracker into 
 
 ### 1. Clone & Install
 ```bash
-git clone <repository-url>
+git clone https://github.com/mrabiola/Financial_Tracker.git
 cd Financial_Tracker
 npm install
 ```
@@ -383,10 +383,10 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ## 📞 Support
 
-- **📧 Email**: [Your support email]
-- **🐛 Issues**: [GitHub Issues](https://github.com/your-username/financial-tracker/issues)
-- **💬 Discussions**: [GitHub Discussions](https://github.com/your-username/financial-tracker/discussions)
-- **📖 Documentation**: [Wiki](https://github.com/your-username/financial-tracker/wiki)
+- **📧 Email**: abakare0@gmail.com
+- **🐛 Issues**: [GitHub Issues](https://github.com/mrabiola/Financial_Tracker/issues)
+- **💬 Discussions**: [GitHub Discussions](https://github.com/mrabiola/Financial_Tracker/discussions)
+- **📖 Documentation**: [Wiki](https://github.com/mrabiola/Financial_Tracker/wiki)
 
 ---
 
@@ -394,6 +394,6 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 **Built with ❤️ using React, Supabase, and modern web technologies**
 
-[⭐ Star this repo](https://github.com/your-username/financial-tracker) if you found it helpful!
+[⭐ Star this repo](https://github.com/mrabiola/Financial_Tracker) if you found it helpful!
 
 </div>
