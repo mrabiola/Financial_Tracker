@@ -1,15 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, X, Save, Trash2, Check, ChevronLeft, ChevronRight, Copy, Download, Upload, TrendingUp, PieChart, BarChart3, LineChart, Target, Wallet, CreditCard, DollarSign, TrendingDown, PiggyBank, Landmark, Home, Car, School, Heart, Briefcase, Coins, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, X, Trash2, Check, ChevronLeft, ChevronRight, Copy, Download, Upload, TrendingUp, PieChart, BarChart3, LineChart, Target, Wallet, CreditCard, DollarSign, TrendingDown, PiggyBank, Landmark, Home, Car, School, Heart, Briefcase, Coins, AlertCircle } from 'lucide-react';
 import { LineChart as RechartsLineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { useFinancialData } from '../../hooks/useFinancialData';
-import { useAuth } from '../../contexts/AuthContext';
 import LoadingSpinner from '../common/LoadingSpinner';
+import ImportModal from './ImportModal';
 
 const NetWorthTracker = () => {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth();
-  const { user } = useAuth();
 
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
@@ -20,7 +19,6 @@ const NetWorthTracker = () => {
     error: dataError,
     accounts,
     goals,
-    snapshots,
     addAccount: addAccountToDb,
     deleteAccount: deleteAccountFromDb,
     updateSnapshot,
@@ -39,17 +37,7 @@ const NetWorthTracker = () => {
   const [newAccountType, setNewAccountType] = useState('asset');
   const [newGoalName, setNewGoalName] = useState('');
   const [newGoalTarget, setNewGoalTarget] = useState('');
-  const [localStorageData, setLocalStorageData] = useState(null);
-  const [showMigrationPrompt, setShowMigrationPrompt] = useState(false);
-
-  // Check for localStorage data on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('financeData');
-    if (saved && !localStorage.getItem('dataMigrated')) {
-      setLocalStorageData(JSON.parse(saved));
-      setShowMigrationPrompt(true);
-    }
-  }, []);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // Add new account
   const addAccount = async () => {
@@ -90,10 +78,6 @@ const NetWorthTracker = () => {
     await updateSnapshot(accountId, monthIndex, value);
   };
 
-  // Update goal progress wrapper
-  const updateGoalProgressWrapper = async (goalId, value) => {
-    await updateGoalProgress(goalId, value);
-  };
 
   // Copy previous month's values
   const copyPreviousMonth = async () => {
@@ -240,59 +224,35 @@ const NetWorthTracker = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  // Import from CSV
-  const importFromCSV = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
+  // Enhanced import handler
+  const handleImportData = async (importData) => {
+    const { accountId, accountName, accountType, monthIndex, value, year } = importData;
     
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const text = e.target.result;
-      const lines = text.split('\n');
+    // Check if we need to create a new account
+    let targetAccountId = accountId;
+    if (!targetAccountId) {
+      // Check if account already exists
+      const existingAccount = [...accounts.assets, ...accounts.liabilities].find(
+        a => a.name.toLowerCase() === accountName.toLowerCase()
+      );
       
-      const accountMap = new Map();
-      
-      for (let i = 1; i < lines.length; i++) {
-        if (!lines[i].trim()) continue;
-        
-        const values = lines[i].split(',');
-        const year = parseInt(values[0]);
-        const month = values[1];
-        const accountName = values[2];
-        const accountType = values[3].toLowerCase();
-        const value = parseFloat(values[4]) || 0;
-        
-        if (year !== selectedYear) continue;
-        
-        // Find or create account
-        let accountId = accountMap.get(accountName);
-        if (!accountId) {
-          const existingAccount = [...accounts.assets, ...accounts.liabilities].find(a => a.name === accountName);
-          if (existingAccount) {
-            accountId = existingAccount.id;
-          } else {
-            const newAccount = await addAccountToDb(accountName, accountType);
-            if (newAccount) {
-              accountId = newAccount.id;
-            }
-          }
-          accountMap.set(accountName, accountId);
-        }
-        
-        // Set value
-        const monthIndex = months.indexOf(month);
-        if (monthIndex !== -1 && accountId) {
-          await updateSnapshot(accountId, monthIndex, value);
+      if (existingAccount) {
+        targetAccountId = existingAccount.id;
+      } else {
+        // Create new account
+        const newAccount = await addAccountToDb(accountName, accountType);
+        if (newAccount) {
+          targetAccountId = newAccount.id;
         }
       }
-      
-      await reload();
-      alert('Data imported successfully!');
-    };
+    }
     
-    reader.readAsText(file);
-    event.target.value = '';
+    // Update the snapshot with the value
+    if (targetAccountId && year === selectedYear) {
+      await updateSnapshot(targetAccountId, monthIndex, value);
+    }
   };
+
 
   // Prepare chart data
   const prepareNetWorthChartData = () => {
@@ -417,16 +377,13 @@ const NetWorthTracker = () => {
                   <Download className="w-4 h-4" />
                   Export
                 </button>
-                <label className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm cursor-pointer">
+                <button
+                  onClick={() => setShowImportModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+                >
                   <Upload className="w-4 h-4" />
                   Import
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={importFromCSV}
-                    className="hidden"
-                  />
-                </label>
+                </button>
               </div>
             </div>
           </div>
@@ -1058,6 +1015,18 @@ const NetWorthTracker = () => {
           </div>
         )}
       </div>
+
+      {/* Import Modal */}
+      <ImportModal
+        isOpen={showImportModal}
+        onClose={() => {
+          setShowImportModal(false);
+          reload(); // Reload data after import
+        }}
+        onImport={handleImportData}
+        selectedYear={selectedYear}
+        accounts={{ assets: accounts.assets || [], liabilities: accounts.liabilities || [] }}
+      />
     </div>
   );
 };

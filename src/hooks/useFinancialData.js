@@ -54,29 +54,6 @@ export const useFinancialData = (selectedYear) => {
     }
   }, [user, selectedYear]);
 
-  // Fetch accounts for the year
-  const fetchAccounts = useCallback(async (yearId) => {
-    if (!yearId) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('accounts')
-        .select('*')
-        .eq('year_id', yearId)
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true });
-
-      if (error) throw error;
-
-      const assets = data.filter(a => a.type === 'asset');
-      const liabilities = data.filter(a => a.type === 'liability');
-      
-      setAccounts({ assets, liabilities });
-    } catch (err) {
-      console.error('Error fetching accounts:', err);
-      setError(err.message);
-    }
-  }, []);
 
   // Fetch accounts and return the data (for loading snapshots)
   const fetchAccountsAndReturn = useCallback(async (yearId) => {
@@ -382,7 +359,7 @@ export const useFinancialData = (selectedYear) => {
     if (user && selectedYear) {
       loadData();
     }
-  }, [user, selectedYear]);
+  }, [user, selectedYear, loadData]);
 
   return {
     loading,

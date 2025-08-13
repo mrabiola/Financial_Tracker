@@ -37,7 +37,8 @@ This project transforms a single-user localStorage-based financial tracker into 
 - **Goal Tracking**: Visual progress bars with completion tracking
 - **Smart Icon Assignment**: Automatic icon selection based on account names
 - **Interactive Charts**: Beautiful data visualizations using Recharts
-- **CSV Import/Export**: Full data portability
+- **Enhanced Import/Export**: Full data portability with Excel, CSV, and text file support
+- **Smart Import Modal**: Multi-step import wizard with data validation and preview
 
 ### 🎨 **User Experience**
 - **Live Icon Preview**: Real-time icon assignment as users type
@@ -67,6 +68,7 @@ This project transforms a single-user localStorage-based financial tracker into 
 | **Database** | PostgreSQL | Robust relational database |
 | **Authentication** | Supabase Auth | Secure user management |
 | **Routing** | React Router | Client-side navigation |
+| **File Processing** | PapaParse & XLSX | CSV and Excel file handling |
 
 ---
 
@@ -131,7 +133,8 @@ Financial_Tracker/
 │   │   │   ├── SignupForm.jsx    # User registration
 │   │   │   └── PasswordReset.jsx # Password recovery
 │   │   ├── 📂 dashboard/         # Main application
-│   │   │   └── NetWorthTracker.jsx # Core financial tracker
+│   │   │   ├── NetWorthTracker.jsx # Core financial tracker
+│   │   │   └── ImportModal.jsx    # Advanced data import wizard
 │   │   └── 📂 common/            # Shared components
 │   │       ├── ProtectedRoute.jsx # Route protection
 │   │       ├── LoadingSpinner.jsx # Loading states
@@ -329,6 +332,12 @@ npm start
 ---
 
 ## 🔮 Future Enhancements
+
+### Recently Added
+- **📥 Advanced Import System**: Multi-format import with validation
+- **✅ Data Validation**: Smart detection and error handling
+- **📊 Import Preview**: Review data before importing
+- **🔄 Batch Processing**: Efficient bulk data operations
 
 ### Planned Features
 - **📱 Mobile App**: React Native implementation

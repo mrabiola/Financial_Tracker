@@ -8,7 +8,7 @@ const Profile = () => {
   const navigate = useNavigate();
   
   const [fullName, setFullName] = useState(user?.user_metadata?.full_name || '');
-  const [email, setEmail] = useState(user?.email || '');
+  const email = user?.email || '';
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
