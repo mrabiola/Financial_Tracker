@@ -1,0 +1,105 @@
+/* Logo styling classes for Financial Tracker application */
+
+/* Navbar logo sizing */
+.navbar-logo {
+  height: 48px; /* 12 in Tailwind */
+  width: auto;
+  object-fit: contain;
+  max-width: 140px;
+  min-width: 100px;
+  filter: brightness(1.1) contrast(1.1);
+  transition: opacity 0.2s ease;
+}
+
+.navbar-logo:hover {
+  opacity: 0.8;
+}
+
+@media (max-width: 640px) {
+  .navbar-logo {
+    height: 40px; /* 10 in Tailwind */
+    max-width: 120px;
+  }
+}
+
+/* Auth page logo sizing - Large and prominent */
+.auth-logo {
+  height: 128px; /* 32 in Tailwind - 128px */
+  width: auto;
+  object-fit: contain;
+  margin: 0 auto 16px;
+  filter: brightness(1.1) contrast(1.1);
+  max-width: 200px;
+}
+
+@media (max-width: 640px) {
+  .auth-logo {
+    height: 112px; /* 28 in Tailwind - 112px */
+    margin-bottom: 16px;
+  }
+}
+
+/* Auth page container */
+.auth-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+}
+
+/* Auth card layout improvements - Compact and centered */
+.auth-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  width: 100%;
+  max-width: 28rem;
+  padding: 1.5rem; /* Reduced from 2rem */
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 1rem; /* Reduced from 1.5rem */
+}
+
+.auth-title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 0.25rem; /* Reduced from 0.5rem */
+}
+
+.auth-subtitle {
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+/* Form spacing improvements */
+.auth-form {
+  gap: 0.75rem; /* Tighter spacing between form elements */
+}
+
+/* Logo button styling for navbar */
+.logo-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  margin-left: -0.5rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.logo-button:hover {
+  background-color: #f9fafb;
+  opacity: 0.8;
+}
+
+.logo-button:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}

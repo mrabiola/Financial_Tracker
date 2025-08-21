@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, Landmark, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 const LoginForm = () => {
@@ -51,13 +51,19 @@ const LoginForm = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mb-4">
-            <Landmark className="w-8 h-8 text-white" />
-          </div>
-          <h2 className="text-3xl font-bold text-gray-900">Welcome Back</h2>
-          <p className="text-gray-500 mt-2">Sign in to your Financial Tracker</p>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+        <div className="text-center mb-4">
+          <img 
+            src="/logo-wealth.jpg" 
+            alt="Financial Tracker Logo" 
+            className="h-28 sm:h-32 w-auto object-contain mx-auto mb-4 rounded-lg"
+            style={{
+              filter: 'brightness(1.1) contrast(1.1)',
+              maxWidth: '200px'
+            }}
+          />
+          <h2 className="text-3xl font-bold text-gray-900 mb-1">Welcome Back</h2>
+          <p className="text-gray-600 text-sm">Sign in to your Financial Tracker</p>
         </div>
 
         {error && (
@@ -67,7 +73,7 @@ const LoginForm = () => {
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleLogin} className="space-y-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Email Address

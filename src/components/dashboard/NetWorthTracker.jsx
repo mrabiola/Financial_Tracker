@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { Plus, X, Trash2, Check, ChevronLeft, ChevronRight, Copy, Download, Upload, TrendingUp, PieChart, BarChart3, LineChart, Target, Wallet, CreditCard, DollarSign, TrendingDown, PiggyBank, Landmark, Home, Car, School, Heart, Briefcase, Coins, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, X, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, Copy, Download, Upload, TrendingUp, PieChart, BarChart3, LineChart, Target, Wallet, CreditCard, DollarSign, TrendingDown, PiggyBank, Landmark, Home, Car, School, Heart, Briefcase, Coins, AlertCircle, Brain, FileSpreadsheet } from 'lucide-react';
 import { LineChart as RechartsLineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { useFinancialData } from '../../hooks/useFinancialData';
 import LoadingSpinner from '../common/LoadingSpinner';
 import AdvancedImportModal from './AdvancedImportModal';
+import SimpleImportModal from './SimpleImportModal';
 
 const NetWorthTracker = () => {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -38,6 +39,85 @@ const NetWorthTracker = () => {
   const [newGoalName, setNewGoalName] = useState('');
   const [newGoalTarget, setNewGoalTarget] = useState('');
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showImportOptions, setShowImportOptions] = useState(false);
+  const [showSimpleImportModal, setShowSimpleImportModal] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ alignRight: false, alignTop: false });
+  const importButtonRef = useRef(null);
+
+  // Close import options dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showImportOptions && !event.target.closest('[data-import-dropdown]')) {
+        setShowImportOptions(false);
+      }
+    };
+    const handleEscape = (event) => {
+      if (event.key === 'Escape' && showImportOptions) {
+        setShowImportOptions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showImportOptions]);
+
+  // Calculate dropdown position based on available space
+  const calculateDropdownPosition = () => {
+    if (!importButtonRef.current) return;
+    
+    const buttonRect = importButtonRef.current.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const dropdownWidth = viewportWidth >= 640 ? 256 : 224; // sm:w-64 (256px) or w-56 (224px)
+    const dropdownHeight = 140; // Approximate height for 2 items
+    const padding = 16; // Padding from viewport edge
+    
+    // Check if dropdown would extend beyond right edge of viewport
+    // Also consider the case where the button itself is close to the right edge
+    const spaceOnRight = viewportWidth - buttonRect.left;
+    const spaceOnLeft = buttonRect.right;
+    const alignRight = spaceOnRight < (dropdownWidth + padding) && spaceOnLeft > (dropdownWidth + padding);
+    
+    // Check if dropdown would extend beyond bottom edge of viewport
+    const spaceBelow = viewportHeight - buttonRect.bottom;
+    const spaceAbove = buttonRect.top;
+    const alignTop = spaceBelow < (dropdownHeight + padding) && spaceAbove > (dropdownHeight + padding);
+    
+    setDropdownPosition({ alignRight, alignTop });
+  };
+
+  // Handle dropdown toggle with position calculation
+  const handleImportOptionsToggle = () => {
+    if (!showImportOptions) {
+      calculateDropdownPosition();
+    }
+    setShowImportOptions(!showImportOptions);
+  };
+
+  // Recalculate dropdown position on window resize and scroll
+  useEffect(() => {
+    const handleResize = () => {
+      if (showImportOptions) {
+        calculateDropdownPosition();
+      }
+    };
+    
+    const handleScroll = () => {
+      if (showImportOptions) {
+        calculateDropdownPosition();
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [showImportOptions]);
 
   // Add new account
   const addAccount = async () => {
@@ -342,13 +422,13 @@ const NetWorthTracker = () => {
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-full mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+        <div className="bg-white rounded-lg shadow-sm p-4 mb-4 overflow-visible">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
-                <Landmark className="w-6 h-6 text-white" />
-              </div>
-              <h1 className="text-2xl font-bold text-gray-900">Financial Tracker</h1>
+              <Landmark className="w-8 h-8 text-blue-600" />
+              <h1 className="text-2xl font-bold text-gray-900">
+                Financial Tracker
+              </h1>
             </div>
             <div className="flex items-center gap-4">
               {/* Year selector */}
@@ -377,13 +457,65 @@ const NetWorthTracker = () => {
                   <Download className="w-4 h-4" />
                   Export
                 </button>
-                <button
-                  onClick={() => setShowImportModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
-                >
-                  <Upload className="w-4 h-4" />
-                  Import
-                </button>
+                <div className="relative z-50" data-import-dropdown>
+                  <button
+                    ref={importButtonRef}
+                    onClick={handleImportOptionsToggle}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Import
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                  
+                  {/* Import Options Dropdown */}
+                  {showImportOptions && (
+                    <div 
+                      className={`absolute w-56 sm:w-64 bg-white border border-gray-200 rounded-lg shadow-xl ${
+                        dropdownPosition.alignRight ? 'right-0' : 'left-0'
+                      } ${
+                        dropdownPosition.alignTop ? 'bottom-full mb-1' : 'top-full mt-1'
+                      }`}
+                      style={{ 
+                        zIndex: 9999,
+                        maxHeight: window.innerHeight < 400 ? '200px' : '300px',
+                        overflowY: 'auto',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                        backdropFilter: 'blur(8px)',
+                        // Ensure dropdown is always visible on very small screens
+                        minWidth: window.innerWidth < 480 ? '180px' : undefined,
+                        maxWidth: window.innerWidth < 480 ? '90vw' : undefined
+                      }}
+                    >
+                      <button
+                        onClick={() => {
+                          setShowImportOptions(false);
+                          setShowImportModal(true);
+                        }}
+                        className="flex items-center gap-3 w-full px-4 py-3 text-left text-gray-700 hover:bg-blue-50 hover:text-blue-800 rounded-t-lg transition-all duration-200 focus:outline-none focus:bg-blue-50 focus:text-blue-800"
+                      >
+                        <Brain className="w-4 h-4 text-blue-600" />
+                        <div>
+                          <div className="font-medium">Advanced Import</div>
+                          <div className="text-sm text-gray-500">Smart mapping & AI detection</div>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowImportOptions(false);
+                          setShowSimpleImportModal(true);
+                        }}
+                        className="flex items-center gap-3 w-full px-4 py-3 text-left text-gray-700 hover:bg-green-50 hover:text-green-800 rounded-b-lg transition-all duration-200 border-t border-gray-100 focus:outline-none focus:bg-green-50 focus:text-green-800"
+                      >
+                        <FileSpreadsheet className="w-4 h-4 text-green-600" />
+                        <div>
+                          <div className="font-medium">Simple Import</div>
+                          <div className="text-sm text-gray-500">Use standard template</div>
+                        </div>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -1021,6 +1153,18 @@ const NetWorthTracker = () => {
         isOpen={showImportModal}
         onClose={() => {
           setShowImportModal(false);
+          reload(); // Reload data after import
+        }}
+        onImport={handleImportData}
+        selectedYear={selectedYear}
+        accounts={{ assets: accounts.assets || [], liabilities: accounts.liabilities || [] }}
+      />
+
+      {/* Simple Import Modal */}
+      <SimpleImportModal
+        isOpen={showSimpleImportModal}
+        onClose={() => {
+          setShowSimpleImportModal(false);
           reload(); // Reload data after import
         }}
         onImport={handleImportData}

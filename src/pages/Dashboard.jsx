@@ -45,7 +45,22 @@ const Dashboard = () => {
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">Financial Tracker</h1>
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="flex items-center gap-2 hover:opacity-80 transition-opacity p-2 -ml-2 rounded-lg hover:bg-gray-50"
+                title="Go to Dashboard"
+              >
+                <img 
+                  src="/logo-wealth.jpg" 
+                  alt="Financial Tracker Logo" 
+                  className="h-10 sm:h-12 w-auto object-contain"
+                  style={{
+                    maxWidth: '120px',
+                    minWidth: '100px',
+                    filter: 'brightness(1.1) contrast(1.1)'
+                  }}
+                />
+              </button>
             </div>
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600">

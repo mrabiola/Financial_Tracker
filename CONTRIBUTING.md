@@ -1,6 +1,6 @@
-# Contributing to Financial Tracker SaaS
+# Contributing to WealthTrak SaaS
 
-Thank you for your interest in contributing to the Financial Tracker SaaS project! 🎉
+Thank you for your interest in contributing to the WealthTrak SaaS project! 🎉
 
 ## 🚀 Quick Start
 
