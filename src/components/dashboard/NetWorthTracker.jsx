@@ -3,7 +3,7 @@ import { Plus, X, Trash2, Check, ChevronLeft, ChevronRight, Copy, Download, Uplo
 import { LineChart as RechartsLineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { useFinancialData } from '../../hooks/useFinancialData';
 import LoadingSpinner from '../common/LoadingSpinner';
-import ImportModal from './ImportModal';
+import AdvancedImportModal from './AdvancedImportModal';
 
 const NetWorthTracker = () => {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -1016,8 +1016,8 @@ const NetWorthTracker = () => {
         )}
       </div>
 
-      {/* Import Modal */}
-      <ImportModal
+      {/* Advanced Import Modal */}
+      <AdvancedImportModal
         isOpen={showImportModal}
         onClose={() => {
           setShowImportModal(false);
