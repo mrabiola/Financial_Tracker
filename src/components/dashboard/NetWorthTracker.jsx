@@ -1145,15 +1145,8 @@ const NetWorthTracker = () => {
                 };
               }).filter(g => g.target > 0.01); // Only valid targets
 
-              // Add test data if no goals exist
+              // Use only real goals from database
               let finalGoals = processedGoals;
-              if (processedGoals.length === 0) {
-                finalGoals = [
-                  { name: 'Pay Off Land', fullName: 'Pay Off Land', current: 20000, target: 28000, completion: 71, color: '#f59e0b', status: 'In Progress' },
-                  { name: 'Investment Min', fullName: 'Investment Minimum', current: 39000, target: 40000, completion: 98, color: '#f59e0b', status: 'In Progress' },
-                  { name: 'Home-Downpayment', fullName: 'Home Down Payment', current: 70000, target: 75000, completion: 93, color: '#f59e0b', status: 'In Progress' }
-                ];
-              }
 
               const hasValidGoals = finalGoals.length > 0;
               
