@@ -338,9 +338,6 @@ The architecture ensures consistent performance and visual quality regardless of
 
 ---
 
-## 🤖 Generated with [Claude Code](https://claude.ai/code)
-
-**Co-Authored-By**: Claude <noreply@anthropic.com>  
 **Development Session**: September 6, 2025  
 **Total Implementation Time**: ~1 hour  
 **Key Improvements**: Dynamic chart scaling, intelligent color coding, optimized layout
