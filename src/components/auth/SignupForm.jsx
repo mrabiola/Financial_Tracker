@@ -206,9 +206,23 @@ const SignupForm = () => {
             />
             <label htmlFor="terms" className="ml-2 block text-sm text-gray-700">
               I agree to the{' '}
-              <button type="button" className="text-blue-600 hover:text-blue-500 underline">
-                Terms and Conditions
-              </button>
+              <Link 
+                to="/terms" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-blue-600 hover:text-blue-500 underline"
+              >
+                Terms of Service
+              </Link>
+              {' '}and{' '}
+              <Link 
+                to="/privacy" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-blue-600 hover:text-blue-500 underline"
+              >
+                Privacy Policy
+              </Link>
             </label>
           </div>
 
@@ -250,6 +264,10 @@ const SignupForm = () => {
             Sign in
           </Link>
         </p>
+
+        <div className="mt-4 text-center text-xs text-gray-500">
+          © 2025 Techbrov. All rights reserved.
+        </div>
       </div>
     </div>
   );

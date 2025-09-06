@@ -359,6 +359,11 @@ npm start
 - **🎨 Brand Consistency**: Updated all components to use new logo and currency formatting
 - **🐛 Fixed Persistent Goals Bug**: Removed hardcoded test data that displayed persistent goals regardless of user/year
 - **💻 Developer Experience**: Added test data generators and comprehensive debugging tools
+- **📜 Legal Documentation**: Comprehensive Privacy Policy and Terms of Service with professional formatting
+- **🎨 Legal Page Layout**: Reusable component for legal documents with WealthTrak design system
+- **🔒 Enhanced Privacy Policy**: 16 sections covering GDPR, CCPA, data security, and user rights
+- **📋 Professional Terms of Service**: Complete legal terms with 15 sections for financial app compliance
+- **🦶 Dashboard Footer**: Added footer with legal links, copyright, and secure platform tagline
 
 ### Planned Features
 - **📱 Mobile App**: React Native implementation
@@ -395,9 +400,16 @@ We welcome contributions! Please follow these steps:
 
 ---
 
-## 📄 License
+## 📄 Legal
 
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+### Copyright
+© 2025 Techbrov. All rights reserved.
+
+### Terms and Privacy
+- [Terms of Service](TERMS_OF_SERVICE.md) - Legal terms governing the use of WealthTrak
+- [Privacy Policy](PRIVACY_POLICY.md) - How we collect, use, and protect your financial data
+
+This software is proprietary and confidential. Unauthorized copying, distribution, or modification is strictly prohibited.
 
 ---
 
@@ -422,8 +434,8 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 <div align="center">
 
-**Built with ❤️ using React, Supabase, and modern web technologies**
+**Built with ❤️ by Techbrov using React, Supabase, and modern web technologies**
 
-[⭐ Star this repo](https://github.com/mrabiola/Financial_Tracker) if you found it helpful!
+© 2025 Techbrov. All rights reserved.
 
 </div>

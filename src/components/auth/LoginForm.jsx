@@ -177,6 +177,10 @@ const LoginForm = () => {
             Sign up for free
           </Link>
         </p>
+
+        <div className="mt-4 text-center text-xs text-gray-500">
+          © 2025 Techbrov. All rights reserved.
+        </div>
       </div>
     </div>
   );

@@ -8,6 +8,8 @@ import SignupForm from './components/auth/SignupForm';
 import PasswordReset from './components/auth/PasswordReset';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 
 function App() {
   return (
@@ -19,6 +21,10 @@ function App() {
             <Route path="/login" element={<LoginForm />} />
             <Route path="/signup" element={<SignupForm />} />
             <Route path="/reset-password" element={<PasswordReset />} />
+            
+            {/* Legal pages - publicly accessible */}
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsOfService />} />
             
             {/* Protected routes */}
             <Route

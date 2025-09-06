@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { User, LogOut } from 'lucide-react';
 import NetWorthTracker from '../components/dashboard/NetWorthTracker';
 import DataMigration from '../components/common/DataMigration';
@@ -40,7 +40,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Top Navigation Bar */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
@@ -78,7 +78,41 @@ const Dashboard = () => {
       </div>
 
       {/* Main Content */}
-      <NetWorthTracker />
+      <div className="flex-grow">
+        <NetWorthTracker />
+      </div>
+
+      {/* Footer */}
+      <footer className="bg-white border-t border-gray-200 mt-auto">
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            {/* Logo and Description */}
+            <div className="flex items-center gap-3">
+              <Logo size="small" />
+              <span className="text-sm text-gray-600">Secure financial management platform</span>
+            </div>
+            
+            {/* Legal Links and Copyright */}
+            <div className="flex items-center gap-4 text-sm text-gray-600">
+              <Link 
+                to="/terms" 
+                className="hover:text-blue-600 transition-colors"
+              >
+                Terms
+              </Link>
+              <span className="text-gray-400">•</span>
+              <Link 
+                to="/privacy" 
+                className="hover:text-blue-600 transition-colors"
+              >
+                Privacy
+              </Link>
+              <span className="text-gray-400">•</span>
+              <span>© 2025 Techbrov. All rights reserved.</span>
+            </div>
+          </div>
+        </div>
+      </footer>
 
       {/* Data Migration Modal */}
       {showMigration && localData && (
