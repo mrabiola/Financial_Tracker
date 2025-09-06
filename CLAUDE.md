@@ -4,6 +4,56 @@
 
 ### Latest Update: September 6, 2025
 
+## 🐛 Bug Fix: Persistent Goals Issue Resolution
+
+### Bug Report: September 6, 2025
+
+#### **Issue Identified**
+Found and resolved critical bug where 3 hardcoded test goals were persistently displaying in the Goal Progress Chart regardless of user or year:
+- "Pay Off Land" (71% complete, $20,000/$28,000)
+- "Investment Min" (98% complete, $39,000/$40,000) 
+- "Home-Downpayment" (93% complete, $70,000/$75,000)
+
+#### **Root Cause Analysis**
+Located in `src/components/dashboard/NetWorthTracker.jsx:1149-1156`, the Goal Progress Chart contained fallback test data that was displayed when no real goals existed in the database:
+
+```javascript
+// Problematic code that was causing the issue
+if (processedGoals.length === 0) {
+  finalGoals = [
+    { name: 'Pay Off Land', fullName: 'Pay Off Land', current: 20000, target: 28000, completion: 71, color: '#f59e0b', status: 'In Progress' },
+    { name: 'Investment Min', fullName: 'Investment Minimum', current: 39000, target: 40000, completion: 98, color: '#f59e0b', status: 'In Progress' },
+    { name: 'Home-Downpayment', fullName: 'Home Down Payment', current: 70000, target: 75000, completion: 93, color: '#f59e0b', status: 'In Progress' }
+  ];
+}
+```
+
+#### **Solution Implemented**
+**Fixed Code:**
+```javascript
+// Use only real goals from database
+let finalGoals = processedGoals;
+```
+
+#### **Technical Details**
+- **File Modified**: `src/components/dashboard/NetWorthTracker.jsx`
+- **Lines Changed**: Removed lines 1149-1156 (8 deletions, 1 insertion)
+- **Impact**: Chart now correctly displays only user-specific goals from database
+- **Fallback Behavior**: Shows appropriate empty state when no goals exist
+
+#### **Testing Performed**
+✅ Verified chart displays no goals when database is empty  
+✅ Confirmed user-created goals appear correctly  
+✅ Tested across different years and user accounts  
+✅ Validated empty state messaging works properly  
+
+#### **Commit Details**
+- **Commit Hash**: `7fdc8de`
+- **Message**: "Fix: Remove hardcoded persistent goals from Goal Progress Chart"
+- **Files Changed**: 1 file, 8 deletions, 1 insertion
+
+---
+
 ## 💱 Multi-Currency Support Implementation
 
 ### Overview

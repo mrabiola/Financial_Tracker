@@ -357,6 +357,7 @@ npm start
 - **📊 Enhanced Data Visualization**: Improved chart formatting with dynamic currency display
 - **🌐 Real-Time FX Conversion**: Live exchange rates with 5-minute caching and fallback handling
 - **🎨 Brand Consistency**: Updated all components to use new logo and currency formatting
+- **🐛 Fixed Persistent Goals Bug**: Removed hardcoded test data that displayed persistent goals regardless of user/year
 - **💻 Developer Experience**: Added test data generators and comprehensive debugging tools
 
 ### Planned Features
