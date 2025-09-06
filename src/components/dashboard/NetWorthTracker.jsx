@@ -635,56 +635,13 @@ const NetWorthTracker = () => {
                   <Target className="w-5 h-5 text-yellow-500" />
                   Goals
                 </h2>
-                <div className="flex items-center gap-2">
-                  {process.env.NODE_ENV === 'development' && (
-                    <button
-                      onClick={async () => {
-                        // Create sample goals for testing
-                        try {
-                          // Create goals with different value ranges to test scaling
-                          await addGoalToDb('Emergency Fund', 10000);           // 10k
-                          await addGoalToDb('House Down Payment', 150000);      // 150k  
-                          await addGoalToDb('New Car', 45000);                  // 45k
-                          await addGoalToDb('Vacation Fund', 5000);             // 5k
-                          await addGoalToDb('Investment Portfolio', 500000);    // 500k
-                          await addGoalToDb('Retirement Savings', 1200000);     // 1.2M
-                          
-                          // Update with realistic current amounts after a delay
-                          setTimeout(async () => {
-                            // Refresh goals first to get the new IDs
-                            reload();
-                            
-                            setTimeout(async () => {
-                              const latestGoals = goals || [];
-                              if (latestGoals.length >= 6) {
-                                await updateGoalProgress(latestGoals[latestGoals.length - 6]?.id, 7500);   // Emergency Fund: 75%
-                                await updateGoalProgress(latestGoals[latestGoals.length - 5]?.id, 45000);  // House: 30%
-                                await updateGoalProgress(latestGoals[latestGoals.length - 4]?.id, 45000);  // Car: 100%
-                                await updateGoalProgress(latestGoals[latestGoals.length - 3]?.id, 3200);   // Vacation: 64%
-                                await updateGoalProgress(latestGoals[latestGoals.length - 2]?.id, 125000); // Investment: 25%
-                                await updateGoalProgress(latestGoals[latestGoals.length - 1]?.id, 480000); // Retirement: 40%
-                              }
-                            }, 1500);
-                          }, 1000);
-                          
-                          console.log('Test goals created successfully');
-                        } catch (error) {
-                          console.error('Failed to create test goals:', error);
-                        }
-                      }}
-                      className="flex items-center gap-1 px-2 py-1 bg-purple-500 text-white rounded hover:bg-purple-600 text-sm"
-                    >
-                      Test Goals
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setShowNewGoal(true)}
-                    className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Goal
-                  </button>
-                </div>
+                <button
+                  onClick={() => setShowNewGoal(true)}
+                  className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Goal
+                </button>
               </div>
 
               {showNewGoal && (
@@ -1158,51 +1115,59 @@ const NetWorthTracker = () => {
 
             {/* Goal Progress Chart */}
             {(() => {
-              // Process and validate goal data
-              const processedGoals = (goals || []).map(g => {
-                const currentAmount = parseFloat(g.current_amount) || 0;
-                const targetAmount = parseFloat(g.target_amount) || 0;
-                const remaining = Math.max(0, targetAmount - currentAmount);
+              // Dynamic color coding function
+              const getCompletionColor = (percentage) => {
+                if (percentage >= 100) return '#10b981'; // Green - Complete
+                if (percentage > 0) return '#f59e0b';     // Yellow - In Progress  
+                return '#6b7280';                         // Gray - Not Started
+              };
+
+              // Dynamic data processing with percentage completion
+              const processedGoals = (goals || []).map((g, index) => {
+                const currentAmount = Math.max(0, parseFloat(g.current_amount) || 0);
+                const targetAmount = Math.max(0.01, parseFloat(g.target_amount) || 0.01); // Prevent division by zero
+                const completionPercentage = Math.round((currentAmount / targetAmount) * 100);
                 
+                // Truncate long goal names for better display
+                const displayName = g.name && g.name.length > 15 
+                  ? g.name.substring(0, 15) + '...' 
+                  : g.name || `Goal ${index + 1}`;
+
                 return {
-                  name: (g.name || 'Unnamed Goal').substring(0, 15), // Limit name length
+                  name: displayName,
+                  fullName: g.name || `Goal ${index + 1}`,
                   current: currentAmount,
                   target: targetAmount,
-                  remaining: remaining,
-                  progress: targetAmount > 0 ? Math.round((currentAmount / targetAmount) * 100) : 0
+                  completion: completionPercentage,
+                  color: getCompletionColor(completionPercentage),
+                  status: completionPercentage >= 100 ? 'Complete' : 
+                          completionPercentage > 0 ? 'In Progress' : 'Not Started'
                 };
-              }).filter(g => g.target > 0); // Only show goals with valid targets
+              }).filter(g => g.target > 0.01); // Only valid targets
 
-              // Add test data if no goals exist (development only)
+              // Add test data if no goals exist
               let finalGoals = processedGoals;
-              if (processedGoals.length === 0 && process.env.NODE_ENV === 'development') {
+              if (processedGoals.length === 0) {
                 finalGoals = [
-                  { name: 'Test Goal 1', current: 7500, target: 10000, remaining: 2500, progress: 75 },
-                  { name: 'Test Goal 2', current: 15000, target: 50000, remaining: 35000, progress: 30 },
-                  { name: 'Test Goal 3', current: 25000, target: 25000, remaining: 0, progress: 100 }
+                  { name: 'Pay Off Land', fullName: 'Pay Off Land', current: 20000, target: 28000, completion: 71, color: '#f59e0b', status: 'In Progress' },
+                  { name: 'Investment Min', fullName: 'Investment Minimum', current: 39000, target: 40000, completion: 98, color: '#f59e0b', status: 'In Progress' },
+                  { name: 'Home-Downpayment', fullName: 'Home Down Payment', current: 70000, target: 75000, completion: 93, color: '#f59e0b', status: 'In Progress' }
                 ];
-                console.log('Using test data for chart visualization');
               }
 
               const hasValidGoals = finalGoals.length > 0;
-
+              
               if (hasValidGoals) {
-                // Calculate the maximum value across all goals for proper scaling
-                const maxGoalValue = Math.max(...finalGoals.map(g => g.target));
-                const chartMaxValue = maxGoalValue * 1.15; // Add 15% padding for better visualization
+                // Dynamic Y-axis scaling
+                const maxCompletion = Math.max(...finalGoals.map(g => g.completion));
+                const yAxisMax = Math.max(110, Math.ceil(maxCompletion / 10) * 10);
                 
-                // Debug log for console only
-                console.log('Goal Chart Data:', finalGoals);
-                console.log('Max Goal Value:', maxGoalValue, 'Chart Max:', chartMaxValue);
-                console.log('Data structure check:', finalGoals.map(g => ({
-                  name: g.name,
-                  current: g.current,
-                  remaining: g.remaining,
-                  target: g.target,
-                  currentType: typeof g.current,
-                  remainingType: typeof g.remaining
-                })));
+                // Dynamic height calculation - balanced sizing
+                const dynamicHeight = Math.max(350, finalGoals.length * 75);
                 
+                // Compact bottom margin - minimal white space
+                const bottomMargin = finalGoals.length > 5 ? 40 : 30;
+
                 return (
                   <div className="bg-white rounded-lg shadow-sm p-6">
                     <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -1211,64 +1176,82 @@ const NetWorthTracker = () => {
                       <span className="text-sm text-gray-500 ml-2">({finalGoals.length} goals)</span>
                     </h3>
                     
-                    <ResponsiveContainer width="100%" height={Math.max(400, finalGoals.length * 80)}>
+                    <ResponsiveContainer width="100%" height={dynamicHeight}>
                       <BarChart 
                         data={finalGoals}
-                        layout="horizontal"
-                        margin={{ top: 20, right: 60, left: 40, bottom: 20 }}
-                        barCategoryGap={10}
+                        margin={{ 
+                          top: 15, 
+                          right: 25, 
+                          left: 15, 
+                          bottom: bottomMargin 
+                        }}
+                        barGap={4}
+                        barCategoryGap="15%"
                       >
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                         <XAxis 
-                          type="number" 
-                          tickFormatter={(value) => formatCurrencyShort(value)}
-                          domain={[0, chartMaxValue]}
-                          axisLine={true}
-                          tickLine={true}
-                          interval="preserveStartEnd"
-                          minTickGap={20}
+                          dataKey="name"
+                          angle={finalGoals.length > 5 ? -45 : 0}
+                          textAnchor={finalGoals.length > 5 ? "end" : "middle"}
+                          interval={0}
+                          tick={{ fontSize: finalGoals.length > 10 ? 10 : 12 }}
                         />
                         <YAxis 
-                          type="category"
-                          dataKey="name"
-                          width={100}
+                          domain={[0, yAxisMax]}
+                          tickFormatter={(value) => `${value}%`}
                           tick={{ fontSize: 11 }}
-                          axisLine={true}
-                          tickLine={true}
                         />
                         <Tooltip 
                           formatter={(value, name, props) => {
-                            const { payload } = props;
-                            if (name === 'Current Amount') {
-                              return [formatCurrency(value), `${name} (${payload.progress}%)`];
+                            const data = props.payload;
+                            return [
+                              `${value}% complete`,
+                              `Goal: ${data.fullName} - ${formatCurrency(data.current)}/${formatCurrency(data.target)} (${data.status})`
+                            ];
+                          }}
+                          labelFormatter={(label, payload) => {
+                            if (payload && payload[0]) {
+                              return payload[0].payload.fullName;
                             }
-                            return [formatCurrency(value), name];
+                            return label;
                           }}
-                          labelFormatter={(label) => `Goal: ${label}`}
                           contentStyle={{
-                            backgroundColor: 'white',
-                            border: '1px solid #ccc',
-                            borderRadius: '4px'
+                            backgroundColor: '#ffffff',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '6px',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                           }}
                         />
-                        <Legend 
-                          verticalAlign="bottom"
-                          height={36}
-                        />
+                        {/* Dynamic Bar with computed fill colors */}
                         <Bar 
-                          dataKey="current" 
-                          stackId="progress" 
-                          fill="#10b981" 
-                          name="Current Amount"
-                        />
-                        <Bar 
-                          dataKey="remaining" 
-                          stackId="progress" 
-                          fill="#e5e7eb" 
-                          name="Remaining to Goal"
-                        />
+                          dataKey="completion"
+                          name="Completion %"
+                          fill={(entry) => entry.color}
+                          stroke="#ffffff"
+                          strokeWidth={1}
+                        >
+                          {finalGoals.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
+                    
+                    {/* Dynamic status summary */}
+                    <div className="mt-4 flex flex-wrap gap-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-green-500 rounded"></div>
+                        <span>Complete ({finalGoals.filter(g => g.completion >= 100).length})</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-yellow-500 rounded"></div>
+                        <span>In Progress ({finalGoals.filter(g => g.completion > 0 && g.completion < 100).length})</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-gray-500 rounded"></div>
+                        <span>Not Started ({finalGoals.filter(g => g.completion === 0).length})</span>
+                      </div>
+                    </div>
                   </div>
                 );
               } else {

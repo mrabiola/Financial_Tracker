@@ -72,10 +72,7 @@ const Logo = ({ className = '', size = 'default', showText = true }) => {
             className="font-bold tracking-tight leading-none"
             style={{ 
               fontSize: `${currentSize.text}px`,
-              background: 'linear-gradient(135deg, #3B82F6 0%, #6366F1 50%, #8B5CF6 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text'
+              color: '#334155'
             }}
           >
             WealthTrak
