@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { User, LogOut } from 'lucide-react';
 import NetWorthTracker from '../components/dashboard/NetWorthTracker';
 import DataMigration from '../components/common/DataMigration';
+import Logo from '../components/Logo';
 import { useAuth } from '../contexts/AuthContext';
 
 const Dashboard = () => {
@@ -47,19 +48,10 @@ const Dashboard = () => {
             <div className="flex items-center">
               <button
                 onClick={() => navigate('/dashboard')}
-                className="flex items-center gap-2 hover:opacity-80 transition-opacity p-2 -ml-2 rounded-lg hover:bg-gray-50"
+                className="hover:opacity-80 transition-opacity"
                 title="Go to Dashboard"
               >
-                <img 
-                  src="/logo-wealth.jpg" 
-                  alt="Financial Tracker Logo" 
-                  className="h-10 sm:h-12 w-auto object-contain"
-                  style={{
-                    maxWidth: '120px',
-                    minWidth: '100px',
-                    filter: 'brightness(1.1) contrast(1.1)'
-                  }}
-                />
+                <Logo size="default" />
               </button>
             </div>
             <div className="flex items-center gap-4">

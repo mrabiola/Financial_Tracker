@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { User, Mail, Save, AlertCircle, CheckCircle, LogOut, Landmark } from 'lucide-react';
+import { User, Mail, Save, AlertCircle, CheckCircle, LogOut } from 'lucide-react';
+import Logo from '../components/Logo';
+import CurrencySettings from '../components/settings/CurrencySettings';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -42,9 +44,7 @@ const Profile = () => {
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
-                <Landmark className="w-6 h-6 text-white" />
-              </div>
+              <Logo size="small" showText={false} />
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Profile Settings</h1>
                 <p className="text-sm text-gray-500">Manage your account information</p>
@@ -147,6 +147,9 @@ const Profile = () => {
             </div>
           </div>
         </div>
+
+        {/* Currency Settings */}
+        <CurrencySettings />
 
         {/* Danger Zone */}
         <div className="bg-white rounded-lg shadow-sm p-6 border border-red-200">

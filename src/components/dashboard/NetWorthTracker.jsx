@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Plus, X, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, Copy, Download, Upload, TrendingUp, PieChart, BarChart3, LineChart, Target, Wallet, CreditCard, DollarSign, TrendingDown, PiggyBank, Landmark, Home, Car, School, Heart, Briefcase, Coins, AlertCircle, Brain, FileSpreadsheet } from 'lucide-react';
 import { LineChart as RechartsLineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { useFinancialData } from '../../hooks/useFinancialData';
+import { useCurrency } from '../../contexts/CurrencyContext';
 import LoadingSpinner from '../common/LoadingSpinner';
 import AdvancedImportModal from './AdvancedImportModal';
 import SimpleImportModal from './SimpleImportModal';
@@ -14,6 +15,9 @@ const NetWorthTracker = () => {
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   
+  // Use currency context for formatting
+  const { formatCurrency, formatCurrencyShort } = useCurrency();
+
   // Use Supabase data hook
   const {
     loading: dataLoading,
@@ -243,14 +247,7 @@ const NetWorthTracker = () => {
   };
 
   // Format currency
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  // Currency formatting is now handled by the useCurrency context
 
   // Handle cell editing
   const startEdit = (accountId, monthIndex) => {
@@ -638,13 +635,56 @@ const NetWorthTracker = () => {
                   <Target className="w-5 h-5 text-yellow-500" />
                   Goals
                 </h2>
-                <button
-                  onClick={() => setShowNewGoal(true)}
-                  className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Goal
-                </button>
+                <div className="flex items-center gap-2">
+                  {process.env.NODE_ENV === 'development' && (
+                    <button
+                      onClick={async () => {
+                        // Create sample goals for testing
+                        try {
+                          // Create goals with different value ranges to test scaling
+                          await addGoalToDb('Emergency Fund', 10000);           // 10k
+                          await addGoalToDb('House Down Payment', 150000);      // 150k  
+                          await addGoalToDb('New Car', 45000);                  // 45k
+                          await addGoalToDb('Vacation Fund', 5000);             // 5k
+                          await addGoalToDb('Investment Portfolio', 500000);    // 500k
+                          await addGoalToDb('Retirement Savings', 1200000);     // 1.2M
+                          
+                          // Update with realistic current amounts after a delay
+                          setTimeout(async () => {
+                            // Refresh goals first to get the new IDs
+                            reload();
+                            
+                            setTimeout(async () => {
+                              const latestGoals = goals || [];
+                              if (latestGoals.length >= 6) {
+                                await updateGoalProgress(latestGoals[latestGoals.length - 6]?.id, 7500);   // Emergency Fund: 75%
+                                await updateGoalProgress(latestGoals[latestGoals.length - 5]?.id, 45000);  // House: 30%
+                                await updateGoalProgress(latestGoals[latestGoals.length - 4]?.id, 45000);  // Car: 100%
+                                await updateGoalProgress(latestGoals[latestGoals.length - 3]?.id, 3200);   // Vacation: 64%
+                                await updateGoalProgress(latestGoals[latestGoals.length - 2]?.id, 125000); // Investment: 25%
+                                await updateGoalProgress(latestGoals[latestGoals.length - 1]?.id, 480000); // Retirement: 40%
+                              }
+                            }, 1500);
+                          }, 1000);
+                          
+                          console.log('Test goals created successfully');
+                        } catch (error) {
+                          console.error('Failed to create test goals:', error);
+                        }
+                      }}
+                      className="flex items-center gap-1 px-2 py-1 bg-purple-500 text-white rounded hover:bg-purple-600 text-sm"
+                    >
+                      Test Goals
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowNewGoal(true)}
+                    className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Goal
+                  </button>
+                </div>
               </div>
 
               {showNewGoal && (
@@ -1009,7 +1049,7 @@ const NetWorthTracker = () => {
                 <AreaChart data={prepareNetWorthChartData()}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
-                  <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                  <YAxis tickFormatter={(value) => formatCurrencyShort(value)} />
                   <Tooltip formatter={(value) => formatCurrency(value)} />
                   <Legend />
                   <Area 
@@ -1080,7 +1120,7 @@ const NetWorthTracker = () => {
                   <BarChart data={prepareNetWorthChartData()}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
-                    <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                    <YAxis tickFormatter={(value) => formatCurrencyShort(value)} />
                     <Tooltip formatter={(value) => formatCurrency(value)} />
                     <Legend />
                     <Bar dataKey="assets" fill="#10b981" name="Assets" />
@@ -1101,7 +1141,7 @@ const NetWorthTracker = () => {
                   <RechartsLineChart data={prepareTrendData()}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="year" />
-                    <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                    <YAxis tickFormatter={(value) => formatCurrencyShort(value)} />
                     <Tooltip formatter={(value) => formatCurrency(value)} />
                     <Line 
                       type="monotone" 
@@ -1117,33 +1157,146 @@ const NetWorthTracker = () => {
             )}
 
             {/* Goal Progress Chart */}
-            {goals && goals.length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <Target className="w-5 h-5 text-orange-600" />
-                  Goal Progress
-                </h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart 
-                    data={goals.map(g => ({
-                      name: g.name,
-                      current: g.current_amount,
-                      target: g.target_amount,
-                      remaining: Math.max(0, g.target_amount - g.current_amount)
-                    }))}
-                    layout="horizontal"
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
-                    <YAxis dataKey="name" type="category" width={100} />
-                    <Tooltip formatter={(value) => formatCurrency(value)} />
-                    <Legend />
-                    <Bar dataKey="current" stackId="a" fill="#10b981" name="Current" />
-                    <Bar dataKey="remaining" stackId="a" fill="#e5e7eb" name="Remaining" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
+            {(() => {
+              // Process and validate goal data
+              const processedGoals = (goals || []).map(g => {
+                const currentAmount = parseFloat(g.current_amount) || 0;
+                const targetAmount = parseFloat(g.target_amount) || 0;
+                const remaining = Math.max(0, targetAmount - currentAmount);
+                
+                return {
+                  name: (g.name || 'Unnamed Goal').substring(0, 15), // Limit name length
+                  current: currentAmount,
+                  target: targetAmount,
+                  remaining: remaining,
+                  progress: targetAmount > 0 ? Math.round((currentAmount / targetAmount) * 100) : 0
+                };
+              }).filter(g => g.target > 0); // Only show goals with valid targets
+
+              // Add test data if no goals exist (development only)
+              let finalGoals = processedGoals;
+              if (processedGoals.length === 0 && process.env.NODE_ENV === 'development') {
+                finalGoals = [
+                  { name: 'Test Goal 1', current: 7500, target: 10000, remaining: 2500, progress: 75 },
+                  { name: 'Test Goal 2', current: 15000, target: 50000, remaining: 35000, progress: 30 },
+                  { name: 'Test Goal 3', current: 25000, target: 25000, remaining: 0, progress: 100 }
+                ];
+                console.log('Using test data for chart visualization');
+              }
+
+              const hasValidGoals = finalGoals.length > 0;
+
+              if (hasValidGoals) {
+                // Calculate the maximum value across all goals for proper scaling
+                const maxGoalValue = Math.max(...finalGoals.map(g => g.target));
+                const chartMaxValue = maxGoalValue * 1.15; // Add 15% padding for better visualization
+                
+                // Debug log for console only
+                console.log('Goal Chart Data:', finalGoals);
+                console.log('Max Goal Value:', maxGoalValue, 'Chart Max:', chartMaxValue);
+                console.log('Data structure check:', finalGoals.map(g => ({
+                  name: g.name,
+                  current: g.current,
+                  remaining: g.remaining,
+                  target: g.target,
+                  currentType: typeof g.current,
+                  remainingType: typeof g.remaining
+                })));
+                
+                return (
+                  <div className="bg-white rounded-lg shadow-sm p-6">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                      <Target className="w-5 h-5 text-orange-600" />
+                      Goal Progress
+                      <span className="text-sm text-gray-500 ml-2">({finalGoals.length} goals)</span>
+                    </h3>
+                    
+                    <ResponsiveContainer width="100%" height={Math.max(400, finalGoals.length * 80)}>
+                      <BarChart 
+                        data={finalGoals}
+                        layout="horizontal"
+                        margin={{ top: 20, right: 60, left: 40, bottom: 20 }}
+                        barCategoryGap={10}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis 
+                          type="number" 
+                          tickFormatter={(value) => formatCurrencyShort(value)}
+                          domain={[0, chartMaxValue]}
+                          axisLine={true}
+                          tickLine={true}
+                          interval="preserveStartEnd"
+                          minTickGap={20}
+                        />
+                        <YAxis 
+                          type="category"
+                          dataKey="name"
+                          width={100}
+                          tick={{ fontSize: 11 }}
+                          axisLine={true}
+                          tickLine={true}
+                        />
+                        <Tooltip 
+                          formatter={(value, name, props) => {
+                            const { payload } = props;
+                            if (name === 'Current Amount') {
+                              return [formatCurrency(value), `${name} (${payload.progress}%)`];
+                            }
+                            return [formatCurrency(value), name];
+                          }}
+                          labelFormatter={(label) => `Goal: ${label}`}
+                          contentStyle={{
+                            backgroundColor: 'white',
+                            border: '1px solid #ccc',
+                            borderRadius: '4px'
+                          }}
+                        />
+                        <Legend 
+                          verticalAlign="bottom"
+                          height={36}
+                        />
+                        <Bar 
+                          dataKey="current" 
+                          stackId="progress" 
+                          fill="#10b981" 
+                          name="Current Amount"
+                        />
+                        <Bar 
+                          dataKey="remaining" 
+                          stackId="progress" 
+                          fill="#e5e7eb" 
+                          name="Remaining to Goal"
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                );
+              } else {
+                return (
+                  <div className="bg-white rounded-lg shadow-sm p-6">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                      <Target className="w-5 h-5 text-orange-600" />
+                      Goal Progress
+                    </h3>
+                    <div className="text-center py-8">
+                      <Target className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-500 mb-2">
+                        {goals && goals.length > 0 
+                          ? 'No valid goals to display' 
+                          : 'No financial goals set yet'
+                        }
+                      </p>
+                      <p className="text-sm text-gray-400">
+                        {goals && goals.length > 0 
+                          ? 'Goals need target amounts greater than 0' 
+                          : 'Add goals above to track your progress here'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
+            })()}
           </div>
         )}
       </div>

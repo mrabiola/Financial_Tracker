@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, User, AlertCircle, CheckCircle } from 'lucide-react';
+import Logo from '../Logo';
 import { supabase } from '../../lib/supabase';
 
 const SignupForm = () => {
@@ -86,15 +87,9 @@ const SignupForm = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
         <div className="text-center mb-4">
-          <img 
-            src="/logo-wealth.jpg" 
-            alt="Financial Tracker Logo" 
-            className="h-28 sm:h-32 w-auto object-contain mx-auto mb-4 rounded-lg"
-            style={{
-              filter: 'brightness(1.1) contrast(1.1)',
-              maxWidth: '200px'
-            }}
-          />
+          <div className="flex justify-center mb-4">
+            <Logo size="xlarge" />
+          </div>
           <h2 className="text-3xl font-bold text-gray-900 mb-1">Create Account</h2>
           <p className="text-gray-600 text-sm">Start tracking your financial journey</p>
         </div>
