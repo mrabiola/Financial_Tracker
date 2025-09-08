@@ -5,12 +5,14 @@ import NetWorthTracker from '../components/dashboard/NetWorthTracker';
 import DataMigration from '../components/common/DataMigration';
 import Logo from '../components/Logo';
 import { useAuth } from '../contexts/AuthContext';
+import { useInitialDataSetup } from '../hooks/useInitialDataSetup';
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [showMigration, setShowMigration] = useState(false);
   const [localData, setLocalData] = useState(null);
+  const { isInitializing } = useInitialDataSetup();
 
   useEffect(() => {
     // Check for local storage data on mount
@@ -79,7 +81,16 @@ const Dashboard = () => {
 
       {/* Main Content */}
       <div className="flex-grow">
-        <NetWorthTracker />
+        {isInitializing ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Setting up your financial dashboard...</p>
+            </div>
+          </div>
+        ) : (
+          <NetWorthTracker />
+        )}
       </div>
 
       {/* Footer */}

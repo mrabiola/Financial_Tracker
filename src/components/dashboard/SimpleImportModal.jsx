@@ -204,27 +204,67 @@ const SimpleImportModal = ({ isOpen, onClose, onImport, selectedYear, accounts }
           });
 
           if (filteredData.length <= 1) {
-            throw new Error('No data found in the template. Please add your account information.');
+            throw new Error('No data found in the template. Please add your account information below the header row.');
           }
+          
+          console.log('Template validation - Filtered data:', filteredData);
+          console.log('Template validation - First row (headers):', filteredData[0]);
 
           // Validate template format
           const headers = filteredData[0].map(h => h?.toString().toLowerCase().trim());
-          const requiredHeaders = ['account name', 'type', 'amount'];
+          const requiredHeaders = [
+            { name: 'account name', variations: ['account name', 'accountname', 'name'] },
+            { name: 'type', variations: ['type', 'account type', 'accounttype'] },
+            { name: 'amount', variations: ['amount', 'value', 'balance'] }
+          ];
+          
           const missingHeaders = requiredHeaders.filter(req => 
-            !headers.some(h => h.includes(req.replace(' ', '')))
-          );
+            !headers.some(h => req.variations.some(variation => h.includes(variation)))
+          ).map(req => req.name);
 
           if (missingHeaders.length > 0) {
-            throw new Error(`Missing required columns: ${missingHeaders.join(', ')}. Please use the provided template format.`);
+            const expectedHeaders = "'Account Name', 'Type', 'Amount'";
+            const foundHeaders = headers.map(h => `'${h}'`).join(', ');
+            throw new Error(
+              `Missing required columns: ${missingHeaders.join(', ')}.\n\n` +
+              `Expected headers: ${expectedHeaders}\n` +
+              `Found headers: ${foundHeaders}\n\n` +
+              "Please use the provided template format and ensure column names match exactly."
+            );
           }
 
-          // Find column indices
-          const accountIndex = headers.findIndex(h => h.includes('account') && h.includes('name'));
-          const typeIndex = headers.findIndex(h => h.includes('type'));
-          const amountIndex = headers.findIndex(h => h.includes('amount'));
-          const monthIndex = headers.findIndex(h => h.includes('month'));
-          const categoryIndex = headers.findIndex(h => h.includes('category'));
-          const notesIndex = headers.findIndex(h => h.includes('notes'));
+          // Find column indices with more flexible matching
+          const findColumnIndex = (variations) => {
+            for (const variation of variations) {
+              const index = headers.findIndex(h => h.includes(variation));
+              if (index !== -1) {
+                console.log(`Found column '${variation}' at index ${index}`);
+                return index;
+              }
+            }
+            console.log(`No column found for variations: ${variations}`);
+            return -1;
+          };
+          
+          const accountIndex = findColumnIndex(['account name', 'accountname', 'name']);
+          const typeIndex = findColumnIndex(['type', 'account type', 'accounttype']);
+          const amountIndex = findColumnIndex(['amount', 'value', 'balance']);
+          const monthIndex = findColumnIndex(['month']);
+          const categoryIndex = findColumnIndex(['category']);
+          const notesIndex = findColumnIndex(['notes', 'note', 'description']);
+          
+          console.log('Column indices:', { accountIndex, typeIndex, amountIndex, monthIndex, categoryIndex, notesIndex });
+          
+          // Verify we found the required columns
+          if (accountIndex === -1) {
+            throw new Error(`Could not find 'Account Name' column. Please ensure your template has a column named 'Account Name'.`);
+          }
+          if (typeIndex === -1) {
+            throw new Error(`Could not find 'Type' column. Please ensure your template has a column named 'Type'.`);
+          }
+          if (amountIndex === -1) {
+            throw new Error(`Could not find 'Amount' column. Please ensure your template has a column named 'Amount'.`);
+          }
 
           // Process data rows
           const processedData = [];
@@ -309,7 +349,7 @@ const SimpleImportModal = ({ isOpen, onClose, onImport, selectedYear, accounts }
             try {
               await onImport({
                 accountName: item.name,
-                accountType: item.type === 'asset' ? 'assets' : 'liabilities',
+                accountType: item.type, // Use singular form directly: 'asset' or 'liability'
                 monthIndex: item.month ? item.month - 1 : 0, // Convert to 0-based index, default to January
                 value: item.amount,
                 year: selectedYear,

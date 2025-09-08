@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useCurrency } from '../contexts/CurrencyContext';
@@ -18,6 +18,7 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
   const [snapshots, setSnapshots] = useState({});
   const [snapshotsCurrency, setSnapshotsCurrency] = useState({});
   const [conversionPending, setConversionPending] = useState(false);
+  const loadingRef = useRef(false);
 
   // Save current currency as last known for migration purposes
   useEffect(() => {
@@ -26,7 +27,7 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
     }
   }, [displayCurrency]);
 
-  // Fetch or create financial year
+  // Fetch or create financial year with proper duplicate handling
   const fetchOrCreateYear = useCallback(async () => {
     if (!user) return null;
 
@@ -42,21 +43,42 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
         throw fetchError;
       }
 
+      // If year doesn't exist, create it with upsert to handle race conditions
       if (!existingYear) {
         const { data: newYear, error: createError } = await supabase
           .from('financial_years')
-          .insert([
+          .upsert(
             {
               user_id: user.id,
               year: selectedYear,
               annual_goal: ''
+            },
+            { 
+              onConflict: 'user_id,year',
+              ignoreDuplicates: true 
             }
-          ])
+          )
           .select()
           .single();
 
-        if (createError) throw createError;
-        existingYear = newYear;
+        if (createError) {
+          // If upsert failed due to race condition, try to fetch again
+          if (createError.code === '23505' || createError.message?.includes('duplicate')) {
+            const { data: retryYear, error: retryError } = await supabase
+              .from('financial_years')
+              .select('*')
+              .eq('user_id', user.id)
+              .eq('year', selectedYear)
+              .single();
+            
+            if (retryError) throw retryError;
+            existingYear = retryYear;
+          } else {
+            throw createError;
+          }
+        } else {
+          existingYear = newYear;
+        }
       }
 
       return existingYear;
@@ -181,8 +203,14 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
     }
   }, [selectedYear, displayCurrency]);
 
-  // Load all data
+  // Load all data with debounce to prevent duplicate calls
   const loadData = useCallback(async () => {
+    // Prevent duplicate simultaneous loads
+    if (loadingRef.current) {
+      return;
+    }
+    
+    loadingRef.current = true;
     setLoading(true);
     setError(null);
 
@@ -206,6 +234,10 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
       setError(err.message);
     } finally {
       setLoading(false);
+      // Add small delay before allowing next load
+      setTimeout(() => {
+        loadingRef.current = false;
+      }, 100);
     }
   }, [fetchOrCreateYear, fetchAccountsAndReturn, fetchGoals, fetchSnapshots]);
 

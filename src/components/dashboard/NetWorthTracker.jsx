@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, X, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, Copy, Download, Upload, TrendingUp, PieChart, BarChart3, LineChart, Target, Wallet, CreditCard, DollarSign, TrendingDown, PiggyBank, Landmark, Home, Car, School, Heart, Briefcase, Coins, AlertCircle, Brain, FileSpreadsheet } from 'lucide-react';
+import { Plus, X, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, Copy, Download, Upload, TrendingUp, PieChart, BarChart3, LineChart, Target, Wallet, CreditCard, DollarSign, TrendingDown, PiggyBank, Landmark, Home, Car, School, Heart, Briefcase, Coins, AlertCircle, Brain, FileSpreadsheet, Calendar, TrendingUp as TrendUpIcon, TrendingDown as TrendDownIcon } from 'lucide-react';
 import { LineChart as RechartsLineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { useFinancialDataWithCurrency } from '../../hooks/useFinancialDataWithCurrency';
 import { getConversionIndicator } from '../../utils/currencyConversion';
@@ -430,18 +430,23 @@ const NetWorthTracker = () => {
               </h1>
             </div>
             <div className="flex items-center gap-4">
-              {/* Year selector */}
-              <div className="flex items-center gap-2 bg-gray-50 px-3 py-1 rounded-lg">
+              {/* Enhanced Year Selector */}
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => setSelectedYear(selectedYear - 1)}
-                  className="p-1 hover:bg-gray-200 rounded transition-colors"
+                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200"
+                  title="Previous Year"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                <span className="font-semibold text-lg text-gray-700 min-w-[60px] text-center">{selectedYear}</span>
+                <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:border-gray-300 transition-all duration-200">
+                  <Calendar className="w-5 h-5 text-gray-600" />
+                  <span className="font-semibold text-gray-700">{selectedYear}</span>
+                </button>
                 <button
                   onClick={() => setSelectedYear(selectedYear + 1)}
-                  className="p-1 hover:bg-gray-200 rounded transition-colors"
+                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200"
+                  title="Next Year"
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
@@ -486,19 +491,16 @@ const NetWorthTracker = () => {
                         maxWidth: window.innerWidth < 480 ? '90vw' : undefined
                       }}
                     >
-                      <button
-                        onClick={() => {
-                          setShowImportOptions(false);
-                          setShowImportModal(true);
-                        }}
-                        className="flex items-center gap-3 w-full px-4 py-3 text-left text-gray-700 hover:bg-blue-50 hover:text-blue-800 rounded-t-lg transition-all duration-200 focus:outline-none focus:bg-blue-50 focus:text-blue-800"
-                      >
-                        <Brain className="w-4 h-4 text-blue-600" />
+                      <div className="flex items-center gap-3 w-full px-4 py-3 text-left text-gray-400 bg-gray-50 rounded-t-lg cursor-not-allowed">
+                        <Brain className="w-4 h-4 text-gray-400" />
                         <div>
-                          <div className="font-medium">Advanced Import</div>
-                          <div className="text-sm text-gray-500">Smart mapping & AI detection</div>
+                          <div className="font-medium flex items-center gap-2">
+                            Advanced Import
+                            <span className="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded-full font-normal">Coming Soon</span>
+                          </div>
+                          <div className="text-sm text-gray-400">Smart mapping & AI detection</div>
                         </div>
-                      </button>
+                      </div>
                       <button
                         onClick={() => {
                           setShowImportOptions(false);
@@ -519,49 +521,65 @@ const NetWorthTracker = () => {
             </div>
           </div>
 
-          {/* Net Worth Summary */}
-          <div className="grid grid-cols-3 gap-4 mt-4">
-            <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm font-medium text-green-700">Total Assets</div>
-                <div className="p-2 bg-green-500 rounded-lg">
-                  <PiggyBank className="w-5 h-5 text-white" />
+          {/* Net Worth Summary - Enhanced Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            {/* Total Assets Card */}
+            <div className="bg-white p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 border-green-500 transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="text-base font-semibold text-gray-600 uppercase tracking-wider mb-2">Total Assets</div>
+                  <div className="text-4xl font-bold text-gray-900 mb-1">{formatCurrency(totals.assets)}</div>
+                  <div className="text-sm font-medium text-gray-500">
+                    {accounts.assets?.length || 0} active {(accounts.assets?.length || 0) === 1 ? 'account' : 'accounts'}
+                  </div>
                 </div>
-              </div>
-              <div className="text-2xl font-bold text-gray-900">{formatCurrency(totals.assets)}</div>
-              <div className="text-xs text-green-600 mt-1 flex items-center gap-1">
-                <TrendingUp className="w-3 h-3" />
-                Your total assets
+                <div className="text-green-500 opacity-80 group-hover:opacity-100 transition-opacity">
+                  <TrendUpIcon className="w-10 h-10" strokeWidth={1.5} />
+                </div>
               </div>
             </div>
             
-            <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg border border-red-200">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm font-medium text-red-700">Total Liabilities</div>
-                <div className="p-2 bg-red-500 rounded-lg">
-                  <CreditCard className="w-5 h-5 text-white" />
+            {/* Total Liabilities Card */}
+            <div className="bg-white p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 border-red-500 transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="text-base font-semibold text-gray-600 uppercase tracking-wider mb-2">Total Liabilities</div>
+                  <div className="text-4xl font-bold text-gray-900 mb-1">{formatCurrency(totals.liabilities)}</div>
+                  <div className="text-sm font-medium text-gray-500">
+                    {accounts.liabilities?.length || 0} active {(accounts.liabilities?.length || 0) === 1 ? 'account' : 'accounts'}
+                  </div>
                 </div>
-              </div>
-              <div className="text-2xl font-bold text-gray-900">{formatCurrency(totals.liabilities)}</div>
-              <div className="text-xs text-red-600 mt-1 flex items-center gap-1">
-                <TrendingDown className="w-3 h-3" />
-                Your total debts
+                <div className="text-red-500 opacity-80 group-hover:opacity-100 transition-opacity">
+                  <TrendDownIcon className="w-10 h-10" strokeWidth={1.5} />
+                </div>
               </div>
             </div>
             
-            <div className={`bg-gradient-to-br ${totals.netWorth >= 0 ? 'from-blue-50 to-blue-100 border-blue-200' : 'from-orange-50 to-orange-100 border-orange-200'} p-4 rounded-lg border`}>
-              <div className="flex items-center justify-between mb-2">
-                <div className={`text-sm font-medium ${totals.netWorth >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>Net Worth</div>
-                <div className={`p-2 ${totals.netWorth >= 0 ? 'bg-blue-500' : 'bg-orange-500'} rounded-lg`}>
-                  <Wallet className="w-5 h-5 text-white" />
+            {/* Net Worth Card */}
+            <div className={`bg-white p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 ${totals.netWorth >= 0 ? 'border-blue-500' : 'border-orange-500'} transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group`}>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="text-base font-semibold text-gray-600 uppercase tracking-wider mb-2">Net Worth</div>
+                  <div className="text-4xl font-bold text-gray-900 mb-1">
+                    {formatCurrency(totals.netWorth)}
+                  </div>
+                  <div className="text-sm font-medium text-gray-500">
+                    {totals.netWorth >= 0 ? (
+                      <span className="text-green-600 flex items-center gap-1">
+                        <TrendingUp className="w-3 h-3" />
+                        Positive net worth
+                      </span>
+                    ) : (
+                      <span className="text-red-600 flex items-center gap-1">
+                        <TrendingDown className="w-3 h-3" />
+                        Negative net worth
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="text-2xl font-bold text-gray-900">
-                {formatCurrency(totals.netWorth)}
-              </div>
-              <div className={`text-xs ${totals.netWorth >= 0 ? 'text-blue-600' : 'text-orange-600'} mt-1 flex items-center gap-1`}>
-                {totals.netWorth >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                {totals.netWorth >= 0 ? 'Positive net worth' : 'Negative net worth'}
+                <div className={`${totals.netWorth >= 0 ? 'text-blue-500' : 'text-orange-500'} opacity-80 group-hover:opacity-100 transition-opacity`}>
+                  <Wallet className="w-10 h-10" strokeWidth={1.5} />
+                </div>
               </div>
             </div>
           </div>
@@ -1297,17 +1315,19 @@ const NetWorthTracker = () => {
         )}
       </div>
 
-      {/* Advanced Import Modal */}
-      <AdvancedImportModal
-        isOpen={showImportModal}
-        onClose={() => {
-          setShowImportModal(false);
-          reload(); // Reload data after import
-        }}
-        onImport={handleImportData}
-        selectedYear={selectedYear}
-        accounts={{ assets: accounts.assets || [], liabilities: accounts.liabilities || [] }}
-      />
+      {/* Advanced Import Modal - Temporarily disabled */}
+      {false && (
+        <AdvancedImportModal
+          isOpen={showImportModal}
+          onClose={() => {
+            setShowImportModal(false);
+            reload(); // Reload data after import
+          }}
+          onImport={handleImportData}
+          selectedYear={selectedYear}
+          accounts={{ assets: accounts.assets || [], liabilities: accounts.liabilities || [] }}
+        />
+      )}
 
       {/* Simple Import Modal */}
       <SimpleImportModal
