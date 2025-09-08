@@ -10,14 +10,12 @@ import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
-import CurrencyMigration from './components/common/CurrencyMigration';
 
 function App() {
   return (
     <Router>
       <AuthProvider>
         <CurrencyProvider>
-          <CurrencyMigration />
           <Routes>
             {/* Public routes */}
             <Route path="/login" element={<LoginForm />} />

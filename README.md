@@ -147,8 +147,7 @@ Financial_Tracker/
 │   │   ├── 📂 common/            # Shared components
 │   │   │   ├── ProtectedRoute.jsx # Route protection
 │   │   │   ├── LoadingSpinner.jsx # Loading states
-│   │   │   ├── DataMigration.jsx  # localStorage migration
-│   │   │   └── CurrencyMigration.jsx # Auto-migration for currency data
+│   │   │   └── DataMigration.jsx  # localStorage migration
 │   │   └── Logo.jsx              # Professional SVG logo component
 │   ├── 📂 contexts/
 │   │   ├── AuthContext.jsx       # Authentication state
@@ -264,7 +263,7 @@ Unlike simple symbol changes, WealthTrak provides real multi-currency support wi
 - **Original Value Preservation**: Never lose precision when switching currencies
 - **Smart Caching**: 5-minute cache for optimal performance and offline support
 - **Conversion Indicators**: Hover tooltips show original values (e.g., "Originally $1000")
-- **Automatic Migration**: Legacy data automatically migrated with assumed currency
+- **Database Schema**: Enhanced tables store both original and display currency values
 
 ### How It Works
 1. **Data Entry**: Enter values in any currency
@@ -285,7 +284,7 @@ Switch back to USD → Display: $1000 (exact original value)
 - **Currency Context**: Global state management for currency settings
 - **Conversion Engine**: Efficient batch conversion with caching
 - **Database Schema**: Extended tables with currency columns
-- **Migration System**: Automatic detection and migration of legacy data
+- **Data Hook**: Currency-aware data management with automatic conversion
 
 ---
 
