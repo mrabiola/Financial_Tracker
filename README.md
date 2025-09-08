@@ -100,6 +100,7 @@ npm install
 1. Open **SQL Editor** in Supabase
 2. Copy contents of `supabase/schema.sql`
 3. Execute the schema to create all tables and policies
+4. Run migration script `supabase/migrations/add_currency_support.sql` for multi-currency support
 
 #### Authentication Setup
 1. **Authentication > Providers**: Enable Email
@@ -146,24 +147,29 @@ Financial_Tracker/
 │   │   ├── 📂 common/            # Shared components
 │   │   │   ├── ProtectedRoute.jsx # Route protection
 │   │   │   ├── LoadingSpinner.jsx # Loading states
-│   │   │   └── DataMigration.jsx  # localStorage migration
+│   │   │   ├── DataMigration.jsx  # localStorage migration
+│   │   │   └── CurrencyMigration.jsx # Auto-migration for currency data
 │   │   └── Logo.jsx              # Professional SVG logo component
 │   ├── 📂 contexts/
 │   │   ├── AuthContext.jsx       # Authentication state
 │   │   └── CurrencyContext.jsx   # Multi-currency state management
 │   ├── 📂 hooks/
-│   │   └── useFinancialData.js   # Supabase data operations
+│   │   ├── useFinancialData.js   # Original Supabase data operations
+│   │   └── useFinancialDataWithCurrency.js # Currency-aware data hook
 │   ├── 📂 lib/
 │   │   └── supabase.js          # Supabase client config
 │   ├── 📂 utils/
-│   │   └── currency.js          # Currency utilities and FX conversion
+│   │   ├── currency.js          # Currency utilities and FX conversion
+│   │   └── currencyConversion.js # Advanced conversion engine with caching
 │   ├── 📂 pages/
 │   │   ├── Dashboard.jsx         # Main dashboard wrapper
 │   │   └── Profile.jsx          # User profile management
 │   ├── App.js                   # Route configuration
 │   └── index.js                 # Application entry point
 ├── 📂 supabase/
-│   └── schema.sql               # Complete database schema
+│   ├── schema.sql               # Complete database schema
+│   └── 📂 migrations/
+│       └── add_currency_support.sql # Multi-currency migration
 ├── 📂 public/
 │   ├── index.html              # HTML template with Tailwind
 │   └── logo-wealth.jpg         # WealthTrak brand logo
@@ -183,8 +189,9 @@ Financial_Tracker/
 - **`profiles`**: Extended user information
 - **`financial_years`**: Year-specific financial data
 - **`accounts`**: Assets and liabilities
-- **`account_snapshots`**: Monthly value history
-- **`goals`**: Financial goal tracking
+- **`account_snapshots`**: Monthly value history with original currency preservation
+- **`goals`**: Financial goal tracking with multi-currency support
+- **`currency_conversions`**: Audit trail for currency conversions
 
 ### Security Features
 - **Row Level Security (RLS)** on all tables
@@ -243,6 +250,42 @@ The application features an intelligent icon assignment system that automaticall
 - **Non-destructive**: Original localStorage data preserved
 - **Error Recovery**: Rollback capability on failure
 - **Progress Tracking**: Visual feedback during migration
+
+---
+
+## 💱 Multi-Currency System
+
+### True Currency Conversion
+Unlike simple symbol changes, WealthTrak provides real multi-currency support with live exchange rates and original value preservation.
+
+### Key Features
+- **30+ Supported Currencies**: USD, EUR, GBP, JPY, CNY, INR, AUD, CAD, and more
+- **Real-Time Exchange Rates**: Powered by exchangerate-api.com (1500 requests/month free tier)
+- **Original Value Preservation**: Never lose precision when switching currencies
+- **Smart Caching**: 5-minute cache for optimal performance and offline support
+- **Conversion Indicators**: Hover tooltips show original values (e.g., "Originally $1000")
+- **Automatic Migration**: Legacy data automatically migrated with assumed currency
+
+### How It Works
+1. **Data Entry**: Enter values in any currency
+2. **Storage**: System stores both original value and currency
+3. **Display**: Values automatically convert to selected display currency
+4. **Switching**: Change display currency anytime without data loss
+5. **Preservation**: Original values always maintained for accuracy
+
+### Example Flow
+```
+Enter: $1000 USD → Store: {original: 1000, currency: 'USD'}
+Switch to EUR → Display: €920 (hover shows "Originally $1000")
+Switch to GBP → Display: £766 (hover shows "Originally $1000")
+Switch back to USD → Display: $1000 (exact original value)
+```
+
+### Technical Implementation
+- **Currency Context**: Global state management for currency settings
+- **Conversion Engine**: Efficient batch conversion with caching
+- **Database Schema**: Extended tables with currency columns
+- **Migration System**: Automatic detection and migration of legacy data
 
 ---
 

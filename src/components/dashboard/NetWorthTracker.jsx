@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, X, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, Copy, Download, Upload, TrendingUp, PieChart, BarChart3, LineChart, Target, Wallet, CreditCard, DollarSign, TrendingDown, PiggyBank, Landmark, Home, Car, School, Heart, Briefcase, Coins, AlertCircle, Brain, FileSpreadsheet } from 'lucide-react';
 import { LineChart as RechartsLineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
-import { useFinancialData } from '../../hooks/useFinancialData';
+import { useFinancialDataWithCurrency } from '../../hooks/useFinancialDataWithCurrency';
+import { getConversionIndicator } from '../../utils/currencyConversion';
 import { useCurrency } from '../../contexts/CurrencyContext';
 import LoadingSpinner from '../common/LoadingSpinner';
 import AdvancedImportModal from './AdvancedImportModal';
@@ -18,7 +19,7 @@ const NetWorthTracker = () => {
   // Use currency context for formatting
   const { formatCurrency, formatCurrencyShort } = useCurrency();
 
-  // Use Supabase data hook
+  // Use Supabase data hook with currency support
   const {
     loading: dataLoading,
     error: dataError,
@@ -31,8 +32,9 @@ const NetWorthTracker = () => {
     updateGoalProgress,
     deleteGoal: deleteGoalFromDb,
     getSnapshotValue,
+    getSnapshotCurrencyData,
     reload
-  } = useFinancialData(selectedYear);
+  } = useFinancialDataWithCurrency(selectedYear);
   const [activeTab, setActiveTab] = useState('data');
   const [editingCell, setEditingCell] = useState(null);
   const [tempValue, setTempValue] = useState('');
@@ -846,9 +848,18 @@ const NetWorthTracker = () => {
                             ) : (
                               <div
                                 onClick={() => startEdit(asset.id, monthIdx)}
-                                className="cursor-pointer hover:bg-gray-100 rounded px-1"
+                                className="cursor-pointer hover:bg-gray-100 rounded px-1 relative group"
                               >
                                 {value > 0 ? formatCurrency(value) : '-'}
+                                {value > 0 && (() => {
+                                  const currencyData = getSnapshotCurrencyData(asset.id, monthIdx);
+                                  const indicator = currencyData ? getConversionIndicator(currencyData) : '';
+                                  return indicator ? (
+                                    <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                                      {indicator}
+                                    </span>
+                                  ) : null;
+                                })()}
                               </div>
                             )}
                           </td>
@@ -968,9 +979,18 @@ const NetWorthTracker = () => {
                             ) : (
                               <div
                                 onClick={() => startEdit(liability.id, monthIdx)}
-                                className="cursor-pointer hover:bg-gray-100 rounded px-1"
+                                className="cursor-pointer hover:bg-gray-100 rounded px-1 relative group"
                               >
                                 {value > 0 ? formatCurrency(value) : '-'}
+                                {value > 0 && (() => {
+                                  const currencyData = getSnapshotCurrencyData(liability.id, monthIdx);
+                                  const indicator = currencyData ? getConversionIndicator(currencyData) : '';
+                                  return indicator ? (
+                                    <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                                      {indicator}
+                                    </span>
+                                  ) : null;
+                                })()}
                               </div>
                             )}
                           </td>

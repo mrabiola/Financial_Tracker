@@ -1,0 +1,488 @@
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
+import { useCurrency } from '../contexts/CurrencyContext';
+import { 
+  convertValue,
+  saveLastKnownCurrency
+} from '../utils/currencyConversion';
+
+export const useFinancialDataWithCurrency = (selectedYear) => {
+  const { user } = useAuth();
+  const { currency: displayCurrency } = useCurrency();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [yearData, setYearData] = useState(null);
+  const [accounts, setAccounts] = useState({ assets: [], liabilities: [] });
+  const [goals, setGoals] = useState([]);
+  const [snapshots, setSnapshots] = useState({});
+  const [snapshotsCurrency, setSnapshotsCurrency] = useState({});
+  const [conversionPending, setConversionPending] = useState(false);
+
+  // Save current currency as last known for migration purposes
+  useEffect(() => {
+    if (displayCurrency) {
+      saveLastKnownCurrency(displayCurrency);
+    }
+  }, [displayCurrency]);
+
+  // Fetch or create financial year
+  const fetchOrCreateYear = useCallback(async () => {
+    if (!user) return null;
+
+    try {
+      let { data: existingYear, error: fetchError } = await supabase
+        .from('financial_years')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('year', selectedYear)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        throw fetchError;
+      }
+
+      if (!existingYear) {
+        const { data: newYear, error: createError } = await supabase
+          .from('financial_years')
+          .insert([
+            {
+              user_id: user.id,
+              year: selectedYear,
+              annual_goal: ''
+            }
+          ])
+          .select()
+          .single();
+
+        if (createError) throw createError;
+        existingYear = newYear;
+      }
+
+      return existingYear;
+    } catch (err) {
+      console.error('Error fetching/creating year:', err);
+      setError(err.message);
+      return null;
+    }
+  }, [user, selectedYear]);
+
+  // Fetch accounts and return the data
+  const fetchAccountsAndReturn = useCallback(async (yearId) => {
+    if (!yearId) return [];
+
+    try {
+      const { data, error } = await supabase
+        .from('accounts')
+        .select('*')
+        .eq('year_id', yearId)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+
+      if (error) throw error;
+
+      const assets = data.filter(a => a.type === 'asset');
+      const liabilities = data.filter(a => a.type === 'liability');
+      
+      setAccounts({ assets, liabilities });
+      
+      return data || [];
+    } catch (err) {
+      console.error('Error fetching accounts:', err);
+      setError(err.message);
+      return [];
+    }
+  }, []);
+
+  // Fetch goals with currency support
+  const fetchGoals = useCallback(async (yearId) => {
+    if (!yearId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('goals')
+        .select('*')
+        .eq('year_id', yearId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      // Convert goals to display currency
+      const convertedGoals = await Promise.all((data || []).map(async (goal) => {
+        // Handle legacy data without original values
+        const originalTarget = goal.original_target_amount ?? goal.target_amount;
+        const originalCurrent = goal.original_current_amount ?? goal.current_amount;
+        const originalCurrency = goal.original_currency || displayCurrency;
+
+        const targetAmount = await convertValue(originalTarget, originalCurrency, displayCurrency);
+        const currentAmount = await convertValue(originalCurrent, originalCurrency, displayCurrency);
+
+        return {
+          ...goal,
+          target_amount: targetAmount,
+          current_amount: currentAmount,
+          display_currency: displayCurrency,
+          original_currency: originalCurrency
+        };
+      }));
+
+      setGoals(convertedGoals);
+    } catch (err) {
+      console.error('Error fetching goals:', err);
+      setError(err.message);
+    }
+  }, [displayCurrency]);
+
+  // Fetch and convert account snapshots
+  const fetchSnapshots = useCallback(async (accountIds) => {
+    if (!accountIds || accountIds.length === 0) {
+      console.log('No account IDs provided for snapshot fetch');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('account_snapshots')
+        .select('*')
+        .in('account_id', accountIds)
+        .eq('year', selectedYear);
+
+      if (error) throw error;
+
+      // Process snapshots with currency conversion
+      const snapshotMap = {};
+      const currencyMap = {};
+
+      await Promise.all((data || []).map(async (snapshot) => {
+        const key = `${snapshot.account_id}_${snapshot.month}`;
+        
+        // Handle legacy data
+        const originalValue = snapshot.original_value ?? snapshot.value;
+        const originalCurrency = snapshot.original_currency || displayCurrency;
+        
+        // Convert to display currency
+        const displayValue = await convertValue(originalValue, originalCurrency, displayCurrency);
+        
+        snapshotMap[key] = displayValue;
+        currencyMap[key] = {
+          originalValue,
+          originalCurrency,
+          displayValue,
+          displayCurrency,
+          entryDate: snapshot.entry_date || snapshot.created_at
+        };
+      }));
+      
+      setSnapshots(snapshotMap);
+      setSnapshotsCurrency(currencyMap);
+    } catch (err) {
+      console.error('Error fetching snapshots:', err);
+      setError(err.message);
+    }
+  }, [selectedYear, displayCurrency]);
+
+  // Load all data
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const year = await fetchOrCreateYear();
+      if (year) {
+        setYearData(year);
+        
+        const accountsData = await fetchAccountsAndReturn(year.id);
+        await fetchGoals(year.id);
+
+        if (accountsData && accountsData.length > 0) {
+          await fetchSnapshots(accountsData.map(a => a.id));
+        } else {
+          setSnapshots({});
+          setSnapshotsCurrency({});
+        }
+      }
+    } catch (err) {
+      console.error('Error in loadData:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchOrCreateYear, fetchAccountsAndReturn, fetchGoals, fetchSnapshots]);
+
+  // Convert all values when currency changes
+  useEffect(() => {
+    const convertAllValues = async () => {
+      if (!displayCurrency || Object.keys(snapshots).length === 0) return;
+      
+      setConversionPending(true);
+      
+      try {
+        // Re-fetch data with new currency
+        const accountIds = [...accounts.assets, ...accounts.liabilities].map(a => a.id);
+        if (accountIds.length > 0) {
+          await fetchSnapshots(accountIds);
+        }
+        
+        if (yearData) {
+          await fetchGoals(yearData.id);
+        }
+      } catch (err) {
+        console.error('Error converting values:', err);
+      } finally {
+        setConversionPending(false);
+      }
+    };
+
+    convertAllValues();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayCurrency]); // Only re-run when display currency changes
+
+  // Add account
+  const addAccount = async (name, type) => {
+    if (!yearData) return null;
+
+    try {
+      const { data, error } = await supabase
+        .from('accounts')
+        .insert([
+          {
+            user_id: user.id,
+            year_id: yearData.id,
+            name,
+            type,
+            sort_order: type === 'asset' ? accounts.assets.length : accounts.liabilities.length
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (type === 'asset') {
+        setAccounts(prev => ({ ...prev, assets: [...prev.assets, data] }));
+      } else {
+        setAccounts(prev => ({ ...prev, liabilities: [...prev.liabilities, data] }));
+      }
+
+      return data;
+    } catch (err) {
+      console.error('Error adding account:', err);
+      setError(err.message);
+      return null;
+    }
+  };
+
+  // Delete account
+  const deleteAccount = async (accountId, type) => {
+    try {
+      const { error } = await supabase
+        .from('accounts')
+        .delete()
+        .eq('id', accountId);
+
+      if (error) throw error;
+
+      if (type === 'asset') {
+        setAccounts(prev => ({ 
+          ...prev, 
+          assets: prev.assets.filter(a => a.id !== accountId) 
+        }));
+      } else {
+        setAccounts(prev => ({ 
+          ...prev, 
+          liabilities: prev.liabilities.filter(a => a.id !== accountId) 
+        }));
+      }
+    } catch (err) {
+      console.error('Error deleting account:', err);
+      setError(err.message);
+    }
+  };
+
+  // Update snapshot value with currency support
+  const updateSnapshot = async (accountId, month, value, inputCurrency = null) => {
+    try {
+      const numValue = parseFloat(value) || 0;
+      const currency = inputCurrency || displayCurrency;
+      
+      // Check if snapshot exists
+      const { data: existing } = await supabase
+        .from('account_snapshots')
+        .select('id')
+        .eq('account_id', accountId)
+        .eq('month', month)
+        .eq('year', selectedYear)
+        .single();
+
+      const snapshotData = {
+        value: numValue, // Keep display value for backward compatibility
+        original_value: numValue,
+        original_currency: currency,
+        entry_date: new Date().toISOString()
+      };
+
+      let result;
+      if (existing) {
+        result = await supabase
+          .from('account_snapshots')
+          .update(snapshotData)
+          .eq('id', existing.id);
+      } else {
+        result = await supabase
+          .from('account_snapshots')
+          .insert([
+            {
+              account_id: accountId,
+              month,
+              year: selectedYear,
+              ...snapshotData
+            }
+          ]);
+      }
+
+      if (result.error) throw result.error;
+
+      // Update local state with converted value
+      const key = `${accountId}_${month}`;
+      const displayValue = await convertValue(numValue, currency, displayCurrency);
+      
+      setSnapshots(prev => ({ ...prev, [key]: displayValue }));
+      setSnapshotsCurrency(prev => ({
+        ...prev,
+        [key]: {
+          originalValue: numValue,
+          originalCurrency: currency,
+          displayValue,
+          displayCurrency,
+          entryDate: new Date().toISOString()
+        }
+      }));
+    } catch (err) {
+      console.error('Error updating snapshot:', err);
+      setError(err.message);
+    }
+  };
+
+  // Add goal with currency support
+  const addGoal = async (name, targetAmount) => {
+    if (!yearData) return null;
+
+    try {
+      const numTarget = parseFloat(targetAmount);
+      
+      const { data, error } = await supabase
+        .from('goals')
+        .insert([
+          {
+            user_id: user.id,
+            year_id: yearData.id,
+            name,
+            target_amount: numTarget,
+            current_amount: 0,
+            original_target_amount: numTarget,
+            original_current_amount: 0,
+            original_currency: displayCurrency,
+            target_currency: displayCurrency,
+            entry_date: new Date().toISOString()
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setGoals(prev => [...prev, data]);
+      return data;
+    } catch (err) {
+      console.error('Error adding goal:', err);
+      setError(err.message);
+      return null;
+    }
+  };
+
+  // Update goal progress with currency support
+  const updateGoalProgress = async (goalId, currentAmount) => {
+    try {
+      const goal = goals.find(g => g.id === goalId);
+      if (!goal) return;
+
+      const numCurrent = parseFloat(currentAmount) || 0;
+      
+      const { error } = await supabase
+        .from('goals')
+        .update({ 
+          current_amount: numCurrent,
+          original_current_amount: numCurrent,
+          original_currency: displayCurrency,
+          completed: numCurrent >= goal.target_amount
+        })
+        .eq('id', goalId);
+
+      if (error) throw error;
+
+      setGoals(prev => prev.map(g => 
+        g.id === goalId 
+          ? { ...g, current_amount: numCurrent, original_current_amount: numCurrent }
+          : g
+      ));
+    } catch (err) {
+      console.error('Error updating goal:', err);
+      setError(err.message);
+    }
+  };
+
+  // Delete goal
+  const deleteGoal = async (goalId) => {
+    try {
+      const { error } = await supabase
+        .from('goals')
+        .delete()
+        .eq('id', goalId);
+
+      if (error) throw error;
+
+      setGoals(prev => prev.filter(g => g.id !== goalId));
+    } catch (err) {
+      console.error('Error deleting goal:', err);
+      setError(err.message);
+    }
+  };
+
+  // Get snapshot value (already converted to display currency)
+  const getSnapshotValue = (accountId, month) => {
+    const key = `${accountId}_${month}`;
+    return snapshots[key] || 0;
+  };
+
+  // Get currency data for a snapshot
+  const getSnapshotCurrencyData = (accountId, month) => {
+    const key = `${accountId}_${month}`;
+    return snapshotsCurrency[key] || null;
+  };
+
+  useEffect(() => {
+    if (user && selectedYear) {
+      loadData();
+    }
+  }, [user, selectedYear, loadData]);
+
+  return {
+    loading: loading || conversionPending,
+    error,
+    yearData,
+    accounts,
+    goals,
+    snapshots,
+    snapshotsCurrency,
+    displayCurrency,
+    addAccount,
+    deleteAccount,
+    updateSnapshot,
+    addGoal,
+    updateGoalProgress,
+    deleteGoal,
+    getSnapshotValue,
+    getSnapshotCurrencyData,
+    reload: loadData
+  };
+};
