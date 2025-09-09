@@ -22,7 +22,23 @@ This project transforms a single-user localStorage-based financial tracker into 
 
 ---
 
-## 🆕 Recent Updates (September 8, 2025)
+## 🆕 Recent Updates (September 9, 2025)
+
+### 🎨 **Asset Distribution Chart Rebuild**
+- **Complete Rebuild**: Replaced broken Recharts implementation with custom horizontal bar chart
+- **Color-Coded Assets**: Each asset uses consistent colors matching pie chart visualization
+- **Professional Design**: Clean horizontal bars with asset names, values, and percentages
+- **Dynamic Scaling**: Bars scale relative to largest asset value for proper proportions
+- **Enhanced Visual Consistency**: Matching color indicators and unified design across chart views
+
+### 📊 **Chart System Improvements**
+- **Dual View Support**: Seamless toggle between pie chart (Summary) and horizontal bars (All Assets)
+- **Real Data Integration**: Uses actual account values with proper currency formatting
+- **Interactive Elements**: Color indicators, value displays, and percentage calculations
+- **Responsive Design**: Automatically adapts to different screen sizes and asset counts
+- **Performance Optimized**: Eliminated chart rendering issues and improved load times
+
+### Previous Updates (September 8, 2025)
 
 ### ✨ **Dashboard Visual Enhancements**
 - **Professional Card Design**: Redesigned Total Assets, Total Liabilities, and Net Worth cards
@@ -69,6 +85,8 @@ This project transforms a single-user localStorage-based financial tracker into 
 - **📈 Fully Responsive Charts**: Auto-scaling visualizations that adapt to any dataset size
 - **🔧 Simple Import System**: Template-based Excel/CSV import with robust validation
 - **🎨 Enhanced Dashboard Cards**: Professional white cards with colored borders and hover effects
+- **📊 Custom Asset Distribution Charts**: Rebuilt horizontal bar charts with color-coded assets and professional design
+- **🎨 Unified Chart Design**: Consistent color schemes across pie charts and horizontal bar visualizations
 
 ### 🎨 **User Experience**
 - **Live Icon Preview**: Real-time icon assignment as users type

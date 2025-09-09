@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Plus, X, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, Copy, Download, Upload, TrendingUp, PieChart, BarChart3, LineChart, Target, Wallet, CreditCard, DollarSign, TrendingDown, PiggyBank, Landmark, Home, Car, School, Heart, Briefcase, Coins, AlertCircle, Brain, FileSpreadsheet, Calendar, TrendingUp as TrendUpIcon, TrendingDown as TrendDownIcon } from 'lucide-react';
 import { LineChart as RechartsLineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { useFinancialDataWithCurrency } from '../../hooks/useFinancialDataWithCurrency';
@@ -48,6 +48,9 @@ const NetWorthTracker = () => {
   const [showImportOptions, setShowImportOptions] = useState(false);
   const [showSimpleImportModal, setShowSimpleImportModal] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ alignRight: false, alignTop: false });
+  const [assetChartView, setAssetChartView] = useState('summary'); // 'summary' or 'detailed'
+  const [showOtherTooltip, setShowOtherTooltip] = useState(false);
+  const [otherAssets, setOtherAssets] = useState([]);
   const importButtonRef = useRef(null);
 
   // Close import options dropdown when clicking outside
@@ -155,9 +158,9 @@ const NetWorthTracker = () => {
   };
 
   // Get value for a specific account and month
-  const getValue = (accountId, monthIndex) => {
+  const getValue = useCallback((accountId, monthIndex) => {
     return getSnapshotValue(accountId, monthIndex);
-  };
+  }, [getSnapshotValue]);
 
   // Set value for a specific account and month
   const setValue = async (accountId, monthIndex, value) => {
@@ -350,18 +353,75 @@ const NetWorthTracker = () => {
     return chartData;
   };
 
-  const prepareAssetBreakdownData = () => {
+  // Memoize asset breakdown calculations to prevent re-renders
+  const assetBreakdownData = useMemo(() => {
     const breakdown = [];
+    let totalValue = 0;
+    
+    // Calculate all asset values
     (accounts.assets || []).forEach(asset => {
-      const total = months.reduce((sum, _, idx) => sum + getValue(asset.id, idx), 0) / 12;
-      if (total > 0) {
+      const value = getValue(asset.id, selectedMonth);
+      // Only include assets with positive values
+      if (value > 0) {
         breakdown.push({
           name: asset.name,
-          value: total
+          value: value
         });
+        totalValue += value;
       }
     });
-    return breakdown;
+    
+    // Sort by value (largest first)
+    breakdown.sort((a, b) => b.value - a.value);
+    
+    return { breakdown, totalValue };
+  }, [accounts.assets, selectedMonth, getValue]);
+
+  // Memoize summary data with "Other" grouping
+  const summaryData = useMemo(() => {
+    const { breakdown, totalValue } = assetBreakdownData;
+    
+    if (breakdown.length === 0) return { majorAssets: [], minorAssets: [] };
+    
+    // Group assets under 5% into "Other"
+    const threshold = totalValue * 0.05;
+    const majorAssets = [];
+    const minorAssets = [];
+    
+    breakdown.forEach(asset => {
+      if (asset.value >= threshold) {
+        majorAssets.push(asset);
+      } else {
+        minorAssets.push(asset);
+      }
+    });
+    
+    // Add "Other" category if there are minor assets
+    if (minorAssets.length > 0) {
+      const otherTotal = minorAssets.reduce((sum, asset) => sum + asset.value, 0);
+      majorAssets.push({
+        name: 'Other',
+        value: otherTotal,
+        isOther: true,
+        count: minorAssets.length
+      });
+    }
+    
+    return { majorAssets, minorAssets };
+  }, [assetBreakdownData]);
+
+  // Update otherAssets state when summary data changes
+  useEffect(() => {
+    setOtherAssets(summaryData.minorAssets);
+  }, [summaryData.minorAssets]);
+
+  // Helper function to get the appropriate data based on view mode
+  const getChartData = (viewMode = 'summary') => {
+    if (viewMode === 'summary') {
+      return summaryData.majorAssets;
+    }
+    // Filter out zero values for chart display
+    return assetBreakdownData.breakdown.filter(asset => asset.value > 0);
   };
 
   const prepareTrendData = () => {
@@ -1080,29 +1140,150 @@ const NetWorthTracker = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Asset Breakdown */}
               <div className="bg-white rounded-lg shadow-sm p-6">
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <PieChart className="w-5 h-5 text-green-600" />
-                  Asset Distribution
-                </h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <RechartsPieChart>
-                    <Pie
-                      data={prepareAssetBreakdownData()}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    {assetChartView === 'summary' ? (
+                      <PieChart className="w-5 h-5 text-green-600" />
+                    ) : (
+                      <BarChart3 className="w-5 h-5 text-green-600" />
+                    )}
+                    Asset Distribution
+                  </h3>
+                  <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                    <button
+                      onClick={() => setAssetChartView('summary')}
+                      className={`px-3 py-1 text-sm rounded-md transition-all flex items-center gap-1 ${
+                        assetChartView === 'summary' 
+                          ? 'bg-white shadow-sm text-green-600 font-medium' 
+                          : 'text-gray-600 hover:text-gray-800'
+                      }`}
                     >
-                      {prepareAssetBreakdownData().map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => formatCurrency(value)} />
-                  </RechartsPieChart>
-                </ResponsiveContainer>
+                      <PieChart className="w-3 h-3" />
+                      Summary
+                    </button>
+                    <button
+                      onClick={() => setAssetChartView('detailed')}
+                      className={`px-3 py-1 text-sm rounded-md transition-all flex items-center gap-1 ${
+                        assetChartView === 'detailed' 
+                          ? 'bg-white shadow-sm text-green-600 font-medium' 
+                          : 'text-gray-600 hover:text-gray-800'
+                      }`}
+                    >
+                      <BarChart3 className="w-3 h-3" />
+                      All Assets
+                    </button>
+                  </div>
+                </div>
+                
+                {assetChartView === 'summary' ? (
+                  // Pie Chart for Summary View
+                  <div className="relative">
+                    <ResponsiveContainer width="100%" height={300}>
+                      <RechartsPieChart>
+                        <Pie
+                          data={getChartData('summary')}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                          onMouseEnter={(data) => {
+                            if (data.isOther) {
+                              setShowOtherTooltip(true);
+                            }
+                          }}
+                          onMouseLeave={() => setShowOtherTooltip(false)}
+                        >
+                          {getChartData('summary').map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          formatter={(value, name, props) => {
+                            if (props.payload.isOther) {
+                              return [formatCurrency(value), `${name} (${props.payload.count} assets)`];
+                            }
+                            return [formatCurrency(value), name];
+                          }}
+                        />
+                      </RechartsPieChart>
+                    </ResponsiveContainer>
+                    
+                    {/* Other Assets Detailed Tooltip */}
+                    {showOtherTooltip && otherAssets.length > 0 && (
+                      <div className="absolute top-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-3 max-w-xs z-10">
+                        <h4 className="font-semibold text-sm text-gray-800 mb-2">Other Assets Breakdown:</h4>
+                        <div className="space-y-1 max-h-32 overflow-y-auto">
+                          {otherAssets.map((asset, index) => {
+                            const percentage = (asset.value / assetBreakdownData.totalValue) * 100;
+                            return (
+                              <div key={index} className="flex justify-between text-xs">
+                                <span className="text-gray-600 truncate mr-2" title={asset.name}>{asset.name}</span>
+                                <span className="text-gray-800 font-medium">{formatCurrency(asset.value)} ({percentage.toFixed(1)}%)</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="border-t border-gray-200 mt-2 pt-2">
+                          <div className="flex justify-between text-xs font-semibold">
+                            <span>Total Other:</span>
+                            <span>{formatCurrency(otherAssets.reduce((sum, asset) => sum + asset.value, 0))}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  // NEW: Custom Horizontal Bar Chart for Asset Values
+                  <div className="space-y-4">
+                    {getChartData('detailed').map((asset, index) => {
+                      const percentage = ((asset.value / assetBreakdownData.totalValue) * 100).toFixed(1);
+                      const barWidth = (asset.value / Math.max(...getChartData('detailed').map(a => a.value))) * 100;
+                      const color = COLORS[index % COLORS.length];
+                      
+                      return (
+                        <div key={asset.name} className="relative">
+                          {/* Asset Name and Value */}
+                          <div className="flex justify-between items-center mb-2">
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-sm"
+                                style={{ backgroundColor: color }}
+                              ></div>
+                              <span className="font-medium text-gray-700 text-sm">{asset.name}</span>
+                            </div>
+                            <span className="text-sm text-gray-600">{formatCurrency(asset.value)} ({percentage}%)</span>
+                          </div>
+                          
+                          {/* Progress Bar */}
+                          <div className="relative w-full bg-gray-200 rounded-lg h-8 overflow-hidden">
+                            <div 
+                              className="h-full rounded-lg transition-all duration-500 flex items-center justify-end pr-2"
+                              style={{ 
+                                width: `${barWidth}%`,
+                                backgroundColor: color
+                              }}
+                            >
+                              <span className="text-white text-xs font-medium drop-shadow-sm">
+                                {formatCurrencyShort(asset.value)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    
+                    {/* Summary Stats */}
+                    <div className="mt-6 pt-4 border-t border-gray-200">
+                      <div className="flex justify-between text-sm">
+                        <span className="font-medium text-gray-700">Total Assets:</span>
+                        <span className="font-bold text-green-600">{formatCurrency(assetBreakdownData.totalValue)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Monthly Comparison */}
