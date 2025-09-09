@@ -35,6 +35,7 @@ const NetWorthTracker = () => {
     getSnapshotCurrencyData,
     reload
   } = useFinancialDataWithCurrency(selectedYear);
+
   const [activeTab, setActiveTab] = useState('data');
   const [editingCell, setEditingCell] = useState(null);
   const [tempValue, setTempValue] = useState('');
@@ -50,7 +51,6 @@ const NetWorthTracker = () => {
   const [dropdownPosition, setDropdownPosition] = useState({ alignRight: false, alignTop: false });
   const [assetChartView, setAssetChartView] = useState('summary'); // 'summary' or 'detailed'
   const [showOtherTooltip, setShowOtherTooltip] = useState(false);
-  const [otherAssets, setOtherAssets] = useState([]);
   const importButtonRef = useRef(null);
 
   // Close import options dropdown when clicking outside
@@ -410,10 +410,6 @@ const NetWorthTracker = () => {
     return { majorAssets, minorAssets };
   }, [assetBreakdownData]);
 
-  // Update otherAssets state when summary data changes
-  useEffect(() => {
-    setOtherAssets(summaryData.minorAssets);
-  }, [summaryData.minorAssets]);
 
   // Helper function to get the appropriate data based on view mode
   const getChartData = (viewMode = 'summary') => {
@@ -1212,11 +1208,11 @@ const NetWorthTracker = () => {
                     </ResponsiveContainer>
                     
                     {/* Other Assets Detailed Tooltip */}
-                    {showOtherTooltip && otherAssets.length > 0 && (
+                    {showOtherTooltip && summaryData.minorAssets.length > 0 && (
                       <div className="absolute top-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-3 max-w-xs z-10">
                         <h4 className="font-semibold text-sm text-gray-800 mb-2">Other Assets Breakdown:</h4>
                         <div className="space-y-1 max-h-32 overflow-y-auto">
-                          {otherAssets.map((asset, index) => {
+                          {summaryData.minorAssets.map((asset, index) => {
                             const percentage = (asset.value / assetBreakdownData.totalValue) * 100;
                             return (
                               <div key={index} className="flex justify-between text-xs">
@@ -1229,7 +1225,7 @@ const NetWorthTracker = () => {
                         <div className="border-t border-gray-200 mt-2 pt-2">
                           <div className="flex justify-between text-xs font-semibold">
                             <span>Total Other:</span>
-                            <span>{formatCurrency(otherAssets.reduce((sum, asset) => sum + asset.value, 0))}</span>
+                            <span>{formatCurrency(summaryData.minorAssets.reduce((sum, asset) => sum + asset.value, 0))}</span>
                           </div>
                         </div>
                       </div>

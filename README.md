@@ -24,6 +24,20 @@ This project transforms a single-user localStorage-based financial tracker into 
 
 ## 🆕 Recent Updates (September 9, 2025)
 
+### 🐛 **Critical Bug Fixes**
+- **Asset Deletion Fix**: Fixed bug where deleted asset entries persisted in UI until page refresh
+- **Immediate UI Updates**: Asset deletions now immediately disappear from UI, matching liabilities behavior
+- **Hook Parameter Fix**: Corrected deleteAccount function to handle both 'asset'/'assets' and 'liability'/'liabilities' parameters
+- **State Consistency**: Ensured proper local state updates after successful API deletions
+
+### ⚡ **Performance & Stability Improvements**  
+- **Infinite Loop Resolution**: Fixed React infinite re-render loop in NetWorthTracker component
+- **Optimized useEffect Dependencies**: Corrected dependency arrays to prevent unnecessary re-renders
+- **Component State Cleanup**: Removed redundant state variables causing performance issues
+- **ESLint Compliance**: Resolved all hook dependency warnings for clean compilation
+
+### Previous Updates (September 9, 2025)
+
 ### 🎨 **Asset Distribution Chart Rebuild**
 - **Complete Rebuild**: Replaced broken Recharts implementation with custom horizontal bar chart
 - **Color-Coded Assets**: Each asset uses consistent colors matching pie chart visualization

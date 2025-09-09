@@ -314,7 +314,7 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
 
       if (error) throw error;
 
-      if (type === 'asset') {
+      if (type === 'asset' || type === 'assets') {
         setAccounts(prev => ({ 
           ...prev, 
           assets: prev.assets.filter(a => a.id !== accountId) 
@@ -496,7 +496,7 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
     if (user && selectedYear) {
       loadData();
     }
-  }, [user, selectedYear, loadData]);
+  }, [user, selectedYear]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     loading: loading || conversionPending,

@@ -52,6 +52,7 @@ export const convertValue = async (value, fromCurrency, toCurrency) => {
   }
 };
 
+
 /**
  * Convert multiple values in batch
  * @param {Array} items - Array of {value, originalCurrency} objects

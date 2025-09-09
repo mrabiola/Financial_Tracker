@@ -246,7 +246,7 @@ export const useFinancialData = (selectedYear) => {
       if (error) throw error;
 
       // Update local state
-      if (type === 'asset') {
+      if (type === 'asset' || type === 'assets') {
         setAccounts(prev => ({ 
           ...prev, 
           assets: prev.assets.filter(a => a.id !== accountId) 
