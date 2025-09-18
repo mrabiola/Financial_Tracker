@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
-import { DollarSign, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
+import { DollarSign, RefreshCw, CheckCircle, AlertCircle, Play } from 'lucide-react';
 import { useCurrency } from '../../contexts/CurrencyContext';
+import { useDemo } from '../../contexts/DemoContext';
 import { getCurrencyList } from '../../utils/currency';
 
 const CurrencySettings = () => {
-  const { 
-    currency, 
-    currencyDetails, 
-    updateCurrency, 
-    exchangeRates, 
-    ratesLoading, 
-    ratesError, 
-    refreshRates 
+  const {
+    currency,
+    currencyDetails,
+    updateCurrency,
+    exchangeRates,
+    ratesLoading,
+    ratesError,
+    refreshRates
   } = useCurrency();
+
+  const { isDemo } = useDemo();
   
   const [selectedCurrency, setSelectedCurrency] = useState(currency);
   const [saving, setSaving] = useState(false);
@@ -26,17 +29,21 @@ const CurrencySettings = () => {
       setTimeout(() => setSaveMessage(''), 3000);
       return;
     }
-    
+
     setSaving(true);
     const success = updateCurrency(selectedCurrency);
-    
+
     if (success) {
-      setSaveMessage('Currency updated successfully!');
+      setSaveMessage(
+        isDemo
+          ? 'Currency updated successfully! (Demo mode - settings saved locally)'
+          : 'Currency updated successfully!'
+      );
     } else {
       setSaveMessage('Failed to update currency');
     }
-    
-    setTimeout(() => setSaveMessage(''), 3000);
+
+    setTimeout(() => setSaveMessage(''), 4000);
     setSaving(false);
   };
   
@@ -60,10 +67,29 @@ const CurrencySettings = () => {
           <DollarSign className="w-5 h-5 text-green-600" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Currency Settings</h3>
-          <p className="text-sm text-gray-500">Choose your preferred currency for displaying financial data</p>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Currency Settings
+            {isDemo && <span className="text-sm font-normal text-blue-600 ml-2">(Demo Mode)</span>}
+          </h3>
+          <p className="text-sm text-gray-500">
+            Choose your preferred currency for displaying financial data
+            {isDemo && <span className="text-blue-600"> - Works in demo mode!</span>}
+          </p>
         </div>
       </div>
+
+      {/* Demo Notice */}
+      {isDemo && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+          <div className="flex items-center gap-2">
+            <Play className="w-4 h-4 text-blue-600" />
+            <p className="text-sm text-blue-700">
+              <span className="font-medium">Demo mode:</span> Currency settings are fully functional and saved locally.
+              Real-time exchange rates and conversions work the same as in full accounts!
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-4">
         {/* Currency Selection */}

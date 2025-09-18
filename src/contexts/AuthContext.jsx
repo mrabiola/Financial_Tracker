@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { cleanupDemoSession, isDemoSession, getDemoSessionId } from '../utils/demoSession';
 
 const AuthContext = createContext({});
 
@@ -21,6 +22,17 @@ export const AuthProvider = ({ children }) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user || null);
+
+      // Clean up any lingering demo session when a real user logs in
+      if (session?.user && isDemoSession()) {
+        const demoSessionId = getDemoSessionId();
+        if (demoSessionId) {
+          cleanupDemoSession(demoSessionId).then(() => {
+            console.log('Cleaned up demo session after real user login');
+          });
+        }
+      }
+
       setLoading(false);
     });
 
@@ -28,6 +40,17 @@ export const AuthProvider = ({ children }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user || null);
+
+      // Clean up demo session when a real user logs in
+      if (_event === 'SIGNED_IN' && session?.user && isDemoSession()) {
+        const demoSessionId = getDemoSessionId();
+        if (demoSessionId) {
+          cleanupDemoSession(demoSessionId).then(() => {
+            console.log('Cleaned up demo session after real user sign in');
+          });
+        }
+      }
+
       setLoading(false);
     });
 
@@ -36,6 +59,15 @@ export const AuthProvider = ({ children }) => {
 
   const signOut = async () => {
     try {
+      // Clean up demo session if it exists
+      if (isDemoSession()) {
+        const demoSessionId = getDemoSessionId();
+        if (demoSessionId) {
+          await cleanupDemoSession(demoSessionId);
+          console.log('Demo session cleaned up during sign out');
+        }
+      }
+
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       setUser(null);

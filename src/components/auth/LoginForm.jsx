@@ -1,17 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, AlertCircle, PlayCircle } from 'lucide-react';
 import Logo from '../Logo';
 import { supabase } from '../../lib/supabase';
+import { useDemo } from '../../contexts/DemoContext';
 
 const LoginForm = () => {
   const navigate = useNavigate();
+  const { startDemo } = useDemo();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
   const [error, setError] = useState('');
+  const [expirationMessage, setExpirationMessage] = useState('');
+
+  // Check for URL params (like expiration message)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const message = urlParams.get('message');
+    if (message) {
+      setExpirationMessage(decodeURIComponent(message));
+      // Clear the URL parameter
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -50,8 +65,25 @@ const LoginForm = () => {
     }
   };
 
+  const handleTryDemo = async () => {
+    setDemoLoading(true);
+    setError('');
+    try {
+      const result = await startDemo();
+      if (result.success) {
+        navigate('/dashboard');
+      } else {
+        setError(result.error || 'Failed to start demo');
+      }
+    } catch (error) {
+      setError('Failed to start demo. Please try again.');
+    } finally {
+      setDemoLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen h-full bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
         <div className="text-center mb-4">
           <div className="flex justify-center mb-4">
@@ -60,6 +92,13 @@ const LoginForm = () => {
           <h2 className="text-3xl font-bold text-gray-900 mb-1">Welcome Back</h2>
           <p className="text-gray-600 text-sm">Sign in to your Financial Tracker</p>
         </div>
+
+        {expirationMessage && (
+          <div className="mb-4 p-3 bg-orange-50 border border-orange-200 text-orange-700 rounded-lg flex items-center gap-2">
+            <AlertCircle className="w-5 h-5" />
+            <span className="text-sm">{expirationMessage}</span>
+          </div>
+        )}
 
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg flex items-center gap-2">
@@ -125,7 +164,8 @@ const LoginForm = () => {
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 border-gray-300 rounded"
+                style={{ color: 'var(--brand-blue)', accentColor: 'var(--brand-blue)' }}
               />
               <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
                 Remember me
@@ -133,7 +173,7 @@ const LoginForm = () => {
             </div>
             <Link
               to="/reset-password"
-              className="text-sm text-blue-600 hover:text-blue-500"
+              className="text-sm text-brand-blue hover:opacity-80 transition-colors"
             >
               Forgot password?
             </Link>
@@ -142,7 +182,7 @@ const LoginForm = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-brand focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
@@ -158,8 +198,28 @@ const LoginForm = () => {
 
           <button
             type="button"
+            onClick={handleTryDemo}
+            disabled={demoLoading}
+            className="w-full flex justify-center items-center gap-2 py-3 px-4 border-2 border-brand-blue bg-brand-blue rounded-lg shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+          >
+            <PlayCircle className="w-5 h-5" />
+            {demoLoading ? 'Starting Demo...' : 'Try Demo - No Signup Required'}
+          </button>
+
+          <div className="relative my-3">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">Or sign in with</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
             onClick={handleGoogleLogin}
-            className="w-full flex justify-center items-center gap-2 py-2 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            className="w-full flex justify-center items-center gap-2 py-2 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors"
+            style={{ focusRingColor: 'var(--brand-blue)' }}
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -173,7 +233,10 @@ const LoginForm = () => {
 
         <p className="mt-6 text-center text-sm text-gray-600">
           Don't have an account?{' '}
-          <Link to="/signup" className="font-medium text-blue-600 hover:text-blue-500">
+          <Link
+            to="/signup"
+            className="font-medium text-brand-blue hover:opacity-80 transition-colors"
+          >
             Sign up for free
           </Link>
         </p>

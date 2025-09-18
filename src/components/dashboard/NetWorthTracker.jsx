@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Plus, X, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, Copy, Download, Upload, TrendingUp, PieChart, BarChart3, LineChart, Target, Wallet, CreditCard, DollarSign, TrendingDown, PiggyBank, Landmark, Home, Car, School, Heart, Briefcase, Coins, AlertCircle, Brain, FileSpreadsheet, Calendar, TrendingUp as TrendUpIcon, TrendingDown as TrendDownIcon } from 'lucide-react';
-import { LineChart as RechartsLineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
-import { useFinancialDataWithCurrency } from '../../hooks/useFinancialDataWithCurrency';
+import { LineChart as RechartsLineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, ComposedChart } from 'recharts';
+import { useFinancialDataDemo } from '../../hooks/useFinancialDataDemo';
 import { getConversionIndicator } from '../../utils/currencyConversion';
 import { useCurrency } from '../../contexts/CurrencyContext';
 import LoadingSpinner from '../common/LoadingSpinner';
@@ -19,7 +19,7 @@ const NetWorthTracker = () => {
   // Use currency context for formatting
   const { formatCurrency, formatCurrencyShort } = useCurrency();
 
-  // Use Supabase data hook with currency support
+  // Use demo-aware data hook with currency support
   const {
     loading: dataLoading,
     error: dataError,
@@ -34,7 +34,7 @@ const NetWorthTracker = () => {
     getSnapshotValue,
     getSnapshotCurrencyData,
     reload
-  } = useFinancialDataWithCurrency(selectedYear);
+  } = useFinancialDataDemo(selectedYear);
 
   const [activeTab, setActiveTab] = useState('data');
   const [editingCell, setEditingCell] = useState(null);
@@ -51,18 +51,30 @@ const NetWorthTracker = () => {
   const [dropdownPosition, setDropdownPosition] = useState({ alignRight: false, alignTop: false });
   const [assetChartView, setAssetChartView] = useState('summary'); // 'summary' or 'detailed'
   const [showOtherTooltip, setShowOtherTooltip] = useState(false);
+  const [showMonthPopup, setShowMonthPopup] = useState(false);
+  const [showYearPopup, setShowYearPopup] = useState(false);
   const importButtonRef = useRef(null);
+  const monthButtonRef = useRef(null);
+  const yearButtonRef = useRef(null);
 
-  // Close import options dropdown when clicking outside
+  // Close dropdowns and popups when clicking outside or pressing ESC
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (showImportOptions && !event.target.closest('[data-import-dropdown]')) {
         setShowImportOptions(false);
       }
+      if (showMonthPopup && !event.target.closest('[data-month-picker]')) {
+        setShowMonthPopup(false);
+      }
+      if (showYearPopup && !event.target.closest('[data-year-picker]')) {
+        setShowYearPopup(false);
+      }
     };
     const handleEscape = (event) => {
-      if (event.key === 'Escape' && showImportOptions) {
-        setShowImportOptions(false);
+      if (event.key === 'Escape') {
+        if (showImportOptions) setShowImportOptions(false);
+        if (showMonthPopup) setShowMonthPopup(false);
+        if (showYearPopup) setShowYearPopup(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -71,7 +83,7 @@ const NetWorthTracker = () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [showImportOptions]);
+  }, [showImportOptions, showMonthPopup, showYearPopup]);
 
   // Calculate dropdown position based on available space
   const calculateDropdownPosition = () => {
@@ -336,20 +348,50 @@ const NetWorthTracker = () => {
   };
 
 
-  // Prepare chart data
+  // Prepare chart data with month-to-month percentage differences
   const prepareNetWorthChartData = () => {
     const chartData = [];
-    
+
     months.forEach((month, monthIdx) => {
       const totals = calculateTotalsForMonth(monthIdx);
+      let assetGrowth = null;
+      let liabilityGrowth = null;
+      let netWorthGrowth = null;
+
+      // Calculate month-to-month percentage changes
+      if (monthIdx > 0) {
+        const prevTotals = calculateTotalsForMonth(monthIdx - 1);
+
+        // Assets growth calculation
+        if (prevTotals.assets > 0) {
+          assetGrowth = ((totals.assets - prevTotals.assets) / prevTotals.assets) * 100;
+        }
+
+        // Liabilities growth calculation
+        if (prevTotals.liabilities > 0) {
+          liabilityGrowth = ((totals.liabilities - prevTotals.liabilities) / prevTotals.liabilities) * 100;
+        }
+
+        // Net worth growth calculation
+        if (prevTotals.netWorth !== 0) {
+          netWorthGrowth = ((totals.netWorth - prevTotals.netWorth) / Math.abs(prevTotals.netWorth)) * 100;
+        }
+      }
+
       chartData.push({
         month,
         netWorth: totals.netWorth,
         assets: totals.assets,
-        liabilities: totals.liabilities
+        liabilities: totals.liabilities,
+        assetGrowth,
+        liabilityGrowth,
+        netWorthGrowth,
+        prevAssets: monthIdx > 0 ? calculateTotalsForMonth(monthIdx - 1).assets : null,
+        prevLiabilities: monthIdx > 0 ? calculateTotalsForMonth(monthIdx - 1).liabilities : null,
+        prevNetWorth: monthIdx > 0 ? calculateTotalsForMonth(monthIdx - 1).netWorth : null
       });
     });
-    
+
     return chartData;
   };
 
@@ -487,25 +529,58 @@ const NetWorthTracker = () => {
             </div>
             <div className="flex items-center gap-4">
               {/* Enhanced Year Selector */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setSelectedYear(selectedYear - 1)}
-                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200"
-                  title="Previous Year"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:border-gray-300 transition-all duration-200">
-                  <Calendar className="w-5 h-5 text-gray-600" />
-                  <span className="font-semibold text-gray-700">{selectedYear}</span>
-                </button>
-                <button
-                  onClick={() => setSelectedYear(selectedYear + 1)}
-                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200"
-                  title="Next Year"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
+              <div className="relative" data-year-picker>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setSelectedYear(selectedYear - 1)}
+                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200"
+                    title="Previous Year"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <button
+                    ref={yearButtonRef}
+                    onClick={() => setShowYearPopup(!showYearPopup)}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:border-gray-300 transition-all duration-200 cursor-pointer"
+                  >
+                    <Calendar className="w-5 h-5 text-gray-600" />
+                    <span className="font-semibold text-gray-700">{selectedYear}</span>
+                  </button>
+                  <button
+                    onClick={() => setSelectedYear(selectedYear + 1)}
+                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200"
+                    title="Next Year"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Year Popup */}
+                {showYearPopup && (
+                  <div className="absolute top-full mt-2 right-0 bg-white border border-gray-200 rounded-lg shadow-xl p-4 z-50" style={{ minWidth: '280px' }}>
+                    <div className="mb-3 text-sm font-semibold text-gray-700">Select Year</div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {Array.from({ length: 20 }, (_, i) => currentYear - 10 + i).map((year) => (
+                        <button
+                          key={year}
+                          onClick={() => {
+                            setSelectedYear(year);
+                            setShowYearPopup(false);
+                          }}
+                          className={`px-3 py-2 text-sm rounded-lg transition-all ${
+                            year === selectedYear
+                              ? 'bg-blue-600 text-white font-semibold'
+                              : year === currentYear
+                              ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium'
+                              : 'text-gray-700 hover:bg-gray-100'
+                          }`}
+                        >
+                          {year}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Import/Export buttons */}
@@ -678,20 +753,76 @@ const NetWorthTracker = () => {
             <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <DollarSign className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <div className="text-sm text-gray-500">Current Month</div>
-                    <select
-                      value={selectedMonth}
-                      onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                      className="text-lg font-semibold text-gray-700 border-0 p-0 focus:ring-0 cursor-pointer"
-                    >
-                      {months.map((month, idx) => (
-                        <option key={idx} value={idx}>{month} {selectedYear}</option>
-                      ))}
-                    </select>
+                  {/* Enhanced Month Selector */}
+                  <div className="relative" data-month-picker>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          const newMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
+                          const newYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
+                          if (newMonth === 11 && selectedMonth === 0) {
+                            setSelectedYear(newYear);
+                          }
+                          setSelectedMonth(newMonth);
+                        }}
+                        className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200"
+                        title="Previous Month"
+                      >
+                        <ChevronLeft className="w-5 h-5" />
+                      </button>
+                      <button
+                        ref={monthButtonRef}
+                        onClick={() => setShowMonthPopup(!showMonthPopup)}
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:border-gray-300 transition-all duration-200 cursor-pointer min-w-[100px]"
+                      >
+                        <Calendar className="w-5 h-5 text-gray-600" />
+                        <span className="font-semibold text-gray-700">{months[selectedMonth]}</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          const newMonth = selectedMonth === 11 ? 0 : selectedMonth + 1;
+                          const newYear = selectedMonth === 11 ? selectedYear + 1 : selectedYear;
+                          if (newMonth === 0 && selectedMonth === 11) {
+                            setSelectedYear(newYear);
+                          }
+                          setSelectedMonth(newMonth);
+                        }}
+                        className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200"
+                        title="Next Month"
+                      >
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    {/* Month Popup */}
+                    {showMonthPopup && (
+                      <div className="absolute top-full mt-2 left-0 bg-white border border-gray-200 rounded-lg shadow-xl p-4 z-50" style={{ minWidth: '300px' }}>
+                        <div className="mb-3 text-sm font-semibold text-gray-700">Select Month</div>
+                        <div className="grid grid-cols-4 gap-2">
+                          {months.map((month, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => {
+                                setSelectedMonth(idx);
+                                setShowMonthPopup(false);
+                              }}
+                              className={`px-3 py-2 text-sm rounded-lg transition-all ${
+                                idx === selectedMonth
+                                  ? 'bg-blue-600 text-white font-semibold'
+                                  : idx === currentMonth && selectedYear === currentYear
+                                  ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium border border-blue-200'
+                                  : 'text-gray-700 hover:bg-gray-100'
+                              }`}
+                            >
+                              {month}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="mt-3 pt-3 border-t border-gray-200">
+                          <div className="text-xs text-gray-500">Year: {selectedYear}</div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <button
@@ -878,16 +1009,16 @@ const NetWorthTracker = () => {
               )}
 
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full table-fixed">
                 <thead>
                   <tr>
-                    <th className="text-left p-2 border-b sticky left-0 bg-white">Account</th>
+                    <th className="text-left p-2 border-b sticky left-0 bg-white w-48">Account</th>
                     {months.map((month, idx) => (
-                      <th key={idx} className={`text-center p-2 border-b min-w-[100px] ${idx === selectedMonth ? 'bg-blue-50' : ''}`}>
+                      <th key={idx} className={`text-center p-2 border-b w-24 ${idx === selectedMonth ? 'bg-blue-50' : ''}`}>
                         {month}
                       </th>
                     ))}
-                    <th className="text-center p-2 border-b">Actions</th>
+                    <th className="text-center p-2 border-b w-20">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1009,16 +1140,16 @@ const NetWorthTracker = () => {
               )}
 
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full table-fixed">
                 <thead>
                   <tr>
-                    <th className="text-left p-2 border-b sticky left-0 bg-white">Account</th>
+                    <th className="text-left p-2 border-b sticky left-0 bg-white w-48">Account</th>
                     {months.map((month, idx) => (
-                      <th key={idx} className={`text-center p-2 border-b min-w-[100px] ${idx === selectedMonth ? 'bg-blue-50' : ''}`}>
+                      <th key={idx} className={`text-center p-2 border-b w-24 ${idx === selectedMonth ? 'bg-blue-50' : ''}`}>
                         {month}
                       </th>
                     ))}
-                    <th className="text-center p-2 border-b">Actions</th>
+                    <th className="text-center p-2 border-b w-20">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1097,38 +1228,68 @@ const NetWorthTracker = () => {
                 Net Worth Progression - {selectedYear}
               </h3>
               <ResponsiveContainer width="100%" height={350}>
-                <AreaChart data={prepareNetWorthChartData()}>
+                <ComposedChart data={prepareNetWorthChartData()}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
                   <YAxis tickFormatter={(value) => formatCurrencyShort(value)} />
-                  <Tooltip formatter={(value) => formatCurrency(value)} />
+                  <Tooltip
+                    formatter={(value, name, props) => {
+                      const data = props.payload;
+                      let tooltip = [formatCurrency(value), name];
+
+                      // Add percentage growth information
+                      if (name === 'Assets' && data.assetGrowth !== null) {
+                        const growth = data.assetGrowth >= 0 ? `+${data.assetGrowth.toFixed(1)}%` : `${data.assetGrowth.toFixed(1)}%`;
+                        const prevValue = data.prevAssets ? formatCurrency(data.prevAssets) : 'N/A';
+                        tooltip[1] = `${name} (${growth} from ${prevValue})`;
+                      } else if (name === 'Liabilities' && data.liabilityGrowth !== null) {
+                        const growth = data.liabilityGrowth >= 0 ? `+${data.liabilityGrowth.toFixed(1)}%` : `${data.liabilityGrowth.toFixed(1)}%`;
+                        const prevValue = data.prevLiabilities ? formatCurrency(data.prevLiabilities) : 'N/A';
+                        tooltip[1] = `${name} (${growth} from ${prevValue})`;
+                      } else if (name === 'Net Worth' && data.netWorthGrowth !== null) {
+                        const growth = data.netWorthGrowth >= 0 ? `+${data.netWorthGrowth.toFixed(1)}%` : `${data.netWorthGrowth.toFixed(1)}%`;
+                        const prevValue = data.prevNetWorth ? formatCurrency(data.prevNetWorth) : 'N/A';
+                        tooltip[1] = `${name} (${growth} from ${prevValue})`;
+                      }
+
+                      return tooltip;
+                    }}
+                    contentStyle={{
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                      fontSize: '14px'
+                    }}
+                  />
                   <Legend />
-                  <Area 
-                    type="monotone" 
-                    dataKey="assets" 
+                  <Area
+                    type="monotone"
+                    dataKey="assets"
                     stackId="1"
-                    stroke="#10b981" 
-                    fill="#10b981" 
+                    stroke="#10b981"
+                    fill="#10b981"
                     fillOpacity={0.6}
                     name="Assets"
                   />
-                  <Area 
-                    type="monotone" 
-                    dataKey="liabilities" 
+                  <Area
+                    type="monotone"
+                    dataKey="liabilities"
                     stackId="2"
-                    stroke="#ef4444" 
-                    fill="#ef4444" 
+                    stroke="#ef4444"
+                    fill="#ef4444"
                     fillOpacity={0.6}
                     name="Liabilities"
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="netWorth" 
-                    stroke="#3b82f6" 
+                  <Line
+                    type="monotone"
+                    dataKey="netWorth"
+                    stroke="#3b82f6"
                     strokeWidth={3}
                     name="Net Worth"
+                    dot={{ fill: '#3b82f6', r: 4 }}
                   />
-                </AreaChart>
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
 

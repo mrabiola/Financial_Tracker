@@ -22,7 +22,29 @@ This project transforms a single-user localStorage-based financial tracker into 
 
 ---
 
-## 🆕 Recent Updates (September 9, 2025)
+## 🆕 Recent Updates (September 18, 2025)
+
+### 🎨 **UI/UX Enhancements**
+- **Modern Date Picker Upgrade**: Completely redesigned month and year selectors with popup modals
+- **Interactive Month Selection**: 4x3 grid popup for month selection with clean visual design
+- **Smart Year Navigation**: 20-year range popup with current year highlighting and intuitive grid layout
+- **Enhanced User Experience**: Click outside or ESC key to close popups, smooth transitions
+- **Improved Accessibility**: Maintained keyboard navigation and focus management
+
+### 🎨 **Welcome Page Brand Updates**
+- **Brand Color Implementation**: Applied proper brand blue (#4F85FF) across all CTA buttons
+- **Visual Consistency**: Updated "Financial Future" text, "Try Demo" and "Start Free Demo" buttons
+- **Professional Design**: Replaced generic Tailwind colors with cohesive brand palette
+- **Button Proportions**: Optimized button sizing for better visual balance and hierarchy
+- **Clean Styling**: Direct CSS implementation for reliable color application
+
+### 🔧 **Demo System Improvements**
+- **Session Persistence Fix**: Resolved demo banner appearing for real users after logout
+- **Clean Transitions**: Proper demo session cleanup when switching between demo and authenticated accounts
+- **Enhanced Authentication Flow**: Added demo cleanup on user sign-in and logout
+- **Storage Synchronization**: Real-time state updates across components for consistent behavior
+
+## Previous Updates (September 9, 2025)
 
 ### 🐛 **Critical Bug Fixes**
 - **Asset Deletion Fix**: Fixed bug where deleted asset entries persisted in UI until page refresh

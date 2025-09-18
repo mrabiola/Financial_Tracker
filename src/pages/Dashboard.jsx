@@ -5,13 +5,18 @@ import NetWorthTracker from '../components/dashboard/NetWorthTracker';
 import DataMigration from '../components/common/DataMigration';
 import Logo from '../components/Logo';
 import { useAuth } from '../contexts/AuthContext';
+import { useDemo } from '../contexts/DemoContext';
 import { useInitialDataSetup } from '../hooks/useInitialDataSetup';
+import DemoBanner from '../components/demo/DemoBanner';
+import ConversionModal from '../components/demo/ConversionModal';
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
+  const { isDemo, showConversionPrompt, dismissConversionPrompt } = useDemo();
   const navigate = useNavigate();
   const [showMigration, setShowMigration] = useState(false);
   const [localData, setLocalData] = useState(null);
+  const [showConversionModal, setShowConversionModal] = useState(false);
   const { isInitializing } = useInitialDataSetup();
 
   useEffect(() => {
@@ -41,8 +46,27 @@ const Dashboard = () => {
     window.location.reload(); // Reload to fetch the migrated data
   };
 
+  // Show conversion modal when prompted
+  useEffect(() => {
+    if (showConversionPrompt && isDemo) {
+      setShowConversionModal(true);
+    }
+  }, [showConversionPrompt, isDemo]);
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Demo Banner */}
+      {isDemo && <DemoBanner />}
+      
+      {/* Conversion Modal */}
+      <ConversionModal 
+        isOpen={showConversionModal} 
+        onClose={() => {
+          setShowConversionModal(false);
+          dismissConversionPrompt();
+        }}
+      />
+      
       {/* Top Navigation Bar */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">

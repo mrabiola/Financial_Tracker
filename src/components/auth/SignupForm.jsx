@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, User, AlertCircle, CheckCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, User, AlertCircle, CheckCircle, Database } from 'lucide-react';
 import Logo from '../Logo';
 import { supabase } from '../../lib/supabase';
+import { shouldConvertDemo, convertDemoToRealAccount } from '../../utils/demoConversion';
+import { useDemo } from '../../contexts/DemoContext';
 
 const SignupForm = () => {
   const navigate = useNavigate();
+  const { endDemo } = useDemo();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -14,6 +17,15 @@ const SignupForm = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isConvertingDemo, setIsConvertingDemo] = useState(false);
+  const [conversionMessage, setConversionMessage] = useState('');
+
+  useEffect(() => {
+    if (shouldConvertDemo()) {
+      setIsConvertingDemo(true);
+      setConversionMessage('Your demo data will be saved to your new account');
+    }
+  }, []);
 
   const validatePassword = (password) => {
     if (password.length < 8) {
@@ -57,10 +69,29 @@ const SignupForm = () => {
       if (error) throw error;
 
       if (data.user) {
-        setSuccess('Account created successfully! Please check your email to verify your account.');
-        setTimeout(() => {
-          navigate('/login');
-        }, 3000);
+        // If converting demo, migrate the data
+        if (isConvertingDemo) {
+          setSuccess('Account created! Converting your demo data...');
+          const conversionResult = await convertDemoToRealAccount(data.user.id);
+          
+          if (conversionResult.success) {
+            await endDemo(); // Clean up demo session
+            setSuccess('Account created and demo data migrated successfully!');
+            setTimeout(() => {
+              navigate('/dashboard');
+            }, 2000);
+          } else {
+            setError(`Account created but demo conversion failed: ${conversionResult.error}`);
+            setTimeout(() => {
+              navigate('/dashboard');
+            }, 3000);
+          }
+        } else {
+          setSuccess('Account created successfully! Please check your email to verify your account.');
+          setTimeout(() => {
+            navigate('/login');
+          }, 3000);
+        }
       }
     } catch (error) {
       setError(error.message || 'Failed to create account');
@@ -84,7 +115,7 @@ const SignupForm = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen h-full bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
         <div className="text-center mb-4">
           <div className="flex justify-center mb-4">
@@ -93,6 +124,17 @@ const SignupForm = () => {
           <h2 className="text-3xl font-bold text-gray-900 mb-1">Create Account</h2>
           <p className="text-gray-600 text-sm">Start tracking your financial journey</p>
         </div>
+
+        {isConvertingDemo && (
+          <div className="bg-blue-50 border border-brand-blue rounded-lg p-3 mb-4">
+            <div className="flex items-center">
+              <Database className="h-5 w-5 text-brand-blue mr-2 flex-shrink-0" />
+              <p className="text-sm text-blue-800">
+                {conversionMessage}
+              </p>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg flex items-center gap-2">
@@ -202,7 +244,8 @@ const SignupForm = () => {
               id="terms"
               type="checkbox"
               required
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              className="h-4 w-4 border-gray-300 rounded"
+              style={{ color: 'var(--brand-blue)', accentColor: 'var(--brand-blue)' }}
             />
             <label htmlFor="terms" className="ml-2 block text-sm text-gray-700">
               I agree to the{' '}
@@ -210,7 +253,7 @@ const SignupForm = () => {
                 to="/terms" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="text-blue-600 hover:text-blue-500 underline"
+                className="text-brand-blue hover:opacity-80 underline transition-colors"
               >
                 Terms of Service
               </Link>
@@ -219,7 +262,7 @@ const SignupForm = () => {
                 to="/privacy" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="text-blue-600 hover:text-blue-500 underline"
+                className="text-brand-blue hover:opacity-80 underline transition-colors"
               >
                 Privacy Policy
               </Link>
@@ -229,7 +272,7 @@ const SignupForm = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-brand focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             {loading ? 'Creating Account...' : 'Create Account'}
           </button>
@@ -260,7 +303,10 @@ const SignupForm = () => {
 
         <p className="mt-6 text-center text-sm text-gray-600">
           Already have an account?{' '}
-          <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500">
+          <Link
+            to="/login"
+            className="font-medium text-brand-blue hover:opacity-80 transition-colors"
+          >
             Sign in
           </Link>
         </p>
