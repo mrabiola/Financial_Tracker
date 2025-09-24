@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
+    "framer-motion": "^12.23.20",
     "lucide-react": "^0.294.0",
     "papaparse": "^5.5.3",
     "react": "^18.2.0",

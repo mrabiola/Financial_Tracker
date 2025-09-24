@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Plus, X, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, Copy, Download, Upload, TrendingUp, PieChart, BarChart3, LineChart, Target, Wallet, CreditCard, DollarSign, TrendingDown, PiggyBank, Landmark, Home, Car, School, Heart, Briefcase, Coins, AlertCircle, Brain, FileSpreadsheet, Calendar, TrendingUp as TrendUpIcon, TrendingDown as TrendDownIcon } from 'lucide-react';
+import { Plus, X, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, Copy, Download, Upload, TrendingUp, PieChart, BarChart3, LineChart, Target, Wallet, CreditCard, DollarSign, TrendingDown, PiggyBank, Landmark, Home, Car, School, Heart, Briefcase, Coins, AlertCircle, Brain, FileSpreadsheet, Calendar, TrendingUp as TrendUpIcon, TrendingDown as TrendDownIcon, Banknote, ArrowDownCircle, ArrowUpCircle, Activity, Gauge } from 'lucide-react';
 import { LineChart as RechartsLineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, ComposedChart } from 'recharts';
 import { useFinancialDataDemo } from '../../hooks/useFinancialDataDemo';
 import { getConversionIndicator } from '../../utils/currencyConversion';
 import { useCurrency } from '../../contexts/CurrencyContext';
+import { useCashflowData } from '../../hooks/useCashflowData';
 import LoadingSpinner from '../common/LoadingSpinner';
 import AdvancedImportModal from './AdvancedImportModal';
 import SimpleImportModal from './SimpleImportModal';
+import CashflowSection from './CashflowSection';
 
 const NetWorthTracker = () => {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -36,6 +38,22 @@ const NetWorthTracker = () => {
     fetchMultiYearSnapshots,
     reload
   } = useFinancialDataDemo(selectedYear);
+
+  // Cashflow data hook
+  const {
+    loading: cashflowLoading,
+    error: cashflowError,
+    cashflowData,
+    incomeCategories,
+    expenseCategories,
+    saveCashflowData,
+    updateGoals: updateCashflowGoals,
+    calculateMetrics: calculateCashflowMetrics,
+    copyPreviousMonth: copyCashflowPreviousMonth,
+    addCategory,
+    deleteCategory,
+    reload: reloadCashflow
+  } = useCashflowData(selectedYear);
 
   // State for multi-year data
   const [multiYearData, setMultiYearData] = useState({});
@@ -1019,68 +1037,169 @@ const NetWorthTracker = () => {
             </div>
           </div>
 
-          {/* Net Worth Summary - Enhanced Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-            {/* Total Assets Card */}
-            <div className="bg-white p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 border-green-500 transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="text-base font-semibold text-gray-600 uppercase tracking-wider mb-2">Total Assets</div>
-                  <div className="text-4xl font-bold text-gray-900 mb-1">{formatCurrency(totals.assets)}</div>
-                  <div className="text-sm font-medium text-gray-500">
-                    {accounts.assets?.length || 0} active {(accounts.assets?.length || 0) === 1 ? 'account' : 'accounts'}
+          {/* Dynamic Dashboard Cards Based on Active Tab */}
+          {activeTab === 'cashflow' ? (
+            // Cashflow Dashboard Cards
+            (() => {
+              const metrics = calculateCashflowMetrics(selectedMonth);
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mt-4">
+                  {/* Cash Inflow Card */}
+                  <div className="bg-white p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 border-green-500 transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="text-base font-semibold text-gray-600 uppercase tracking-wider mb-2">Cash Inflow</div>
+                        <div className="text-3xl font-bold text-gray-900 mb-1">{formatCurrency(metrics.monthIncome || 0)}</div>
+                        <div className="text-sm font-medium text-green-600">
+                          YTD: {formatCurrency(metrics.ytdIncome)}
+                        </div>
+                      </div>
+                      <div className="text-green-500 opacity-80 group-hover:opacity-100 transition-opacity">
+                        <ArrowDownCircle className="w-10 h-10" strokeWidth={1.5} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Cash Outflow Card */}
+                  <div className="bg-white p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 border-red-500 transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="text-base font-semibold text-gray-600 uppercase tracking-wider mb-2">Cash Outflow</div>
+                        <div className="text-3xl font-bold text-gray-900 mb-1">{formatCurrency(metrics.monthExpenses || 0)}</div>
+                        <div className="text-sm font-medium text-red-600">
+                          YTD: {formatCurrency(metrics.ytdExpenses)}
+                        </div>
+                      </div>
+                      <div className="text-red-500 opacity-80 group-hover:opacity-100 transition-opacity">
+                        <ArrowUpCircle className="w-10 h-10" strokeWidth={1.5} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Net Cash Flow Card */}
+                  <div className={`bg-white p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 ${metrics.netCashflow >= 0 ? 'border-blue-500' : 'border-orange-500'} transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group`}>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="text-base font-semibold text-gray-600 uppercase tracking-wider mb-2">Net Flow</div>
+                        <div className="text-3xl font-bold text-gray-900 mb-1">
+                          {formatCurrency(metrics.monthNetCashflow || 0)}
+                        </div>
+                        <div className="text-sm font-medium text-gray-500">
+                          {(metrics.monthNetCashflow || 0) >= 0 ? (
+                            <span className="text-green-600">Positive cashflow</span>
+                          ) : (
+                            <span className="text-red-600">Negative cashflow</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className={`${metrics.netCashflow >= 0 ? 'text-blue-500' : 'text-orange-500'} opacity-80 group-hover:opacity-100 transition-opacity`}>
+                        <Activity className="w-10 h-10" strokeWidth={1.5} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Savings Rate Card */}
+                  <div className="bg-gradient-to-br from-purple-500 to-indigo-600 p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group text-white">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="text-base font-semibold text-white/90 uppercase tracking-wider mb-2">Savings Rate</div>
+                        <div className="text-3xl font-bold mb-1">
+                          {(metrics.monthSavingsRate || 0).toFixed(1)}%
+                        </div>
+                        <div className="text-sm font-medium text-white/80">
+                          YTD: {metrics.ytdSavingsRate.toFixed(1)}%
+                        </div>
+                      </div>
+                      <div className="text-white/80 group-hover:text-white transition-colors">
+                        <PiggyBank className="w-10 h-10" strokeWidth={1.5} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* YTD Performance Card */}
+                  <div className="bg-white p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 border-indigo-500 transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="text-base font-semibold text-gray-600 uppercase tracking-wider mb-2">YTD Performance</div>
+                        <div className="text-3xl font-bold text-gray-900 mb-1">
+                          {formatCurrency(metrics.ytdNetCashflow)}
+                        </div>
+                        <div className="text-sm font-medium text-indigo-600">
+                          {metrics.ytdNetCashflow >= 0 ? 'Surplus' : 'Deficit'}
+                        </div>
+                      </div>
+                      <div className="text-indigo-500 opacity-80 group-hover:opacity-100 transition-opacity">
+                        <Gauge className="w-10 h-10" strokeWidth={1.5} />
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="text-green-500 opacity-80 group-hover:opacity-100 transition-opacity">
-                  <TrendUpIcon className="w-10 h-10" strokeWidth={1.5} />
+              );
+            })()
+          ) : (
+            // Original Net Worth Dashboard Cards
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+              {/* Total Assets Card */}
+              <div className="bg-white p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 border-green-500 transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="text-base font-semibold text-gray-600 uppercase tracking-wider mb-2">Total Assets</div>
+                    <div className="text-4xl font-bold text-gray-900 mb-1">{formatCurrency(totals.assets)}</div>
+                    <div className="text-sm font-medium text-gray-500">
+                      {accounts.assets?.length || 0} active {(accounts.assets?.length || 0) === 1 ? 'account' : 'accounts'}
+                    </div>
+                  </div>
+                  <div className="text-green-500 opacity-80 group-hover:opacity-100 transition-opacity">
+                    <TrendUpIcon className="w-10 h-10" strokeWidth={1.5} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Total Liabilities Card */}
+              <div className="bg-white p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 border-red-500 transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="text-base font-semibold text-gray-600 uppercase tracking-wider mb-2">Total Liabilities</div>
+                    <div className="text-4xl font-bold text-gray-900 mb-1">{formatCurrency(totals.liabilities)}</div>
+                    <div className="text-sm font-medium text-gray-500">
+                      {accounts.liabilities?.length || 0} active {(accounts.liabilities?.length || 0) === 1 ? 'account' : 'accounts'}
+                    </div>
+                  </div>
+                  <div className="text-red-500 opacity-80 group-hover:opacity-100 transition-opacity">
+                    <TrendDownIcon className="w-10 h-10" strokeWidth={1.5} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Net Worth Card */}
+              <div className={`bg-white p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 ${totals.netWorth >= 0 ? 'border-blue-500' : 'border-orange-500'} transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group`}>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="text-base font-semibold text-gray-600 uppercase tracking-wider mb-2">Net Worth</div>
+                    <div className="text-4xl font-bold text-gray-900 mb-1">
+                      {formatCurrency(totals.netWorth)}
+                    </div>
+                    <div className="text-sm font-medium text-gray-500">
+                      {totals.netWorth >= 0 ? (
+                        <span className="text-green-600 flex items-center gap-1">
+                          <TrendingUp className="w-3 h-3" />
+                          Positive net worth
+                        </span>
+                      ) : (
+                        <span className="text-red-600 flex items-center gap-1">
+                          <TrendingDown className="w-3 h-3" />
+                          Negative net worth
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className={`${totals.netWorth >= 0 ? 'text-blue-500' : 'text-orange-500'} opacity-80 group-hover:opacity-100 transition-opacity`}>
+                    <Wallet className="w-10 h-10" strokeWidth={1.5} />
+                  </div>
                 </div>
               </div>
             </div>
-            
-            {/* Total Liabilities Card */}
-            <div className="bg-white p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 border-red-500 transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="text-base font-semibold text-gray-600 uppercase tracking-wider mb-2">Total Liabilities</div>
-                  <div className="text-4xl font-bold text-gray-900 mb-1">{formatCurrency(totals.liabilities)}</div>
-                  <div className="text-sm font-medium text-gray-500">
-                    {accounts.liabilities?.length || 0} active {(accounts.liabilities?.length || 0) === 1 ? 'account' : 'accounts'}
-                  </div>
-                </div>
-                <div className="text-red-500 opacity-80 group-hover:opacity-100 transition-opacity">
-                  <TrendDownIcon className="w-10 h-10" strokeWidth={1.5} />
-                </div>
-              </div>
-            </div>
-            
-            {/* Net Worth Card */}
-            <div className={`bg-white p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 ${totals.netWorth >= 0 ? 'border-blue-500' : 'border-orange-500'} transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group`}>
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="text-base font-semibold text-gray-600 uppercase tracking-wider mb-2">Net Worth</div>
-                  <div className="text-4xl font-bold text-gray-900 mb-1">
-                    {formatCurrency(totals.netWorth)}
-                  </div>
-                  <div className="text-sm font-medium text-gray-500">
-                    {totals.netWorth >= 0 ? (
-                      <span className="text-green-600 flex items-center gap-1">
-                        <TrendingUp className="w-3 h-3" />
-                        Positive net worth
-                      </span>
-                    ) : (
-                      <span className="text-red-600 flex items-center gap-1">
-                        <TrendingDown className="w-3 h-3" />
-                        Negative net worth
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className={`${totals.netWorth >= 0 ? 'text-blue-500' : 'text-orange-500'} opacity-80 group-hover:opacity-100 transition-opacity`}>
-                  <Wallet className="w-10 h-10" strokeWidth={1.5} />
-                </div>
-              </div>
-            </div>
-          </div>
+          )}
 
           {/* Tab Navigation */}
           <div className="flex gap-1 mt-4 border-b">
@@ -1100,14 +1219,27 @@ const NetWorthTracker = () => {
             <button
               onClick={() => setActiveTab('charts')}
               className={`px-4 py-2 font-medium border-b-2 transition-all ${
-                activeTab === 'charts' 
-                  ? 'text-blue-600 border-blue-600 bg-blue-50 rounded-t-lg' 
+                activeTab === 'charts'
+                  ? 'text-blue-600 border-blue-600 bg-blue-50 rounded-t-lg'
                   : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50 rounded-t-lg'
               }`}
             >
               <span className="flex items-center gap-2">
                 <LineChart className="w-4 h-4" />
                 Analytics
+              </span>
+            </button>
+            <button
+              onClick={() => setActiveTab('cashflow')}
+              className={`px-4 py-2 font-medium border-b-2 transition-all ${
+                activeTab === 'cashflow'
+                  ? 'text-blue-600 border-blue-600 bg-blue-50 rounded-t-lg'
+                  : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50 rounded-t-lg'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <Banknote className="w-4 h-4" />
+                Cashflow
               </span>
             </button>
           </div>
@@ -2162,6 +2294,26 @@ const NetWorthTracker = () => {
               }
             })()}
           </div>
+        )}
+
+        {/* Cashflow Tab */}
+        {activeTab === 'cashflow' && (
+          <CashflowSection
+            selectedYear={selectedYear}
+            selectedMonth={selectedMonth}
+            setSelectedMonth={setSelectedMonth}
+            setSelectedYear={setSelectedYear}
+            cashflowData={cashflowData}
+            incomeCategories={incomeCategories}
+            expenseCategories={expenseCategories}
+            saveCashflowData={saveCashflowData}
+            copyPreviousMonth={copyCashflowPreviousMonth}
+            addCategory={addCategory}
+            deleteCategory={deleteCategory}
+            calculateMetrics={calculateCashflowMetrics}
+            formatCurrency={formatCurrency}
+            formatCurrencyShort={formatCurrencyShort}
+          />
         )}
       </div>
 
