@@ -160,7 +160,7 @@ export const generateDemoData = () => {
       liabilities: cleanLiabilities
     },
     goals,
-    snapshots: generateSnapshotsObject(assets.concat(liabilities)),
+    snapshots: generateMultiYearSnapshotsObject(assets.concat(liabilities)),
     demoMetadata: {
       isDemo: true,
       createdAt: new Date().toISOString(),
@@ -213,25 +213,98 @@ function generateMonthlySnapshots(startValue, endValue, currentMonth, isDebt = f
   return snapshots;
 }
 
+
 /**
- * Convert snapshots array to the format expected by the app
+ * Generate multi-year snapshots for demo data (2023, 2024, 2025)
  */
-function generateSnapshotsObject(accounts) {
+function generateMultiYearSnapshotsObject(accounts) {
   const snapshotsObj = {};
-  
+  const currentYear = new Date().getFullYear();
+
+  // Generate data for the last 3 years (2023, 2024, 2025)
+  const yearsToGenerate = [currentYear - 2, currentYear - 1, currentYear];
+
   accounts.forEach(account => {
     snapshotsObj[account.id] = {};
-    account.snapshots.forEach(snapshot => {
-      const key = `${snapshot.month}-${snapshot.year}`;
-      snapshotsObj[account.id][key] = {
-        value: snapshot.value,
-        original_value: snapshot.original_value,
-        original_currency: snapshot.original_currency
-      };
+
+    yearsToGenerate.forEach(year => {
+      // For current year, use the existing snapshot generation
+      if (year === currentYear) {
+        account.snapshots.forEach(snapshot => {
+          const key = `${snapshot.month}-${snapshot.year}`;
+          snapshotsObj[account.id][key] = {
+            value: snapshot.value,
+            original_value: snapshot.original_value,
+            original_currency: snapshot.original_currency
+          };
+        });
+      } else {
+        // For historical years, generate realistic data
+        generateHistoricalSnapshots(account, year, snapshotsObj);
+      }
     });
   });
-  
+
   return snapshotsObj;
+}
+
+/**
+ * Generate historical snapshots for a specific year
+ */
+function generateHistoricalSnapshots(account, year, snapshotsObj) {
+  const currentYear = new Date().getFullYear();
+  const yearDiff = currentYear - year;
+
+  // Get the latest value from current year snapshots as baseline
+  const currentSnapshots = account.snapshots;
+  const latestSnapshot = currentSnapshots[currentSnapshots.length - 1];
+  const baselineValue = latestSnapshot ? latestSnapshot.value : 0;
+
+  if (baselineValue === 0) return;
+
+  // Calculate historical multiplier based on account type and year difference
+  let historicalMultiplier;
+  if (account.type === 'asset') {
+    // Assets were generally lower in the past (assuming growth)
+    historicalMultiplier = Math.max(0.7, 1 - (yearDiff * 0.15));
+  } else {
+    // Liabilities might have been higher in the past (assuming debt paydown)
+    historicalMultiplier = Math.min(1.3, 1 + (yearDiff * 0.1));
+  }
+
+  const historicalBaseValue = Math.round(baselineValue * historicalMultiplier);
+
+  // Generate 12 months of data with realistic progression
+  for (let month = 0; month < 12; month++) {
+    const progress = month / 11; // 0 to 1 throughout the year
+
+    let monthlyValue;
+    if (account.type === 'asset') {
+      // Assets grow throughout the year with some variation
+      const yearlyGrowth = historicalBaseValue * 0.08; // 8% annual growth
+      const growthSoFar = yearlyGrowth * progress;
+      const monthlyVariation = (Math.random() - 0.5) * 0.03 * historicalBaseValue; // ±3% monthly variation
+      monthlyValue = historicalBaseValue + growthSoFar + monthlyVariation;
+    } else {
+      // Liabilities generally decrease throughout the year (payments)
+      const yearlyPaydown = historicalBaseValue * 0.05; // 5% annual paydown
+      const paydownSoFar = yearlyPaydown * progress;
+      const monthlyVariation = (Math.random() - 0.5) * 0.02 * historicalBaseValue; // ±2% monthly variation
+      monthlyValue = historicalBaseValue - paydownSoFar + monthlyVariation;
+    }
+
+    // Ensure positive values and round
+    monthlyValue = Math.round(Math.max(monthlyValue, 0) * 100) / 100;
+
+    const key = `${month}-${year}`;
+    snapshotsObj[account.id][key] = {
+      value: monthlyValue,
+      original_value: monthlyValue,
+      original_currency: 'USD',
+      month: month,
+      year: year
+    };
+  }
 }
 
 /**

@@ -119,7 +119,9 @@ const SignupForm = () => {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
         <div className="text-center mb-4">
           <div className="flex justify-center mb-4">
-            <Logo size="xlarge" />
+            <Link to="/">
+              <Logo size="xlarge" />
+            </Link>
           </div>
           <h2 className="text-3xl font-bold text-gray-900 mb-1">Create Account</h2>
           <p className="text-gray-600 text-sm">Start tracking your financial journey</p>

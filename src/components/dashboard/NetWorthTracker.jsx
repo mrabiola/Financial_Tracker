@@ -33,8 +33,13 @@ const NetWorthTracker = () => {
     deleteGoal: deleteGoalFromDb,
     getSnapshotValue,
     getSnapshotCurrencyData,
+    fetchMultiYearSnapshots,
     reload
   } = useFinancialDataDemo(selectedYear);
+
+  // State for multi-year data
+  const [multiYearData, setMultiYearData] = useState({});
+  const hasLoadedMultiYearData = useRef(false);
 
   const [activeTab, setActiveTab] = useState('data');
   const [editingCell, setEditingCell] = useState(null);
@@ -53,6 +58,11 @@ const NetWorthTracker = () => {
   const [showOtherTooltip, setShowOtherTooltip] = useState(false);
   const [showMonthPopup, setShowMonthPopup] = useState(false);
   const [showYearPopup, setShowYearPopup] = useState(false);
+
+  // New state for MoM/YoY view and time periods
+  const [chartViewType, setChartViewType] = useState('MoM'); // 'MoM' or 'YoY'
+  const [timeFrame, setTimeFrame] = useState('ALL'); // 'YTD', '6M', '3M', '1Y', '3Y', '5Y', 'ALL'
+  const [availableYears, setAvailableYears] = useState([]);
   const importButtonRef = useRef(null);
   const monthButtonRef = useRef(null);
   const yearButtonRef = useRef(null);
@@ -348,18 +358,139 @@ const NetWorthTracker = () => {
   };
 
 
+  // Helper function to determine available years based on data
+  useEffect(() => {
+    // For now, we'll support the current year and recent years
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = currentYear - 4; i <= currentYear; i++) {
+      years.push(i);
+    }
+    setAvailableYears(years);
+  }, []);
+
+  // Create stable account IDs array to prevent unnecessary re-renders
+  const accountIds = useMemo(() => {
+    const ids = [
+      ...(accounts.assets || []).map(a => a.id),
+      ...(accounts.liabilities || []).map(a => a.id)
+    ];
+    // Reset the loaded flag when account IDs change
+    if (ids.length > 0) {
+      hasLoadedMultiYearData.current = false;
+    }
+    return ids;
+  }, [accounts.assets, accounts.liabilities]);
+
+  // Load multi-year data for YoY charts
+  const loadMultiYearData = useCallback(async () => {
+    if (!fetchMultiYearSnapshots || availableYears.length === 0 || accountIds.length === 0) {
+      return;
+    }
+
+    try {
+      const data = await fetchMultiYearSnapshots(accountIds, availableYears);
+      setMultiYearData(data);
+      hasLoadedMultiYearData.current = true;
+    } catch (error) {
+      console.error('Error loading multi-year data:', error);
+    }
+  }, [fetchMultiYearSnapshots, availableYears, accountIds]);
+
+  // Load multi-year data when switching to YoY view
+  useEffect(() => {
+    if (chartViewType === 'YoY' && accountIds.length > 0) {
+      loadMultiYearData();
+    }
+  }, [chartViewType, loadMultiYearData, accountIds.length]);
+
+  // Preload multi-year data when accounts first become available
+  useEffect(() => {
+    if (accountIds.length > 0 && !hasLoadedMultiYearData.current) {
+      loadMultiYearData();
+    }
+  }, [accountIds.length, loadMultiYearData]);
+
+  // Get date range based on time frame
+  const getDateRange = (timeFrame, currentDate = new Date()) => {
+    const endMonth = currentDate.getMonth();
+    const endYear = currentDate.getFullYear();
+    let startMonth = 0;
+    let startYear = endYear;
+
+    switch (timeFrame) {
+      case 'YTD':
+        startMonth = 0;
+        startYear = endYear;
+        break;
+      case '3M':
+        const threeMonthsAgo = new Date(currentDate);
+        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 2);
+        startMonth = threeMonthsAgo.getMonth();
+        startYear = threeMonthsAgo.getFullYear();
+        break;
+      case '6M':
+        const sixMonthsAgo = new Date(currentDate);
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+        startMonth = sixMonthsAgo.getMonth();
+        startYear = sixMonthsAgo.getFullYear();
+        break;
+      case '1Y':
+        startMonth = endMonth;
+        startYear = endYear - 1;
+        break;
+      case '3Y':
+        startMonth = endMonth;
+        startYear = endYear - 3;
+        break;
+      case '5Y':
+        startMonth = endMonth;
+        startYear = endYear - 5;
+        break;
+      case 'ALL':
+        startMonth = 0;
+        startYear = Math.min(...availableYears.filter(y => y > 0));
+        break;
+      default:
+        startMonth = 0;
+        startYear = endYear;
+    }
+
+    return { startMonth, startYear, endMonth, endYear };
+  };
+
   // Prepare chart data with month-to-month percentage differences
   const prepareNetWorthChartData = () => {
     const chartData = [];
+    const { startMonth, startYear, endMonth, endYear } = getDateRange(timeFrame);
 
-    months.forEach((month, monthIdx) => {
+    // Filter data based on time frame
+    let monthsToShow = [];
+
+    if (startYear === endYear && selectedYear === endYear) {
+      // Same year - show months from start to end (or current month)
+      const lastMonth = timeFrame === 'YTD' || timeFrame === '3M' || timeFrame === '6M'
+        ? Math.min(endMonth, currentMonth)
+        : 11;
+      for (let i = startMonth; i <= lastMonth; i++) {
+        monthsToShow.push(i);
+      }
+    } else if (selectedYear === endYear) {
+      // Current year selected, showing all months
+      monthsToShow = months.map((_, idx) => idx);
+    } else {
+      // Historical year or ALL view
+      monthsToShow = months.map((_, idx) => idx);
+    }
+
+    monthsToShow.forEach((monthIdx) => {
       const totals = calculateTotalsForMonth(monthIdx);
       let assetGrowth = null;
       let liabilityGrowth = null;
       let netWorthGrowth = null;
 
       // Calculate month-to-month percentage changes
-      if (monthIdx > 0) {
+      if (monthIdx > 0 && monthsToShow.includes(monthIdx - 1)) {
         const prevTotals = calculateTotalsForMonth(monthIdx - 1);
 
         // Assets growth calculation
@@ -379,7 +510,8 @@ const NetWorthTracker = () => {
       }
 
       chartData.push({
-        month,
+        month: months[monthIdx],
+        monthIndex: monthIdx,
         netWorth: totals.netWorth,
         assets: totals.assets,
         liabilities: totals.liabilities,
@@ -393,6 +525,241 @@ const NetWorthTracker = () => {
     });
 
     return chartData;
+  };
+
+  // Calculate totals for a specific month and year using multi-year data
+  const calculateTotalsForYearMonth = (year, monthIndex) => {
+    let assetTotal = 0;
+    let liabilityTotal = 0;
+
+    // Use multi-year data if available, otherwise fall back to current year data
+    const yearSnapshots = multiYearData[year]?.snapshots || (year === selectedYear ? {} : {});
+
+    if (year === selectedYear) {
+      // For current selected year, use current accounts structure
+      (accounts.assets || []).forEach(asset => {
+        assetTotal += getSnapshotValue(asset.id, monthIndex);
+      });
+
+      (accounts.liabilities || []).forEach(liability => {
+        liabilityTotal += getSnapshotValue(liability.id, monthIndex);
+      });
+    } else {
+      // For historical years, iterate through ALL snapshot keys to find accounts
+      Object.keys(yearSnapshots).forEach(key => {
+        if (key.endsWith(`_${monthIndex}`)) {
+          const accountId = key.split('_')[0];
+          const value = yearSnapshots[key] || 0;
+
+          // We need to determine if this is an asset or liability
+          // Check if this account exists in current accounts to determine type
+          const isAsset = (accounts.assets || []).some(a => a.id === accountId);
+          const isLiability = (accounts.liabilities || []).some(l => l.id === accountId);
+
+          if (isAsset) {
+            assetTotal += value;
+          } else if (isLiability) {
+            liabilityTotal += value;
+          } else {
+            // For historical accounts not in current year, use account type mapping
+            const accountTypeMap = multiYearData?.accountTypeMap || {};
+            const accountType = accountTypeMap[accountId];
+
+            if (accountType === 'asset') {
+              assetTotal += value;
+            } else if (accountType === 'liability') {
+              liabilityTotal += value;
+            } else {
+              // Fallback: assume positive values are assets, negative are liabilities
+              if (value >= 0) {
+                assetTotal += value;
+              } else {
+                liabilityTotal += Math.abs(value);
+              }
+            }
+          }
+        }
+      });
+    }
+
+    return {
+      assets: assetTotal,
+      liabilities: liabilityTotal,
+      netWorth: assetTotal - liabilityTotal
+    };
+  };
+
+  // Prepare Year-over-Year comparison data
+  const prepareYoYChartData = () => {
+    // Use selectedYear as the basis for all comparisons, not the real current year
+    const baseYear = selectedYear;
+    const realCurrentYear = new Date().getFullYear();
+
+    // Determine which years to compare based on timeFrame
+    let yearsToCompare = [];
+
+    switch (timeFrame) {
+      case 'YTD':
+      case '1Y':
+        // Compare last few years relative to selected year (monthly data)
+        yearsToCompare = [baseYear - 2, baseYear - 1, baseYear].filter(y => y >= baseYear - 4 && y <= realCurrentYear);
+        break;
+      case '3Y':
+        // 3 years ending at selected year
+        yearsToCompare = [baseYear - 2, baseYear - 1, baseYear].filter(y => y <= realCurrentYear);
+        break;
+      case '5Y':
+        // 5 years ending at selected year
+        yearsToCompare = [baseYear - 4, baseYear - 3, baseYear - 2, baseYear - 1, baseYear].filter(y => y <= realCurrentYear);
+        break;
+      case 'ALL':
+        // All available years up to selected year
+        yearsToCompare = availableYears.filter(y => y <= baseYear && y <= realCurrentYear);
+        break;
+      default:
+        yearsToCompare = [baseYear - 1, baseYear].filter(y => y <= realCurrentYear);
+    }
+
+    // Filter to only years that might have data
+    const yearsWithPossibleData = yearsToCompare.filter(year =>
+      year === selectedYear || multiYearData[year] || year >= currentYear - 5
+    );
+
+    if (yearsWithPossibleData.length === 0) {
+      return { chartData: [], years: [], chartType: 'monthly' };
+    }
+
+    // Determine chart type: monthly (YTD/1Y) vs annual (3Y/5Y/ALL)
+    const isMonthlyChart = timeFrame === 'YTD' || timeFrame === '1Y';
+
+    if (isMonthlyChart) {
+      // Monthly YoY Chart: X-axis = months, multiple year lines
+      return prepareMonthlyYoYData(yearsWithPossibleData);
+    } else {
+      // Annual YoY Chart: X-axis = years, annual totals
+      return prepareAnnualYoYData(yearsWithPossibleData);
+    }
+  };
+
+  // Prepare monthly YoY data (for YTD/1Y timeframes)
+  const prepareMonthlyYoYData = (years) => {
+    const chartData = [];
+    const realCurrentYear = new Date().getFullYear();
+    const realCurrentMonth = new Date().getMonth();
+
+    // Determine months to show based on selected year and timeframe
+    let monthsToShow;
+    if (timeFrame === 'YTD') {
+      // If viewing current real year, show up to current month
+      // If viewing past year, show all 12 months
+      if (selectedYear === realCurrentYear) {
+        monthsToShow = Array.from({ length: realCurrentMonth + 1 }, (_, i) => i);
+      } else {
+        monthsToShow = Array.from({ length: 12 }, (_, i) => i);
+      }
+    } else {
+      // For 1Y, always show all 12 months
+      monthsToShow = Array.from({ length: 12 }, (_, i) => i);
+    }
+
+    monthsToShow.forEach(monthIdx => {
+      const dataPoint = {
+        month: months[monthIdx],
+        monthIndex: monthIdx
+      };
+
+      years.forEach(year => {
+        const totals = calculateTotalsForYearMonth(year, monthIdx);
+        // Only include data if we have meaningful values
+        if (totals.netWorth !== 0 || year === selectedYear) {
+          dataPoint[`netWorth_${year}`] = totals.netWorth;
+        }
+      });
+
+      chartData.push(dataPoint);
+    });
+
+    return {
+      chartData,
+      years: years.filter(y => {
+        // Only include years that have some data
+        return chartData.some(d => d[`netWorth_${y}`] !== undefined);
+      }),
+      chartType: 'monthly'
+    };
+  };
+
+  // Prepare annual YoY data (for 3Y/5Y/ALL timeframes)
+  const prepareAnnualYoYData = (years) => {
+    const chartData = [];
+    console.log('Preparing annual YoY data for years:', years);
+    console.log('MultiYearData available:', Object.keys(multiYearData));
+
+    years.forEach(year => {
+      console.log(`Processing year ${year}...`);
+
+      // Calculate annual totals - look for the best available month data
+      let yearTotal = 0;
+      let hasData = false;
+      let bestMonth = -1;
+
+      // Check all months for this year to find data
+      for (let monthIdx = 0; monthIdx < 12; monthIdx++) {
+        const totals = calculateTotalsForYearMonth(year, monthIdx);
+        console.log(`Year ${year}, Month ${monthIdx}:`, totals);
+
+        if (totals.netWorth !== 0) {
+          hasData = true;
+          bestMonth = monthIdx;
+          yearTotal = totals.netWorth; // Keep updating to get the latest month's data
+        }
+      }
+
+      // For the current real year, use the latest available data
+      const realCurrentYear = new Date().getFullYear();
+      const realCurrentMonth = new Date().getMonth();
+
+      if (year === realCurrentYear && year === selectedYear) {
+        // If viewing the actual current year, use current month
+        const currentTotals = calculateTotalsForYearMonth(year, realCurrentMonth);
+        if (currentTotals.netWorth !== 0 || !hasData) {
+          yearTotal = currentTotals.netWorth;
+          hasData = true;
+          console.log(`Using current real year ${year} data:`, currentTotals);
+        }
+      } else if (year === selectedYear) {
+        // If viewing a past selected year, use December or last available month
+        if (!hasData || yearTotal === 0) {
+          const decemberTotals = calculateTotalsForYearMonth(year, 11);
+          if (decemberTotals.netWorth !== 0) {
+            yearTotal = decemberTotals.netWorth;
+            hasData = true;
+            console.log(`Using selected year ${year} December data:`, decemberTotals);
+          }
+        }
+      }
+
+      // Always include years in our target range, even with zero data to show progression
+      console.log(`Year ${year}: hasData=${hasData}, yearTotal=${yearTotal}, bestMonth=${bestMonth}`);
+
+      chartData.push({
+        year: year.toString(),
+        netWorth: yearTotal,
+        yearNum: year,
+        hasActualData: hasData
+      });
+    });
+
+    // Sort by year
+    chartData.sort((a, b) => a.yearNum - b.yearNum);
+
+    console.log('Final annual chart data:', chartData);
+
+    return {
+      chartData,
+      years: chartData.map(d => d.yearNum),
+      chartType: 'annual'
+    };
   };
 
   // Memoize asset breakdown calculations to prevent re-renders
@@ -726,8 +1093,8 @@ const NetWorthTracker = () => {
               }`}
             >
               <span className="flex items-center gap-2">
-                <Briefcase className="w-4 h-4" />
-                Data Entry
+                <FileSpreadsheet className="w-4 h-4" />
+                Netsheet
               </span>
             </button>
             <button
@@ -746,7 +1113,7 @@ const NetWorthTracker = () => {
           </div>
         </div>
 
-        {/* Data Entry Tab */}
+        {/* Netsheet Tab */}
         {activeTab === 'data' && (
           <>
             {/* Month selector and copy button */}
@@ -1221,75 +1588,220 @@ const NetWorthTracker = () => {
         {/* Charts Tab */}
         {activeTab === 'charts' && (
           <div className="space-y-4">
+            {/* Chart Controls */}
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+                {/* View Type Toggle */}
+                <div className="bg-gray-100 rounded-lg p-1 flex">
+                  <button
+                    onClick={() => setChartViewType('MoM')}
+                    className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                      chartViewType === 'MoM'
+                        ? 'bg-blue-500 text-white'
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    Monthly
+                  </button>
+                  <button
+                    onClick={() => setChartViewType('YoY')}
+                    className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                      chartViewType === 'YoY'
+                        ? 'bg-blue-500 text-white'
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    Yearly
+                  </button>
+                </div>
+
+                {/* Time Period Selector */}
+                <div className="flex gap-1">
+                  {(
+                    chartViewType === 'MoM'
+                      ? ['YTD', '3M', '6M', '1Y', 'ALL']
+                      : ['YTD', '1Y', '3Y', '5Y', 'ALL']
+                  ).map((period) => (
+                    <button
+                      key={period}
+                      onClick={() => setTimeFrame(period)}
+                      className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                        timeFrame === period
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {period}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             {/* Net Worth Over Time */}
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-blue-600" />
-                Net Worth Progression - {selectedYear}
+                {chartViewType === 'MoM' ? `Net Worth Progression - ${selectedYear}` : `Net Worth Comparison - ${timeFrame}`}
               </h3>
               <ResponsiveContainer width="100%" height={350}>
-                <ComposedChart data={prepareNetWorthChartData()}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis tickFormatter={(value) => formatCurrencyShort(value)} />
-                  <Tooltip
-                    formatter={(value, name, props) => {
-                      const data = props.payload;
-                      let tooltip = [formatCurrency(value), name];
+                {chartViewType === 'MoM' ? (
+                  <ComposedChart data={prepareNetWorthChartData()}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis tickFormatter={(value) => formatCurrencyShort(value)} />
+                    <Tooltip
+                      formatter={(value, name, props) => {
+                        const data = props.payload;
+                        let tooltip = [formatCurrency(value), name];
 
-                      // Add percentage growth information
-                      if (name === 'Assets' && data.assetGrowth !== null) {
-                        const growth = data.assetGrowth >= 0 ? `+${data.assetGrowth.toFixed(1)}%` : `${data.assetGrowth.toFixed(1)}%`;
-                        const prevValue = data.prevAssets ? formatCurrency(data.prevAssets) : 'N/A';
-                        tooltip[1] = `${name} (${growth} from ${prevValue})`;
-                      } else if (name === 'Liabilities' && data.liabilityGrowth !== null) {
-                        const growth = data.liabilityGrowth >= 0 ? `+${data.liabilityGrowth.toFixed(1)}%` : `${data.liabilityGrowth.toFixed(1)}%`;
-                        const prevValue = data.prevLiabilities ? formatCurrency(data.prevLiabilities) : 'N/A';
-                        tooltip[1] = `${name} (${growth} from ${prevValue})`;
-                      } else if (name === 'Net Worth' && data.netWorthGrowth !== null) {
-                        const growth = data.netWorthGrowth >= 0 ? `+${data.netWorthGrowth.toFixed(1)}%` : `${data.netWorthGrowth.toFixed(1)}%`;
-                        const prevValue = data.prevNetWorth ? formatCurrency(data.prevNetWorth) : 'N/A';
-                        tooltip[1] = `${name} (${growth} from ${prevValue})`;
-                      }
+                        // Add percentage growth information
+                        if (name === 'Assets' && data.assetGrowth !== null) {
+                          const growth = data.assetGrowth >= 0 ? `+${data.assetGrowth.toFixed(1)}%` : `${data.assetGrowth.toFixed(1)}%`;
+                          const prevValue = data.prevAssets ? formatCurrency(data.prevAssets) : 'N/A';
+                          tooltip[1] = `${name} (${growth} from ${prevValue})`;
+                        } else if (name === 'Liabilities' && data.liabilityGrowth !== null) {
+                          const growth = data.liabilityGrowth >= 0 ? `+${data.liabilityGrowth.toFixed(1)}%` : `${data.liabilityGrowth.toFixed(1)}%`;
+                          const prevValue = data.prevLiabilities ? formatCurrency(data.prevLiabilities) : 'N/A';
+                          tooltip[1] = `${name} (${growth} from ${prevValue})`;
+                        } else if (name === 'Net Worth' && data.netWorthGrowth !== null) {
+                          const growth = data.netWorthGrowth >= 0 ? `+${data.netWorthGrowth.toFixed(1)}%` : `${data.netWorthGrowth.toFixed(1)}%`;
+                          const prevValue = data.prevNetWorth ? formatCurrency(data.prevNetWorth) : 'N/A';
+                          tooltip[1] = `${name} (${growth} from ${prevValue})`;
+                        }
 
-                      return tooltip;
-                    }}
-                    contentStyle={{
-                      backgroundColor: '#ffffff',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                      fontSize: '14px'
-                    }}
-                  />
-                  <Legend />
-                  <Area
-                    type="monotone"
-                    dataKey="assets"
-                    stackId="1"
-                    stroke="#10b981"
-                    fill="#10b981"
-                    fillOpacity={0.6}
-                    name="Assets"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="liabilities"
-                    stackId="2"
-                    stroke="#ef4444"
-                    fill="#ef4444"
-                    fillOpacity={0.6}
-                    name="Liabilities"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="netWorth"
-                    stroke="#3b82f6"
-                    strokeWidth={3}
-                    name="Net Worth"
-                    dot={{ fill: '#3b82f6', r: 4 }}
-                  />
-                </ComposedChart>
+                        return tooltip;
+                      }}
+                      contentStyle={{
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                        fontSize: '14px'
+                      }}
+                    />
+                    <Legend />
+                    <Area
+                      type="monotone"
+                      dataKey="assets"
+                      stackId="1"
+                      stroke="#10b981"
+                      fill="#10b981"
+                      fillOpacity={0.6}
+                      name="Assets"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="liabilities"
+                      stackId="2"
+                      stroke="#ef4444"
+                      fill="#ef4444"
+                      fillOpacity={0.6}
+                      name="Liabilities"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="netWorth"
+                      stroke="#3b82f6"
+                      strokeWidth={3}
+                      name="Net Worth"
+                      dot={{ fill: '#3b82f6', r: 4 }}
+                    />
+                  </ComposedChart>
+                ) : (
+                  // Year-over-Year Line Chart
+                  (() => {
+                    const yoyData = prepareYoYChartData();
+                    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+
+                    // Handle empty data case
+                    if (!yoyData || !yoyData.chartData || yoyData.chartData.length === 0) {
+                      return (
+                        <div className="flex items-center justify-center h-full text-gray-500">
+                          <div className="text-center">
+                            <p className="mb-2">No multi-year data available</p>
+                            <p className="text-sm">Add data to multiple years to see Year-over-Year comparison</p>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    const isMonthlyChart = yoyData.chartType === 'monthly';
+                    const xAxisKey = isMonthlyChart ? 'month' : 'year';
+
+                    return (
+                      <RechartsLineChart data={yoyData.chartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey={xAxisKey}
+                          tick={{ fontSize: 12 }}
+                        />
+                        <YAxis tickFormatter={(value) => formatCurrencyShort(value)} />
+                        <Tooltip
+                          formatter={(value, name) => {
+                            if (isMonthlyChart) {
+                              if (typeof name === 'string' && name.startsWith('netWorth_')) {
+                                const year = name.replace('netWorth_', '');
+                                return [formatCurrency(value), `${year}`];
+                              }
+                              return [formatCurrency(value), name];
+                            } else {
+                              return [formatCurrency(value), 'Net Worth'];
+                            }
+                          }}
+                          labelFormatter={(label) => {
+                            return isMonthlyChart ? `Month: ${label}` : `Year: ${label}`;
+                          }}
+                          contentStyle={{
+                            backgroundColor: '#ffffff',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                            fontSize: '14px'
+                          }}
+                        />
+                        <Legend
+                          formatter={(value) => {
+                            if (isMonthlyChart) {
+                              if (typeof value === 'string' && value.startsWith('netWorth_')) {
+                                return value.replace('netWorth_', '');
+                              }
+                              return value;
+                            } else {
+                              return 'Net Worth';
+                            }
+                          }}
+                        />
+                        {isMonthlyChart ? (
+                          // Monthly chart: multiple year lines
+                          (yoyData.years || []).map((year, index) => (
+                            <Line
+                              key={year}
+                              type="monotone"
+                              dataKey={`netWorth_${year}`}
+                              stroke={colors[index % colors.length]}
+                              strokeWidth={2}
+                              name={`netWorth_${year}`}
+                              dot={{ r: 3 }}
+                              connectNulls={false}
+                            />
+                          ))
+                        ) : (
+                          // Annual chart: single line showing year progression
+                          <Line
+                            type="monotone"
+                            dataKey="netWorth"
+                            stroke={colors[0]}
+                            strokeWidth={3}
+                            name="netWorth"
+                            dot={{ r: 4 }}
+                            connectNulls={false}
+                          />
+                        )}
+                      </RechartsLineChart>
+                    );
+                  })()
+                )}
               </ResponsiveContainer>
             </div>
 
@@ -1463,7 +1975,7 @@ const NetWorthTracker = () => {
               </div>
             </div>
 
-            {/* Year over Year Trend */}
+            {/* Yearly Trend */}
             {false && (
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">

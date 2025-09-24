@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 // import { useAuth } from '../contexts/AuthContext'; // Reserved for future use
 import { useDemo } from '../contexts/DemoContext';
 import { useFinancialDataWithCurrency } from './useFinancialDataWithCurrency';
@@ -8,12 +8,15 @@ import { useFinancialDataWithCurrency } from './useFinancialDataWithCurrency';
  */
 export const useFinancialDataDemo = (selectedYear) => {
   // const { user } = useAuth(); // Reserved for future use
-  const { 
-    isDemo, 
-    demoData, 
+  const {
+    isDemo,
+    demoData,
     updateDemoData,
-    loading: demoLoading 
+    loading: demoLoading
   } = useDemo();
+
+  // Cache for demo multi-year data to prevent repeated generation
+  const demoFetchCache = useRef({});
   
   // Use real data hook when authenticated
   const realDataHook = useFinancialDataWithCurrency(selectedYear);
@@ -32,6 +35,8 @@ export const useFinancialDataDemo = (selectedYear) => {
   // Load demo data when in demo mode, filtering by selected year
   useEffect(() => {
     if (isDemo && demoData) {
+      // Clear the multi-year cache when demo data changes to ensure fresh data
+      demoFetchCache.current = {};
       // Filter snapshots by selected year
       const yearFilteredSnapshots = {};
       if (demoData.snapshots) {
@@ -46,14 +51,32 @@ export const useFinancialDataDemo = (selectedYear) => {
         });
       }
 
-      setDemoState({
-        loading: false,
-        error: null,
-        yearData: demoData.yearData,
-        accounts: demoData.accounts || { assets: [], liabilities: [] },
-        goals: demoData.goals || [],
-        snapshots: yearFilteredSnapshots,
-        snapshotsCurrency: yearFilteredSnapshots
+      // Only update state if accounts have actually changed
+      const newAccounts = demoData.accounts || { assets: [], liabilities: [] };
+
+      setDemoState(prevState => {
+        // If accounts are the same reference, don't update to prevent re-renders
+        if (prevState.accounts === newAccounts) {
+          return {
+            ...prevState,
+            loading: false,
+            error: null,
+            yearData: demoData.yearData,
+            goals: demoData.goals || [],
+            snapshots: yearFilteredSnapshots,
+            snapshotsCurrency: yearFilteredSnapshots
+          };
+        }
+
+        return {
+          loading: false,
+          error: null,
+          yearData: demoData.yearData,
+          accounts: newAccounts,
+          goals: demoData.goals || [],
+          snapshots: yearFilteredSnapshots,
+          snapshotsCurrency: yearFilteredSnapshots
+        };
       });
     }
   }, [isDemo, demoData, selectedYear]);
@@ -269,8 +292,63 @@ export const useFinancialDataDemo = (selectedYear) => {
       getSnapshotValue: demoGetSnapshotValue,
       getSnapshotCurrencyData: demoGetSnapshotCurrencyData,
       
-      // Placeholder functions that demo doesn't support
+      // Demo multi-year data generation
       fetchSnapshots: async () => ({ success: true }),
+      fetchMultiYearSnapshots: async (accountIds, years) => {
+        if (!demoData || !accountIds || !years) {
+          return {};
+        }
+
+        // Add a simple debounce mechanism
+        const cacheKey = `${accountIds.join(',')}_${years.join(',')}`;
+        if (demoFetchCache.current[cacheKey]) {
+          return demoFetchCache.current[cacheKey];
+        }
+
+        const multiYearData = {};
+        const currentYear = new Date().getFullYear();
+
+        // Safety check to prevent excessive computation
+        if (accountIds.length > 50 || years.length > 10) {
+          console.warn('Demo: Too many accounts or years requested, limiting generation');
+          return {};
+        }
+
+        years.forEach(year => {
+          if (year <= currentYear && year >= currentYear - 4) {
+            multiYearData[year] = {
+              snapshots: {},
+              snapshotsCurrency: {}
+            };
+
+            // Use actual demo snapshot data instead of generating new data
+            accountIds.forEach(accountId => {
+              for (let month = 0; month < 12; month++) {
+                const key = `${accountId}_${month}`;
+                const snapshotKey = `${month}-${year}`;
+
+                // Get the real snapshot data from demoData.snapshots
+                const snapshotData = demoData.snapshots?.[accountId]?.[snapshotKey];
+
+                if (snapshotData && snapshotData.value !== undefined) {
+                  multiYearData[year].snapshots[key] = snapshotData.value;
+                  multiYearData[year].snapshotsCurrency[key] = {
+                    originalValue: snapshotData.original_value || snapshotData.value,
+                    originalCurrency: snapshotData.original_currency || 'USD',
+                    displayValue: snapshotData.value,
+                    displayCurrency: 'USD',
+                    entryDate: new Date(year, month, 15).toISOString()
+                  };
+                }
+              }
+            });
+          }
+        });
+
+        // Cache the result to prevent regeneration
+        demoFetchCache.current[cacheKey] = multiYearData;
+        return multiYearData;
+      },
       updateAccountOrder: async () => ({ success: true }),
       toggleAccountActive: async () => ({ success: true }),
       loadData: async () => ({ success: true }),

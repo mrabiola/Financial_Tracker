@@ -203,6 +203,108 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
     }
   }, [selectedYear, displayCurrency]);
 
+  // Fetch snapshots for multiple years (for YoY functionality)
+  const fetchMultiYearSnapshots = useCallback(async (accountIds, years) => {
+    if (!user || !years || years.length === 0) {
+      return {};
+    }
+
+    try {
+      // For YoY chart: Get ALL user accounts across ALL years to capture historical data
+      // This allows accounts created in different years to show in YoY view
+      const { data: allUserAccounts, error: accountError } = await supabase
+        .from('accounts')
+        .select('id, name, type')
+        .eq('user_id', user.id);
+
+      if (accountError) throw accountError;
+
+      // Use all historical account IDs, not just current year accounts
+      const allAccountIds = allUserAccounts?.map(acc => acc.id) || [];
+
+      if (allAccountIds.length === 0) {
+        return {};
+      }
+
+      const { data: snapshots, error } = await supabase
+        .from('account_snapshots')
+        .select('*')
+        .in('account_id', allAccountIds)
+        .in('year', years);
+
+      if (error) throw error;
+
+      console.log('🔍 REAL USER fetchMultiYearSnapshots DEBUG:');
+      console.log('📊 Raw snapshots from DB:', snapshots?.length || 0);
+      console.log('📅 Requested years:', years);
+      console.log('🏦 All historical account IDs:', allAccountIds.length);
+      console.log('🏦 Original current year account IDs:', accountIds?.length || 0);
+      if (snapshots?.length > 0) {
+        console.log('📋 Sample snapshot:', snapshots[0]);
+        const yearBreakdown = {};
+        snapshots.forEach(s => {
+          yearBreakdown[s.year] = (yearBreakdown[s.year] || 0) + 1;
+        });
+        console.log('📈 Snapshots by year:', yearBreakdown);
+      }
+
+      // Process snapshots with currency conversion and organize by year
+      const multiYearData = {};
+
+      await Promise.all((snapshots || []).map(async (snapshot) => {
+        const year = snapshot.year;
+        const key = `${snapshot.account_id}_${snapshot.month}`;
+
+        if (!multiYearData[year]) {
+          multiYearData[year] = {
+            snapshots: {},
+            snapshotsCurrency: {}
+          };
+        }
+
+        // Handle legacy data
+        const originalValue = snapshot.original_value ?? snapshot.value;
+        const originalCurrency = snapshot.original_currency || displayCurrency;
+
+        // Convert to display currency
+        const displayValue = await convertValue(originalValue, originalCurrency, displayCurrency);
+
+        multiYearData[year].snapshots[key] = displayValue;
+        multiYearData[year].snapshotsCurrency[key] = {
+          originalValue,
+          originalCurrency,
+          displayValue,
+          displayCurrency,
+          entryDate: snapshot.entry_date || snapshot.created_at
+        };
+      }));
+
+      console.log('✅ FINAL multiYearData result:');
+      Object.keys(multiYearData).forEach(year => {
+        const yearData = multiYearData[year];
+        console.log(`📅 Year ${year}: ${Object.keys(yearData.snapshots).length} snapshots`);
+        if (Object.keys(yearData.snapshots).length > 0) {
+          console.log(`   Sample keys:`, Object.keys(yearData.snapshots).slice(0, 3));
+          console.log(`   Sample values:`, Object.keys(yearData.snapshots).slice(0, 3).map(key => yearData.snapshots[key]));
+        }
+      });
+
+      // Add account type mapping for YoY chart processing
+      const accountTypeMap = {};
+      (allUserAccounts || []).forEach(account => {
+        accountTypeMap[account.id] = account.type;
+      });
+
+      return {
+        ...multiYearData,
+        accountTypeMap
+      };
+    } catch (err) {
+      console.error('Error fetching multi-year snapshots:', err);
+      return {};
+    }
+  }, [user, displayCurrency]);
+
   // Load all data with debounce to prevent duplicate calls
   const loadData = useCallback(async () => {
     // Prevent duplicate simultaneous loads
@@ -515,6 +617,7 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
     deleteGoal,
     getSnapshotValue,
     getSnapshotCurrencyData,
+    fetchMultiYearSnapshots,
     reload: loadData
   };
 };

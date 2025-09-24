@@ -22,6 +22,29 @@ This project transforms a single-user localStorage-based financial tracker into 
 
 ---
 
+## 🆕 Recent Updates (September 23, 2025)
+
+### 📊 **Year-over-Year (YoY) Chart Fixes & Enhancements**
+- **Historical Data Support**: Fixed YoY chart to properly display data from previous years (2023, 2024)
+- **Multi-Year Account Handling**: YoY chart now queries ALL user accounts across all years, not just current year
+- **Account Type Mapping**: Added proper asset/liability classification for historical accounts
+- **Data Processing Fix**: Corrected `calculateTotalsForYearMonth` to handle both current and historical data
+- **API Enhancement**: Modified `fetchMultiYearSnapshots` to include account type mapping for accurate calculations
+
+### 🎨 **Chart UI Improvements**
+- **Renamed Chart Views**: Changed "Month over Month" to "Monthly" and "Year over Year" to "Yearly" for cleaner UI
+- **Better Data Visualization**: YoY chart now accurately shows historical net worth progression
+
+### 🔐 **Authentication Flow Enhancements**
+- **Logo Navigation**: WealthTrak logo on signin and signup pages now links back to welcome/landing page
+- **Improved User Experience**: Users can easily navigate back to main page from auth screens
+
+### 🏗️ **Technical Improvements**
+- **Demo Data Generation**: Enhanced demo data generator to create multi-year snapshots (2023, 2024, 2025)
+- **Historical Data Handling**: Demo mode now generates realistic historical financial data for YoY comparisons
+- **Performance Optimization**: Fixed infinite loop issues in demo data generation with proper caching
+- **ESLint Compliance**: Resolved all dependency warnings in React hooks
+
 ## 🆕 Recent Updates (September 18, 2025)
 
 ### 🎨 **UI/UX Enhancements**
