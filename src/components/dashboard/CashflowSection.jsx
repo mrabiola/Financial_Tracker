@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Copy, Plus, Trash2, Calendar, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Activity, DollarSign, AlertCircle, CheckCircle, Edit, BarChart3, LineChart, ChevronDown, Eraser, X } from 'lucide-react';
-import { XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Line, PieChart, Pie, Cell, Bar, BarChart, LineChart as RechartsLineChart } from 'recharts';
+import { XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Line, PieChart, Pie, Cell, Bar, LineChart as RechartsLineChart } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CashflowSection = ({
