@@ -24,6 +24,20 @@ This project transforms a single-user localStorage-based financial tracker into 
 
 ## 🆕 Recent Updates (September 30, 2025)
 
+### 📊 **Advanced Cash Flow Analytics with Time Range Filters**
+- **Dynamic Time Range Selection**: 5 toggle options (1M, YTD, 3M, 6M, ALL) for flexible data analysis
+- **Adaptive Chart Visualization**: Cash Flow Overview chart hidden in 1M view (data already in main dashboard)
+- **Intelligent Chart Display**: Income vs Expense Trends chart hidden in 1M view (no trend with single month)
+- **Smart Data Aggregation**: All charts (Top Spending, Income Sources, Expense Categories) aggregate data based on selected time range
+- **Clean UI Integration**: Compact time range toggle with Clock icon and "View Range" label
+
+### 🎨 **Enhanced Pie Chart Visualizations**
+- **"Other" Category Grouping**: Automatically groups items <5% into "Other" category for cleaner charts
+- **Interactive Breakdown Panels**: Hover over "Other" slice to see detailed breakdown with individual items and percentages
+- **Professional Label Positioning**: Labels positioned around pie slices matching Asset Distribution style
+- **Larger Chart Size**: Increased from 250px to 300px height for better readability
+- **Consistent Design**: Both Income Sources and Expense Categories charts match Analytics page styling
+
 ### 🐛 **Critical Bug Fixes**
 - **Duplicate Account Import Fix**: Resolved major bug where Excel import created duplicate accounts instead of consolidating monthly data
 - **Account Consolidation Logic**: Implemented proper grouping by account name before import to prevent duplicates
@@ -40,6 +54,8 @@ This project transforms a single-user localStorage-based financial tracker into 
 - **ESLint Cleanup**: Removed unused variables (cashflowLoading, cashflowError, updateCashflowGoals, reloadCashflow)
 - **Code Quality**: Zero compilation warnings for clean, maintainable codebase
 - **Import Algorithm**: Refactored to use Map-based grouping for efficient account deduplication
+- **Data Processing Logic**: Enhanced category data preparation with time-range aware aggregation
+- **Performance Optimization**: Efficient "Other" category grouping using 5% threshold logic
 
 ### 📝 **Import System Enhancement Details**
 **Before**: 401K with 3 monthly entries (Jun, Jul, Mar) → Created 3 separate "401K" accounts

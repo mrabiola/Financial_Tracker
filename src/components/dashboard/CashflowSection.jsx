@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Copy, Plus, Trash2, Calendar, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Activity, DollarSign, AlertCircle, CheckCircle, Edit, BarChart3, LineChart, ChevronDown, Eraser, X } from 'lucide-react';
+import { Copy, Plus, Trash2, Calendar, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Activity, DollarSign, AlertCircle, CheckCircle, Edit, BarChart3, LineChart, ChevronDown, Eraser, X, Clock } from 'lucide-react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Line, PieChart, Pie, Cell, Bar, LineChart as RechartsLineChart } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -32,6 +32,9 @@ const CashflowSection = ({
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [showInsights] = useState(true); // eslint-disable-line no-unused-vars
   const [openDeleteDropdown, setOpenDeleteDropdown] = useState(null);
+  const [timeFrame, setTimeFrame] = useState('ALL'); // '1M', 'YTD', '3M', '6M', 'ALL'
+  const [showIncomeOtherTooltip, setShowIncomeOtherTooltip] = useState(false);
+  const [showExpenseOtherTooltip, setShowExpenseOtherTooltip] = useState(false);
   const inputRef = useRef(null);
   const monthButtonRef = useRef(null);
 
@@ -226,10 +229,45 @@ const CashflowSection = ({
     return insights.slice(0, 3);
   };
 
-  // Prepare waterfall chart data (12 months)
+  // Get filtered month indices based on time frame
+  const getFilteredMonthIndices = () => {
+    const currentDate = new Date();
+    const endMonth = currentDate.getMonth();
+    const endYear = currentDate.getFullYear();
+    let startMonth = 0;
+
+    // For 1M, always return current selected month
+    if (timeFrame === '1M') {
+      return [selectedMonth];
+    }
+
+    // Only apply filtering if viewing the current year
+    if (selectedYear !== endYear || timeFrame === 'ALL') {
+      return Array.from({ length: 12 }, (_, i) => i);
+    }
+
+    switch (timeFrame) {
+      case 'YTD':
+        // From January to current month
+        return Array.from({ length: endMonth + 1 }, (_, i) => i);
+      case '3M':
+        // Last 3 months
+        startMonth = Math.max(0, endMonth - 2);
+        return Array.from({ length: endMonth - startMonth + 1 }, (_, i) => startMonth + i);
+      case '6M':
+        // Last 6 months
+        startMonth = Math.max(0, endMonth - 5);
+        return Array.from({ length: endMonth - startMonth + 1 }, (_, i) => startMonth + i);
+      default:
+        return Array.from({ length: 12 }, (_, i) => i);
+    }
+  };
+
+  // Prepare waterfall chart data (filtered by time frame)
   const prepareWaterfallData = () => {
-    return months.map((month, index) => ({
-      month,
+    const filteredIndices = getFilteredMonthIndices();
+    return filteredIndices.map((index) => ({
+      month: months[index],
       income: metrics.monthlyIncome[index] || 0,
       expenses: metrics.monthlyExpenses[index] || 0,
       netFlow: metrics.monthlyNetCashflow[index] || 0
@@ -237,19 +275,20 @@ const CashflowSection = ({
   };
 
 
-  // Prepare trend data with moving averages
+  // Prepare trend data with moving averages (filtered by time frame)
   const prepareTrendData = () => {
     const movingAvgWindow = 3;
+    const filteredIndices = getFilteredMonthIndices();
 
-    return months.map((month, index) => {
-      // Calculate 3-month moving averages
+    return filteredIndices.map((index, arrayIndex) => {
+      // Calculate 3-month moving averages using the original metrics arrays
       const startIdx = Math.max(0, index - movingAvgWindow + 1);
       const endIdx = index + 1;
       const avgIncome = metrics.monthlyIncome.slice(startIdx, endIdx).reduce((sum, val) => sum + val, 0) / (endIdx - startIdx);
       const avgExpenses = metrics.monthlyExpenses.slice(startIdx, endIdx).reduce((sum, val) => sum + val, 0) / (endIdx - startIdx);
 
       return {
-        month,
+        month: months[index],
         income: metrics.monthlyIncome[index],
         expenses: metrics.monthlyExpenses[index],
         movingAvgIncome: index >= movingAvgWindow - 1 ? avgIncome : null,
@@ -259,25 +298,98 @@ const CashflowSection = ({
     });
   };
 
-  // Prepare category data for selected month
+  // Prepare category data based on time frame filter
   const prepareCategoryData = (type) => {
     const categories = type === 'income' ? incomeCategories : expenseCategories;
+    const filteredIndices = getFilteredMonthIndices();
+
     return categories.map(cat => {
-      const monthValue = type === 'income'
-        ? cashflowData.income[cat.name]?.[selectedMonth] || 0
-        : cashflowData.expenses[cat.name]?.[selectedMonth] || 0;
+      // Aggregate values across filtered months
+      const totalValue = filteredIndices.reduce((sum, monthIndex) => {
+        const monthValue = type === 'income'
+          ? cashflowData.income[cat.name]?.[monthIndex] || 0
+          : cashflowData.expenses[cat.name]?.[monthIndex] || 0;
+        return sum + monthValue;
+      }, 0);
 
       return {
         name: cat.name,
-        value: monthValue,
+        value: totalValue,
         icon: cat.icon
       };
     }).filter(item => item.value > 0);
   };
 
   const insights = generateInsights();
-  const incomeData = prepareCategoryData('income');
-  const expenseData = prepareCategoryData('expenses');
+  const rawIncomeData = prepareCategoryData('income');
+  const rawExpenseData = prepareCategoryData('expenses');
+
+  // Process income data with "Other" grouping
+  const processedIncomeData = (() => {
+    if (rawIncomeData.length === 0) return { majorItems: [], minorItems: [], totalValue: 0 };
+
+    const totalValue = rawIncomeData.reduce((sum, item) => sum + item.value, 0);
+    const threshold = totalValue * 0.05; // 5% threshold
+    const majorItems = [];
+    const minorItems = [];
+
+    rawIncomeData.forEach(item => {
+      if (item.value >= threshold) {
+        majorItems.push(item);
+      } else {
+        minorItems.push(item);
+      }
+    });
+
+    // Add "Other" category if there are minor items
+    if (minorItems.length > 0) {
+      const otherTotal = minorItems.reduce((sum, item) => sum + item.value, 0);
+      majorItems.push({
+        name: 'Other',
+        value: otherTotal,
+        icon: '💰',
+        isOther: true,
+        count: minorItems.length
+      });
+    }
+
+    return { majorItems, minorItems, totalValue };
+  })();
+
+  // Process expense data with "Other" grouping
+  const processedExpenseData = (() => {
+    if (rawExpenseData.length === 0) return { majorItems: [], minorItems: [], totalValue: 0 };
+
+    const totalValue = rawExpenseData.reduce((sum, item) => sum + item.value, 0);
+    const threshold = totalValue * 0.05; // 5% threshold
+    const majorItems = [];
+    const minorItems = [];
+
+    rawExpenseData.forEach(item => {
+      if (item.value >= threshold) {
+        majorItems.push(item);
+      } else {
+        minorItems.push(item);
+      }
+    });
+
+    // Add "Other" category if there are minor items
+    if (minorItems.length > 0) {
+      const otherTotal = minorItems.reduce((sum, item) => sum + item.value, 0);
+      majorItems.push({
+        name: 'Other',
+        value: otherTotal,
+        icon: '📦',
+        isOther: true,
+        count: minorItems.length
+      });
+    }
+
+    return { majorItems, minorItems, totalValue };
+  })();
+
+  const incomeData = processedIncomeData.majorItems;
+  const expenseData = processedExpenseData.majorItems;
 
   const COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#f97316'];
 
@@ -774,69 +886,96 @@ const CashflowSection = ({
 
       {/* Charts Section */}
       <div className="space-y-6">
-        {/* Primary Waterfall Chart - Fixed Color Coding */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white rounded-lg shadow-sm p-6"
-        >
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Activity className="w-5 h-5 text-blue-600" />
-            Cash Flow Overview - {selectedYear}
-          </h3>
-          <ResponsiveContainer width="100%" height={400}>
-            <ComposedChart data={prepareWaterfallData()}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis tickFormatter={(value) => formatCurrencyShort(value)} />
-              <Tooltip
-                formatter={(value, name) => [formatCurrency(Math.abs(value)), name]}
-                labelFormatter={(label) => `${label} ${selectedYear}`}
-                contentStyle={{
-                  backgroundColor: '#ffffff',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                }}
-              />
-              <Legend />
-              <Bar
-                dataKey="income"
-                name="Income"
-                fill="#10b981"
-                radius={[2, 2, 0, 0]}
-              />
-              <Bar
-                dataKey="expenses"
-                name="Expenses"
-                fill="#ef4444"
-                radius={[2, 2, 0, 0]}
-              />
-              <Line
-                type="monotone"
-                dataKey="netFlow"
-                stroke="#3b82f6"
-                strokeWidth={3}
-                name="Net Flow"
-                dot={(props) => {
-                  const { cx, cy, payload } = props;
-                  const isSelected = payload && payload.month === months[selectedMonth];
-                  return (
-                    <circle
-                      cx={cx}
-                      cy={cy}
-                      r={isSelected ? 8 : 4}
-                      fill={isSelected ? '#1d4ed8' : '#3b82f6'}
-                      stroke="white"
-                      strokeWidth={2}
-                    />
-                  );
-                }}
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </motion.div>
+        {/* Time Range Toggle - Compact & Elegant */}
+        <div className="flex items-center justify-end gap-3 px-2 py-2">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-gray-500" />
+            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Range</span>
+          </div>
+          <div className="flex gap-1.5 bg-gray-100 rounded-lg p-1">
+            {['1M', 'YTD', '3M', '6M', 'ALL'].map((period) => (
+              <button
+                key={period}
+                onClick={() => setTimeFrame(period)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all duration-200 ${
+                  timeFrame === period
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:text-blue-600'
+                }`}
+              >
+                {period}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Primary Cash Flow Chart - Hidden for 1M view */}
+        {timeFrame !== '1M' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white rounded-lg shadow-sm p-6"
+          >
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-blue-600" />
+              Cash Flow Overview - {selectedYear}
+            </h3>
+
+            <ResponsiveContainer width="100%" height={400}>
+              <ComposedChart data={prepareWaterfallData()}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis tickFormatter={(value) => formatCurrencyShort(value)} />
+                <Tooltip
+                  formatter={(value, name) => [formatCurrency(Math.abs(value)), name]}
+                  labelFormatter={(label) => `${label} ${selectedYear}`}
+                  contentStyle={{
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                  }}
+                />
+                <Legend />
+                <Bar
+                  dataKey="income"
+                  name="Income"
+                  fill="#10b981"
+                  radius={[2, 2, 0, 0]}
+                />
+                <Bar
+                  dataKey="expenses"
+                  name="Expenses"
+                  fill="#ef4444"
+                  radius={[2, 2, 0, 0]}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="netFlow"
+                  stroke="#3b82f6"
+                  strokeWidth={3}
+                  name="Net Flow"
+                  dot={(props) => {
+                    const { cx, cy, payload } = props;
+                    const isSelected = payload && payload.month === months[selectedMonth];
+                    return (
+                      <circle
+                        cx={cx}
+                        cy={cy}
+                        r={isSelected ? 8 : 4}
+                        fill={isSelected ? '#1d4ed8' : '#3b82f6'}
+                        stroke="white"
+                        strokeWidth={2}
+                      />
+                    );
+                  }}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </motion.div>
+        )}
 
         {/* Top Spending Categories - Dynamic Progress Bars */}
         <motion.div
@@ -847,22 +986,36 @@ const CashflowSection = ({
         >
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-orange-600" />
-            Top Spending Categories - {months[selectedMonth]} {selectedYear}
+            Top Spending Categories - {timeFrame === '1M' ? `${months[selectedMonth]} ${selectedYear}` : timeFrame === 'ALL' ? `${selectedYear}` : timeFrame}
           </h3>
 
           {(() => {
-            // Get spending data for selected month from actual cashflow data
+            // Get spending data based on time frame filter
             const getTopSpending = () => {
               if (!cashflowData.expenses) return [];
 
-              // Extract data for the selected month
-              const monthlyData = Object.entries(cashflowData.expenses)
-                .map(([category, monthlyValues]) => ({
-                  category,
-                  amount: Array.isArray(monthlyValues) ? (monthlyValues[selectedMonth] || 0) : 0,
-                  icon: expenseCategories.find(cat => cat.name === category)?.icon || '📦'
-                }))
-                .filter(item => item.amount > 0) // Only show categories with actual spending
+              const filteredIndices = getFilteredMonthIndices();
+
+              // Aggregate data across filtered months
+              const categoryTotals = {};
+
+              Object.entries(cashflowData.expenses).forEach(([category, monthlyValues]) => {
+                if (Array.isArray(monthlyValues)) {
+                  const total = filteredIndices.reduce((sum, monthIndex) => {
+                    return sum + (monthlyValues[monthIndex] || 0);
+                  }, 0);
+
+                  if (total > 0) {
+                    categoryTotals[category] = {
+                      category,
+                      amount: total,
+                      icon: expenseCategories.find(cat => cat.name === category)?.icon || '📦'
+                    };
+                  }
+                }
+              });
+
+              const monthlyData = Object.values(categoryTotals)
                 .sort((a, b) => b.amount - a.amount); // Sort by amount descending
 
               // Calculate percentages based on actual total
@@ -881,7 +1034,7 @@ const CashflowSection = ({
                 <div className="flex flex-col items-center justify-center h-32 text-gray-500">
                   <BarChart3 className="w-12 h-12 mb-3 text-gray-300" />
                   <p className="text-base font-medium">No expenses recorded</p>
-                  <p className="text-sm">for {months[selectedMonth]} {selectedYear}</p>
+                  <p className="text-sm">for {timeFrame === 'ALL' ? selectedYear : timeFrame}</p>
                 </div>
               );
             }
@@ -924,7 +1077,9 @@ const CashflowSection = ({
                 {/* Dynamic total from actual data */}
                 <div className="pt-4 mt-4 border-t border-gray-200">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Total {months[selectedMonth]} Spending:</span>
+                    <span className="text-sm text-gray-600">
+                      Total {timeFrame === '1M' ? `${months[selectedMonth]}` : timeFrame === 'ALL' ? selectedYear : timeFrame} Spending:
+                    </span>
                     <span className="text-lg font-bold text-gray-900">
                       {formatCurrency(totalSpending)}
                     </span>
@@ -941,71 +1096,74 @@ const CashflowSection = ({
           })()}
         </motion.div>
 
-        {/* Income vs Expense Trend Analysis */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="bg-white rounded-lg shadow-sm p-6"
-        >
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <LineChart className="w-5 h-5 text-indigo-600" />
-            Income vs Expense Trends - {selectedYear}
-          </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <RechartsLineChart data={prepareTrendData()}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis tickFormatter={(value) => formatCurrencyShort(value)} />
-              <Tooltip
-                formatter={(value, name) => [formatCurrency(value), name]}
-                contentStyle={{
-                  backgroundColor: '#ffffff',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                }}
-              />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="income"
-                stroke="#10b981"
-                strokeWidth={3}
-                name="Monthly Income"
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="expenses"
-                stroke="#ef4444"
-                strokeWidth={3}
-                name="Monthly Expenses"
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="movingAvgIncome"
-                stroke="#059669"
-                strokeWidth={2}
-                strokeDasharray="8 8"
-                name="3-Month Avg Income"
-                dot={false}
-              />
-              <Line
-                type="monotone"
-                dataKey="movingAvgExpenses"
-                stroke="#dc2626"
-                strokeWidth={2}
-                strokeDasharray="8 8"
-                name="3-Month Avg Expenses"
-                dot={false}
-              />
-            </RechartsLineChart>
-          </ResponsiveContainer>
-        </motion.div>
+        {/* Income vs Expense Trend Analysis - Hidden for 1M view */}
+        {timeFrame !== '1M' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ delay: 0.5 }}
+            className="bg-white rounded-lg shadow-sm p-6"
+          >
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <LineChart className="w-5 h-5 text-indigo-600" />
+              Income vs Expense Trends - {selectedYear}
+            </h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <RechartsLineChart data={prepareTrendData()}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis tickFormatter={(value) => formatCurrencyShort(value)} />
+                <Tooltip
+                  formatter={(value, name) => [formatCurrency(value), name]}
+                  contentStyle={{
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                  }}
+                />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="income"
+                  stroke="#10b981"
+                  strokeWidth={3}
+                  name="Monthly Income"
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="expenses"
+                  stroke="#ef4444"
+                  strokeWidth={3}
+                  name="Monthly Expenses"
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="movingAvgIncome"
+                  stroke="#059669"
+                  strokeWidth={2}
+                  strokeDasharray="8 8"
+                  name="3-Month Avg Income"
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="movingAvgExpenses"
+                  stroke="#dc2626"
+                  strokeWidth={2}
+                  strokeDasharray="8 8"
+                  name="3-Month Avg Expenses"
+                  dot={false}
+                />
+              </RechartsLineChart>
+            </ResponsiveContainer>
+          </motion.div>
+        )}
 
         {/* Monthly Breakdown Pie Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1015,33 +1173,71 @@ const CashflowSection = ({
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.6 }}
-              className="bg-white rounded-lg shadow-sm p-6"
+              className="bg-white rounded-lg shadow-sm p-6 relative"
             >
               <h4 className="text-md font-semibold mb-4 flex items-center gap-2">
                 <DollarSign className="w-4 h-4 text-green-600" />
-                Income Sources - {months[selectedMonth]} {selectedYear}
+                Income Sources - {timeFrame === '1M' ? `${months[selectedMonth]} ${selectedYear}` : timeFrame === 'ALL' ? `${selectedYear}` : timeFrame}
               </h4>
-              <ResponsiveContainer width="100%" height={250}>
+              <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
                     data={incomeData}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) => percent > 5 ? `${name} ${(percent * 100).toFixed(0)}%` : ''}
-                    outerRadius={90}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
+                    onMouseEnter={(data) => {
+                      if (data.isOther) {
+                        setShowIncomeOtherTooltip(true);
+                      }
+                    }}
+                    onMouseLeave={() => setShowIncomeOtherTooltip(false)}
                   >
                     {incomeData.map((entry, index) => (
                       <Cell key={`income-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(value, name) => [formatCurrency(value), name]}
+                    formatter={(value, name, props) => {
+                      if (props.payload.isOther) {
+                        return [formatCurrency(value), `${name} (${props.payload.count} sources)`];
+                      }
+                      return [formatCurrency(value), name];
+                    }}
                   />
                 </PieChart>
               </ResponsiveContainer>
+
+              {/* Other Income Breakdown Panel */}
+              {showIncomeOtherTooltip && processedIncomeData.minorItems.length > 0 && (
+                <div className="absolute top-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-3 max-w-xs z-10">
+                  <h4 className="font-semibold text-sm text-gray-800 mb-2">Other Income Breakdown:</h4>
+                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {processedIncomeData.minorItems.map((item, index) => {
+                      const percentage = (item.value / processedIncomeData.totalValue) * 100;
+                      return (
+                        <div key={index} className="flex items-center justify-between text-xs">
+                          <span className="flex items-center gap-1">
+                            <span>{item.icon}</span>
+                            <span className="text-gray-700">{item.name}:</span>
+                          </span>
+                          <span className="font-medium text-gray-900">{formatCurrency(item.value)} ({percentage.toFixed(1)}%)</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="border-t border-gray-200 mt-2 pt-2">
+                    <div className="flex justify-between text-xs font-semibold">
+                      <span>Total Other:</span>
+                      <span>{formatCurrency(processedIncomeData.minorItems.reduce((sum, item) => sum + item.value, 0))}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -1051,33 +1247,71 @@ const CashflowSection = ({
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.7 }}
-              className="bg-white rounded-lg shadow-sm p-6"
+              className="bg-white rounded-lg shadow-sm p-6 relative"
             >
               <h4 className="text-md font-semibold mb-4 flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-red-600" />
-                Expense Categories - {months[selectedMonth]} {selectedYear}
+                Expense Categories - {timeFrame === '1M' ? `${months[selectedMonth]} ${selectedYear}` : timeFrame === 'ALL' ? `${selectedYear}` : timeFrame}
               </h4>
-              <ResponsiveContainer width="100%" height={250}>
+              <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
                     data={expenseData}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) => percent > 5 ? `${name} ${(percent * 100).toFixed(0)}%` : ''}
-                    outerRadius={90}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
+                    onMouseEnter={(data) => {
+                      if (data.isOther) {
+                        setShowExpenseOtherTooltip(true);
+                      }
+                    }}
+                    onMouseLeave={() => setShowExpenseOtherTooltip(false)}
                   >
                     {expenseData.map((entry, index) => (
                       <Cell key={`expense-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(value, name) => [formatCurrency(value), name]}
+                    formatter={(value, name, props) => {
+                      if (props.payload.isOther) {
+                        return [formatCurrency(value), `${name} (${props.payload.count} categories)`];
+                      }
+                      return [formatCurrency(value), name];
+                    }}
                   />
                 </PieChart>
               </ResponsiveContainer>
+
+              {/* Other Expenses Breakdown Panel */}
+              {showExpenseOtherTooltip && processedExpenseData.minorItems.length > 0 && (
+                <div className="absolute top-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-3 max-w-xs z-10">
+                  <h4 className="font-semibold text-sm text-gray-800 mb-2">Other Expenses Breakdown:</h4>
+                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {processedExpenseData.minorItems.map((item, index) => {
+                      const percentage = (item.value / processedExpenseData.totalValue) * 100;
+                      return (
+                        <div key={index} className="flex items-center justify-between text-xs">
+                          <span className="flex items-center gap-1">
+                            <span>{item.icon}</span>
+                            <span className="text-gray-700">{item.name}:</span>
+                          </span>
+                          <span className="font-medium text-gray-900">{formatCurrency(item.value)} ({percentage.toFixed(1)}%)</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="border-t border-gray-200 mt-2 pt-2">
+                    <div className="flex justify-between text-xs font-semibold">
+                      <span>Total Other:</span>
+                      <span>{formatCurrency(processedExpenseData.minorItems.reduce((sum, item) => sum + item.value, 0))}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
         </div>
