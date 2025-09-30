@@ -576,14 +576,14 @@ const TermsOfService = () => {
         <h2>Customer Support</h2>
         <p>For questions about these Terms or the Service:</p>
         <ul>
-          <li><strong>Email:</strong> <a href="mailto:support@techbrov.com">support@techbrov.com</a></li>
+          <li><strong>Email:</strong> <a href="mailto:customerservice@techbrov.com">customerservice@techbrov.com</a></li>
           <li><strong>Hours:</strong> Monday-Friday, 9 AM - 6 PM PST</li>
         </ul>
 
         <h2>Legal Notices</h2>
         <p>For legal matters and formal communications:</p>
         <ul>
-          <li><strong>Email:</strong> <a href="mailto:legal@techbrov.com">legal@techbrov.com</a></li>
+          <li><strong>Email:</strong> <a href="mailto:customerservice@techbrov.com">customerservice@techbrov.com</a></li>
           <li><strong>Mail:</strong> Techbrov Legal Department, [Physical Address]</li>
         </ul>
 

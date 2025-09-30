@@ -277,14 +277,14 @@ Provisions that by their nature should survive termination will survive, includi
 ### Customer Support
 For questions about these Terms or the Service:
 
-**Email:** support@techbrov.com  
-**Phone:** [Support Phone Number]  
-**Hours:** Monday-Friday, 9 AM - 6 PM PST  
+**Email:** customerservice@techbrov.com
+**Phone:** [Support Phone Number]
+**Hours:** Monday-Friday, 9 AM - 6 PM PST
 
 ### Legal Notices
 For legal matters and formal communications:
 
-**Email:** legal@techbrov.com  
+**Email:** customerservice@techbrov.com  
 **Mail:** 
 Techbrov Legal Department  
 [Physical Address]  

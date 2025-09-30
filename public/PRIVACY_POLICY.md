@@ -226,7 +226,7 @@ If you are a California resident, you have additional rights:
 
 ### Exercising CCPA Rights
 To exercise your rights:
-- Email us at privacy@techbrov.com
+- Email us at customerservice@techbrov.com
 - Use our in-app privacy request form
 - Call our privacy hotline at [phone number]
 - Response time: 45 days (extendable by 45 days)
@@ -242,7 +242,7 @@ We process your data based on:
 
 ### Data Protection Officer
 For GDPR-related inquiries, contact our Data Protection Officer:
-- Email: dpo@techbrov.com
+- Email: customerservice@techbrov.com
 - Address: [Physical address in EU]
 
 ### Supervisory Authority
@@ -264,24 +264,24 @@ Continued use of WealthTrak after changes constitutes acceptance of the updated 
 ### Privacy Questions
 For privacy-related questions or concerns:
 
-**Email:** privacy@techbrov.com  
-**Phone:** [Privacy Hotline Number]  
-**Mail:** 
-Techbrov Privacy Team  
-[Physical Address]  
-[City, State, ZIP Code]  
+**Email:** customerservice@techbrov.com
+**Phone:** [Privacy Hotline Number]
+**Mail:**
+Techbrov Privacy Team
+[Physical Address]
+[City, State, ZIP Code]
 
 ### Data Protection Requests
 To exercise your privacy rights:
 - Use our automated privacy request portal
-- Email privacy-requests@techbrov.com
+- Email customerservice@techbrov.com
 - Include your full name and account email
 - Specify the type of request (access, deletion, etc.)
 - Allow up to 30 days for processing
 
 ### Security Incidents
 To report security concerns:
-- Email: security@techbrov.com
+- Email: customerservice@techbrov.com
 - Use our responsible disclosure program
 - Report through our bug bounty platform
 

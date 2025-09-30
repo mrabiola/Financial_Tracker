@@ -97,11 +97,11 @@ const LegalPageLayout = ({
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="text-sm text-gray-600">
                 <strong>Need help?</strong> Contact us at{' '}
-                <a 
-                  href="mailto:legal@techbrov.com" 
+                <a
+                  href="mailto:customerservice@techbrov.com"
                   className="text-blue-600 hover:text-blue-700 underline"
                 >
-                  legal@techbrov.com
+                  customerservice@techbrov.com
                 </a>
               </div>
               
@@ -146,7 +146,7 @@ const LegalPageLayout = ({
               
               <div className="flex items-center gap-4">
                 <a
-                  href="mailto:support@techbrov.com"
+                  href="mailto:customerservice@techbrov.com"
                   className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700"
                 >
                   <span>Get Support</span>
@@ -176,7 +176,7 @@ const LegalPageLayout = ({
                   Privacy
                 </Link>
                 <a
-                  href="mailto:legal@techbrov.com"
+                  href="mailto:customerservice@techbrov.com"
                   className="hover:text-gray-900 transition-colors"
                 >
                   Legal

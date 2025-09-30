@@ -290,7 +290,7 @@ const PrivacyPolicy = () => {
         </ul>
 
         <div className="warning-box">
-          <p><strong>Security Incident Reporting:</strong> If you suspect unauthorized access to your account, immediately change your password and contact our security team at <a href="mailto:security@techbrov.com">security@techbrov.com</a>.</p>
+          <p><strong>Security Incident Reporting:</strong> If you suspect unauthorized access to your account, immediately change your password and contact our security team at <a href="mailto:customerservice@techbrov.com">customerservice@techbrov.com</a>.</p>
         </div>
 
         <button onClick={scrollToTop} className="back-to-top">
@@ -591,7 +591,7 @@ const PrivacyPolicy = () => {
 
         <h2>Reporting Underage Use</h2>
         <div className="highlight-box">
-          <p>If you become aware of underage use of WealthTrak, please contact us immediately at <a href="mailto:privacy@techbrov.com">privacy@techbrov.com</a> with:</p>
+          <p>If you become aware of underage use of WealthTrak, please contact us immediately at <a href="mailto:customerservice@techbrov.com">customerservice@techbrov.com</a> with:</p>
           <ul className="text-sm mt-2">
             <li>• Account information or username</li>
             <li>• Estimated age of the user</li>
@@ -646,7 +646,7 @@ const PrivacyPolicy = () => {
         <div className="highlight-box">
           <h3>Request Methods:</h3>
           <ul className="text-sm">
-            <li>• <strong>Email:</strong> <a href="mailto:privacy@techbrov.com">privacy@techbrov.com</a></li>
+            <li>• <strong>Email:</strong> <a href="mailto:customerservice@techbrov.com">customerservice@techbrov.com</a></li>
             <li>• <strong>Online form:</strong> Settings > Privacy > CCPA Request</li>
             <li>• <strong>Phone:</strong> 1-800-[PRIVACY] (toll-free)</li>
             <li>• <strong>Mail:</strong> Techbrov Privacy Team, [Address]</li>
@@ -775,7 +775,7 @@ const PrivacyPolicy = () => {
         <div className="highlight-box">
           <p>For GDPR-related inquiries and data protection matters:</p>
           <ul className="text-sm mt-2">
-            <li>• <strong>Email:</strong> <a href="mailto:dpo@techbrov.com">dpo@techbrov.com</a></li>
+            <li>• <strong>Email:</strong> <a href="mailto:customerservice@techbrov.com">customerservice@techbrov.com</a></li>
             <li>• <strong>Response time:</strong> 72 hours for acknowledgment</li>
             <li>• <strong>Languages:</strong> English, with translation services available</li>
           </ul>
@@ -853,7 +853,7 @@ const PrivacyPolicy = () => {
           <h2>Report Security Concerns</h2>
           <p>If you discover a potential security vulnerability or have concerns about data security:</p>
           <ul>
-            <li>• <strong>Security team:</strong> <a href="mailto:security@techbrov.com">security@techbrov.com</a></li>
+            <li>• <strong>Security team:</strong> <a href="mailto:customerservice@techbrov.com">customerservice@techbrov.com</a></li>
             <li>• <strong>Responsible disclosure:</strong> We offer bug bounty rewards for valid reports</li>
             <li>• <strong>PGP encryption:</strong> Available for sensitive security communications</li>
           </ul>
@@ -934,7 +934,7 @@ const PrivacyPolicy = () => {
         <div className="highlight-box">
           <h3>General Privacy Questions:</h3>
           <ul className="text-sm">
-            <li>• <strong>Email:</strong> <a href="mailto:privacy@techbrov.com">privacy@techbrov.com</a></li>
+            <li>• <strong>Email:</strong> <a href="mailto:customerservice@techbrov.com">customerservice@techbrov.com</a></li>
             <li>• <strong>Response time:</strong> 24-48 hours for most inquiries</li>
             <li>• <strong>Phone:</strong> 1-800-PRIVACY (toll-free, US)</li>
             <li>• <strong>Hours:</strong> Monday-Friday, 9 AM - 6 PM PST</li>
@@ -946,7 +946,7 @@ const PrivacyPolicy = () => {
           <h3>GDPR, CCPA & Other Privacy Rights:</h3>
           <ul className="text-sm">
             <li>• <strong>Online form:</strong> Settings > Privacy > Data Rights Request</li>
-            <li>• <strong>Email:</strong> <a href="mailto:privacy-requests@techbrov.com">privacy-requests@techbrov.com</a></li>
+            <li>• <strong>Email:</strong> <a href="mailto:customerservice@techbrov.com">customerservice@techbrov.com</a></li>
             <li>• <strong>Processing time:</strong> 30-45 days maximum</li>
             <li>• <strong>Verification:</strong> Required for all data requests</li>
           </ul>
@@ -956,7 +956,7 @@ const PrivacyPolicy = () => {
         <div className="important-notice">
           <h3>Report Security Issues:</h3>
           <ul className="text-sm">
-            <li>• <strong>Security team:</strong> <a href="mailto:security@techbrov.com">security@techbrov.com</a></li>
+            <li>• <strong>Security team:</strong> <a href="mailto:customerservice@techbrov.com">customerservice@techbrov.com</a></li>
             <li>• <strong>Incident hotline:</strong> 1-800-SECURITY (24/7)</li>
             <li>• <strong>PGP key:</strong> Available for encrypted communications</li>
             <li>• <strong>Bug bounty:</strong> Rewards for responsible disclosure</li>
@@ -967,9 +967,9 @@ const PrivacyPolicy = () => {
         <div className="highlight-box">
           <h3>Legal Matters:</h3>
           <ul className="text-sm">
-            <li>• <strong>Legal team:</strong> <a href="mailto:legal@techbrov.com">legal@techbrov.com</a></li>
-            <li>• <strong>DPO (GDPR):</strong> <a href="mailto:dpo@techbrov.com">dpo@techbrov.com</a></li>
-            <li>• <strong>Compliance:</strong> <a href="mailto:compliance@techbrov.com">compliance@techbrov.com</a></li>
+            <li>• <strong>Legal team:</strong> <a href="mailto:customerservice@techbrov.com">customerservice@techbrov.com</a></li>
+            <li>• <strong>DPO (GDPR):</strong> <a href="mailto:customerservice@techbrov.com">customerservice@techbrov.com</a></li>
+            <li>• <strong>Compliance:</strong> <a href="mailto:customerservice@techbrov.com">customerservice@techbrov.com</a></li>
           </ul>
         </div>
 
@@ -986,14 +986,14 @@ const PrivacyPolicy = () => {
         
         <h3>European Representative:</h3>
         <ul>
-          <li><strong>EU Privacy Officer:</strong> <a href="mailto:eu-privacy@techbrov.com">eu-privacy@techbrov.com</a></li>
+          <li><strong>EU Privacy Officer:</strong> <a href="mailto:customerservice@techbrov.com">customerservice@techbrov.com</a></li>
           <li><strong>Languages:</strong> English, with translation services available</li>
           <li><strong>Local time:</strong> CET/CEST business hours</li>
         </ul>
 
         <h3>UK Representative:</h3>
         <ul>
-          <li><strong>UK Privacy Officer:</strong> <a href="mailto:uk-privacy@techbrov.com">uk-privacy@techbrov.com</a></li>
+          <li><strong>UK Privacy Officer:</strong> <a href="mailto:customerservice@techbrov.com">customerservice@techbrov.com</a></li>
           <li><strong>ICO liaison:</strong> For Information Commissioner's Office matters</li>
         </ul>
 
