@@ -24,6 +24,15 @@ This project transforms a single-user localStorage-based financial tracker into 
 
 ## 🆕 Recent Updates (September 30, 2025)
 
+### 🖥️ **Desktop UI Optimization**
+- **Scalable CSS Transform System**: Implemented responsive 80% scaling for desktop screens (≥1024px)
+- **CSS Variable Architecture**: Single-point configuration with `--desktop-scale` variable
+- **Automatic Calculations**: Width, height, and centering values auto-calculate from scale factor
+- **Eliminated White Space Issues**: Proper height compensation prevents gaps on auth pages
+- **Browser-Independent**: Achieves browser zoom effect (80%) without relying on browser functionality
+- **Maintainable Design**: Change one value to adjust entire app scale instantly
+- **Mobile Preserved**: Tablet and mobile viewports remain at 100% scale for optimal touch experience
+
 ### 📊 **Advanced Cash Flow Analytics with Time Range Filters**
 - **Dynamic Time Range Selection**: 5 toggle options (1M, YTD, 3M, 6M, ALL) for flexible data analysis
 - **Adaptive Chart Visualization**: Cash Flow Overview chart hidden in 1M view (data already in main dashboard)

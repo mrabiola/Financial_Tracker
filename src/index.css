@@ -36,6 +36,28 @@ html, body, #root {
   min-height: 100vh;
 }
 
+/* Desktop UI Scale Optimization - Scalable implementation with CSS variables */
+@media screen and (min-width: 1024px) {
+  :root {
+    --desktop-scale: 0.8; /* Change this single value to adjust scale */
+    --scale-compensation: calc(100% / var(--desktop-scale));
+    --scale-offset: calc((var(--scale-compensation) - 100%) / -2);
+  }
+
+  #root {
+    transform: scale(var(--desktop-scale));
+    transform-origin: top center;
+    width: var(--scale-compensation);
+    min-height: var(--scale-compensation);
+    margin-left: var(--scale-offset);
+  }
+
+  /* Adjust body to prevent scrollbar issues from scaled content */
+  body {
+    overflow-x: hidden;
+  }
+}
+
 /* Custom brand color utilities with direct CSS values */
 .bg-brand-blue {
   background-color: #4F85FF !important;
