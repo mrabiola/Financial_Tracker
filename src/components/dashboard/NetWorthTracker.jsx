@@ -41,18 +41,14 @@ const NetWorthTracker = () => {
 
   // Cashflow data hook
   const {
-    loading: cashflowLoading,
-    error: cashflowError,
     cashflowData,
     incomeCategories,
     expenseCategories,
     saveCashflowData,
-    updateGoals: updateCashflowGoals,
     calculateMetrics: calculateCashflowMetrics,
     copyPreviousMonth: copyCashflowPreviousMonth,
     addCategory,
-    deleteCategory,
-    reload: reloadCashflow
+    deleteCategory
   } = useCashflowData(selectedYear);
 
   // State for multi-year data
@@ -346,29 +342,37 @@ const NetWorthTracker = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  // Enhanced import handler
+  // Enhanced import handler with proper account deduplication
   const handleImportData = async (importData) => {
     const { accountId, accountName, accountType, monthIndex, value, year } = importData;
-    
+
     // Check if we need to create a new account
     let targetAccountId = accountId;
     if (!targetAccountId) {
-      // Check if account already exists
+      // Check if account already exists (search in current accounts state)
       const existingAccount = [...accounts.assets, ...accounts.liabilities].find(
         a => a.name.toLowerCase() === accountName.toLowerCase()
       );
-      
+
       if (existingAccount) {
         targetAccountId = existingAccount.id;
       } else {
-        // Create new account
+        // Create new account only if it doesn't exist
         const newAccount = await addAccountToDb(accountName, accountType);
         if (newAccount) {
           targetAccountId = newAccount.id;
+
+          // Immediately update the local accounts state to prevent duplicate creation
+          // This ensures subsequent calls see the newly created account
+          if (accountType === 'asset') {
+            accounts.assets.push(newAccount);
+          } else {
+            accounts.liabilities.push(newAccount);
+          }
         }
       }
     }
-    
+
     // Update the snapshot with the value
     if (targetAccountId && year === selectedYear) {
       await updateSnapshot(targetAccountId, monthIndex, value);

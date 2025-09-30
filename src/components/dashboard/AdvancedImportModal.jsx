@@ -372,94 +372,88 @@ const AdvancedImportModal = ({ isOpen, onClose, onImport, selectedYear, accounts
 
   const handleImport = async () => {
     setIsProcessing(true);
-    
+
     try {
       const currentSheet = parsedData.rawData.sheets[selectedSheet];
       const dataRows = currentSheet.data.slice(1);
-      
-      const imports = [];
-      
+
+      // Group by account name to consolidate data
+      const accountMap = new Map();
+
       if (mapping.structure === 'single') {
         dataRows.forEach((row) => {
           const accountName = row[mapping.accountColumn];
           const value = row[mapping.valueColumn];
-          
+
           if (accountName && value != null) {
             const parsedValue = typeof value === 'number' ? value : parseFloat(String(value).replace(/[^0-9.-]/g, ''));
-            
+
             if (!isNaN(parsedValue)) {
+              const accountKey = accountName.toLowerCase();
               const accountType = detectAccountType(accountName);
-              
-              // Find or create account
-              let existingAccount = [...accounts.assets, ...accounts.liabilities]
-                .find(a => a.name.toLowerCase() === accountName.toLowerCase());
-              
-              if (!existingAccount) {
-                existingAccount = {
-                  id: Date.now() + Math.random(),
+
+              if (!accountMap.has(accountKey)) {
+                accountMap.set(accountKey, {
                   name: accountName,
-                  type: accountType
-                };
+                  type: accountType,
+                  monthlyData: {}
+                });
               }
-              
-              imports.push({
-                accountId: existingAccount.id,
-                accountName: existingAccount.name,
-                accountType: accountType,
-                monthIndex: new Date().getMonth(),
-                value: parsedValue,
-                year: selectedYear
-              });
+
+              const account = accountMap.get(accountKey);
+              account.monthlyData[new Date().getMonth()] = parsedValue;
             }
           }
         });
       } else if (mapping.structure === 'monthly') {
         dataRows.forEach((row) => {
           const accountName = row[mapping.accountColumn];
-          
+
           if (accountName) {
+            const accountKey = accountName.toLowerCase();
             const accountType = detectAccountType(accountName);
-            
-            // Find or create account
-            let existingAccount = [...accounts.assets, ...accounts.liabilities]
-              .find(a => a.name.toLowerCase() === accountName.toLowerCase());
-            
-            if (!existingAccount) {
-              existingAccount = {
-                id: Date.now() + Math.random(),
+
+            if (!accountMap.has(accountKey)) {
+              accountMap.set(accountKey, {
                 name: accountName,
-                type: accountType
-              };
+                type: accountType,
+                monthlyData: {}
+              });
             }
-            
-            // Import monthly data
+
+            const account = accountMap.get(accountKey);
+
+            // Collect monthly data
             Object.entries(mapping.monthColumns || {}).forEach(([monthIndex, colIndex]) => {
               const value = row[colIndex];
               if (value != null) {
                 const parsedValue = typeof value === 'number' ? value : parseFloat(String(value).replace(/[^0-9.-]/g, ''));
                 if (!isNaN(parsedValue)) {
-                  imports.push({
-                    accountId: existingAccount.id,
-                    accountName: existingAccount.name,
-                    accountType: accountType,
-                    monthIndex: parseInt(monthIndex),
-                    value: parsedValue,
-                    year: selectedYear
-                  });
+                  account.monthlyData[parseInt(monthIndex)] = parsedValue;
                 }
               }
             });
           }
         });
       }
-      
-      // Execute all imports
-      for (const importData of imports) {
-        await onImport(importData);
+
+      // Execute imports - one per unique account with all monthly data
+      let totalRecords = 0;
+      for (const account of accountMap.values()) {
+        for (const [monthIndex, value] of Object.entries(account.monthlyData)) {
+          await onImport({
+            accountName: account.name,
+            accountType: account.type,
+            monthIndex: parseInt(monthIndex),
+            value: value,
+            year: selectedYear
+          });
+          totalRecords++;
+        }
       }
-      
+
       setStep(4);
-      alert(`Successfully imported ${imports.length} records`);
+      alert(`Successfully imported ${totalRecords} records for ${accountMap.size} accounts`);
     } catch (error) {
       console.error('Import error:', error);
       alert('Import error: ' + error.message);

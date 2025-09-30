@@ -22,7 +22,30 @@ This project transforms a single-user localStorage-based financial tracker into 
 
 ---
 
-## 🆕 Recent Updates (September 24, 2025)
+## 🆕 Recent Updates (September 30, 2025)
+
+### 🐛 **Critical Bug Fixes**
+- **Duplicate Account Import Fix**: Resolved major bug where Excel import created duplicate accounts instead of consolidating monthly data
+- **Account Consolidation Logic**: Implemented proper grouping by account name before import to prevent duplicates
+- **Upsert Pattern**: Enhanced import handler to create account once then update monthly values
+- **Race Condition Resolution**: Fixed timing issue where newly created accounts weren't visible to subsequent imports
+- **Data Integrity**: Both SimpleImportModal and AdvancedImportModal now properly consolidate data per account
+
+### 🎨 **UI/UX Consistency**
+- **Brand Color Unification**: Updated Sign In and Create Account buttons to use consistent brand blue (#4F85FF)
+- **Authentication Flow**: Login and Signup pages now match Welcome page design language
+- **Visual Harmony**: All primary CTA buttons across auth flows use same blue for professional appearance
+
+### 🔧 **Technical Improvements**
+- **ESLint Cleanup**: Removed unused variables (cashflowLoading, cashflowError, updateCashflowGoals, reloadCashflow)
+- **Code Quality**: Zero compilation warnings for clean, maintainable codebase
+- **Import Algorithm**: Refactored to use Map-based grouping for efficient account deduplication
+
+### 📝 **Import System Enhancement Details**
+**Before**: 401K with 3 monthly entries (Jun, Jul, Mar) → Created 3 separate "401K" accounts
+**After**: 401K with 3 monthly entries → Creates ONE "401K" account with values in Jun, Jul, Mar columns ✅
+
+## Previous Updates (September 24, 2025)
 
 ### 💰 **Complete Cashflow System Implementation**
 - **Comprehensive Financial Tracking**: Full income and expense management with Excel-style yearly tables

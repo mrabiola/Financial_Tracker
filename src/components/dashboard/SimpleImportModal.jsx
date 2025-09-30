@@ -341,25 +341,50 @@ const SimpleImportModal = ({ isOpen, onClose, onImport, selectedYear, accounts }
             throw new Error('No valid data rows found. Please check your template format.');
           }
 
-          // Import the data by calling onImport for each account
+          // Group entries by account name to consolidate monthly data
+          const accountMap = new Map();
+
+          for (const item of processedData) {
+            const accountKey = item.name.toLowerCase();
+
+            if (!accountMap.has(accountKey)) {
+              accountMap.set(accountKey, {
+                name: item.name,
+                type: item.type,
+                category: item.category || '',
+                notes: item.notes || '',
+                monthlyData: {} // Store all monthly values
+              });
+            }
+
+            const account = accountMap.get(accountKey);
+            // Store the value for this month (convert to 0-based index)
+            const monthIndex = item.month ? item.month - 1 : 0;
+            account.monthlyData[monthIndex] = item.amount;
+          }
+
+          // Import consolidated data - one account entry with all its monthly values
           let successCount = 0;
           const importErrors = [];
 
-          for (const item of processedData) {
+          for (const account of accountMap.values()) {
             try {
-              await onImport({
-                accountName: item.name,
-                accountType: item.type, // Use singular form directly: 'asset' or 'liability'
-                monthIndex: item.month ? item.month - 1 : 0, // Convert to 0-based index, default to January
-                value: item.amount,
-                year: selectedYear,
-                category: item.category,
-                notes: item.notes
-              });
+              // Import each month's data for this account
+              for (const [monthIndex, value] of Object.entries(account.monthlyData)) {
+                await onImport({
+                  accountName: account.name,
+                  accountType: account.type,
+                  monthIndex: parseInt(monthIndex),
+                  value: value,
+                  year: selectedYear,
+                  category: account.category,
+                  notes: account.notes
+                });
+              }
               successCount++;
             } catch (error) {
-              console.error(`Error importing ${item.name}:`, error);
-              importErrors.push(`Failed to import ${item.name}: ${error.message}`);
+              console.error(`Error importing ${account.name}:`, error);
+              importErrors.push(`Failed to import ${account.name}: ${error.message}`);
             }
           }
 
