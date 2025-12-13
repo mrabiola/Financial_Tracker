@@ -448,34 +448,34 @@ const ImportModal = ({ isOpen, onClose, onImport, selectedYear, accounts }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-gray-200 dark:border-gray-800">
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b">
+        <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
+            <div className="p-2 bg-blue-100 dark:bg-blue-950/40 rounded-lg">
               <FileSpreadsheet className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Import Financial Data</h2>
-              <p className="text-sm text-gray-500">Import from Excel, CSV, or text files</p>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Import Financial Data</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Import from Excel, CSV, or text files</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Progress Steps */}
-        <div className="px-6 py-4 border-b bg-gray-50">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40">
           <div className="flex items-center justify-between max-w-3xl mx-auto">
             {[1, 2, 3, 4].map((stepNum) => (
               <div key={stepNum} className="flex items-center">
                 <div className={`flex items-center gap-2 ${step >= stepNum ? 'text-blue-600' : 'text-gray-400'}`}>
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
-                    step >= stepNum ? 'border-blue-600 bg-blue-50' : 'border-gray-300 bg-white'
+                    step >= stepNum ? 'border-blue-600 bg-blue-50 dark:bg-blue-950/40' : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900'
                   }`}>
                     {getStepIcon(stepNum)}
                   </div>
@@ -487,7 +487,7 @@ const ImportModal = ({ isOpen, onClose, onImport, selectedYear, accounts }) => {
                   </span>
                 </div>
                 {stepNum < 4 && (
-                  <ChevronRight className={`w-5 h-5 mx-2 ${step > stepNum ? 'text-blue-600' : 'text-gray-300'}`} />
+                  <ChevronRight className={`w-5 h-5 mx-2 ${step > stepNum ? 'text-blue-600' : 'text-gray-300 dark:text-gray-700'}`} />
                 )}
               </div>
             ))}

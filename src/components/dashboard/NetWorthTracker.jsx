@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Plus, X, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, Copy, Download, Upload, TrendingUp, PieChart, BarChart3, LineChart, Target, Wallet, CreditCard, DollarSign, TrendingDown, PiggyBank, Landmark, Home, Car, School, Heart, Briefcase, Coins, AlertCircle, Brain, FileSpreadsheet, Calendar, TrendingUp as TrendUpIcon, TrendingDown as TrendDownIcon, Banknote, ArrowDownCircle, ArrowUpCircle, Activity, Gauge } from 'lucide-react';
+import { Plus, X, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, Copy, Download, Upload, TrendingUp, PieChart, BarChart3, LineChart, Target, Wallet, CreditCard, DollarSign, TrendingDown, PiggyBank, Landmark, Home, Car, School, Heart, Briefcase, Coins, AlertCircle, FileSpreadsheet, Calendar, TrendingUp as TrendUpIcon, TrendingDown as TrendDownIcon, Banknote, ArrowDownCircle, ArrowUpCircle, Activity, Gauge } from 'lucide-react';
 import { LineChart as RechartsLineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, ComposedChart } from 'recharts';
 import { useFinancialDataDemo } from '../../hooks/useFinancialDataDemo';
 import { getConversionIndicator } from '../../utils/currencyConversion';
 import { useCurrency } from '../../contexts/CurrencyContext';
 import { useCashflowData } from '../../hooks/useCashflowData';
 import LoadingSpinner from '../common/LoadingSpinner';
-import AdvancedImportModal from './AdvancedImportModal';
 import SimpleImportModal from './SimpleImportModal';
+import SmartAssetModal from './SmartAssetModal';
 import CashflowSection from './CashflowSection';
+import { useApiAssets } from '../../hooks/useApiAssets';
 
 const NetWorthTracker = () => {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -39,6 +40,9 @@ const NetWorthTracker = () => {
     reload
   } = useFinancialDataDemo(selectedYear);
 
+  // API assets hook (will get yearId internally)
+  const { addApiAsset } = useApiAssets();
+
   // Cashflow data hook
   const {
     cashflowData,
@@ -64,9 +68,10 @@ const NetWorthTracker = () => {
   const [newAccountType, setNewAccountType] = useState('asset');
   const [newGoalName, setNewGoalName] = useState('');
   const [newGoalTarget, setNewGoalTarget] = useState('');
-  const [showImportModal, setShowImportModal] = useState(false);
   const [showImportOptions, setShowImportOptions] = useState(false);
   const [showSimpleImportModal, setShowSimpleImportModal] = useState(false);
+  const [showSmartAssetModal, setShowSmartAssetModal] = useState(false);
+  const [smartAssetType, setSmartAssetType] = useState('asset');
   const [dropdownPosition, setDropdownPosition] = useState({ alignRight: false, alignTop: false });
   const [assetChartView, setAssetChartView] = useState('summary'); // 'summary' or 'detailed'
   const [showOtherTooltip, setShowOtherTooltip] = useState(false);
@@ -886,13 +891,13 @@ const NetWorthTracker = () => {
   // Show error if there's an issue
   if (dataError) {
     return (
-      <div className="min-h-screen bg-gray-50 p-4 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow-sm p-8 max-w-md w-full">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 flex items-center justify-center text-gray-900 dark:text-gray-100">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm p-8 max-w-md w-full">
           <div className="flex items-center gap-2 text-red-600 mb-4">
             <AlertCircle className="w-5 h-5" />
             <h2 className="text-lg font-semibold">Error Loading Data</h2>
           </div>
-          <p className="text-gray-600 mb-4">{dataError}</p>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">{dataError}</p>
           <button
             onClick={reload}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -905,14 +910,14 @@ const NetWorthTracker = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 text-gray-900 dark:text-gray-100">
       <div className="max-w-full mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm p-4 mb-4 overflow-visible">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm p-4 mb-4 overflow-visible">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
               <Landmark className="w-8 h-8 text-blue-600" />
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 Financial Tracker
               </h1>
             </div>
@@ -922,7 +927,7 @@ const NetWorthTracker = () => {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setSelectedYear(selectedYear - 1)}
-                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200"
+                    className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all duration-200"
                     title="Previous Year"
                   >
                     <ChevronLeft className="w-5 h-5" />
@@ -930,14 +935,14 @@ const NetWorthTracker = () => {
                   <button
                     ref={yearButtonRef}
                     onClick={() => setShowYearPopup(!showYearPopup)}
-                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:border-gray-300 transition-all duration-200 cursor-pointer"
+                    className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 cursor-pointer"
                   >
-                    <Calendar className="w-5 h-5 text-gray-600" />
-                    <span className="font-semibold text-gray-700">{selectedYear}</span>
+                    <Calendar className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                    <span className="font-semibold text-gray-700 dark:text-gray-200">{selectedYear}</span>
                   </button>
                   <button
                     onClick={() => setSelectedYear(selectedYear + 1)}
-                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200"
+                    className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all duration-200"
                     title="Next Year"
                   >
                     <ChevronRight className="w-5 h-5" />
@@ -946,8 +951,8 @@ const NetWorthTracker = () => {
 
                 {/* Year Popup */}
                 {showYearPopup && (
-                  <div className="absolute top-full mt-2 right-0 bg-white border border-gray-200 rounded-lg shadow-xl p-4 z-50" style={{ minWidth: '280px' }}>
-                    <div className="mb-3 text-sm font-semibold text-gray-700">Select Year</div>
+                  <div className="absolute top-full mt-2 right-0 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg shadow-xl p-4 z-50" style={{ minWidth: '280px' }}>
+                    <div className="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Select Year</div>
                     <div className="grid grid-cols-4 gap-2">
                       {Array.from({ length: 20 }, (_, i) => currentYear - 10 + i).map((year) => (
                         <button
@@ -961,7 +966,7 @@ const NetWorthTracker = () => {
                               ? 'bg-blue-600 text-white font-semibold'
                               : year === currentYear
                               ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium'
-                              : 'text-gray-700 hover:bg-gray-100'
+                              : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
                           }`}
                         >
                           {year}
@@ -976,7 +981,7 @@ const NetWorthTracker = () => {
               <div className="flex gap-2">
                 <button
                   onClick={exportToCSV}
-                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors shadow-sm"
                 >
                   <Download className="w-4 h-4" />
                   Export
@@ -985,7 +990,7 @@ const NetWorthTracker = () => {
                   <button
                     ref={importButtonRef}
                     onClick={handleImportOptionsToggle}
-                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+                    className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors shadow-sm"
                   >
                     <Upload className="w-4 h-4" />
                     Import
@@ -995,7 +1000,7 @@ const NetWorthTracker = () => {
                   {/* Import Options Dropdown */}
                   {showImportOptions && (
                     <div 
-                      className={`absolute w-56 sm:w-64 bg-white border border-gray-200 rounded-lg shadow-xl ${
+                      className={`absolute w-56 sm:w-64 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg shadow-xl ${
                         dropdownPosition.alignRight ? 'right-0' : 'left-0'
                       } ${
                         dropdownPosition.alignTop ? 'bottom-full mb-1' : 'top-full mt-1'
@@ -1011,27 +1016,17 @@ const NetWorthTracker = () => {
                         maxWidth: window.innerWidth < 480 ? '90vw' : undefined
                       }}
                     >
-                      <div className="flex items-center gap-3 w-full px-4 py-3 text-left text-gray-400 bg-gray-50 rounded-t-lg cursor-not-allowed">
-                        <Brain className="w-4 h-4 text-gray-400" />
-                        <div>
-                          <div className="font-medium flex items-center gap-2">
-                            Advanced Import
-                            <span className="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded-full font-normal">Coming Soon</span>
-                          </div>
-                          <div className="text-sm text-gray-400">Smart mapping & AI detection</div>
-                        </div>
-                      </div>
-                      <button
+                            <button
                         onClick={() => {
                           setShowImportOptions(false);
                           setShowSimpleImportModal(true);
                         }}
-                        className="flex items-center gap-3 w-full px-4 py-3 text-left text-gray-700 hover:bg-green-50 hover:text-green-800 rounded-b-lg transition-all duration-200 border-t border-gray-100 focus:outline-none focus:bg-green-50 focus:text-green-800"
+                        className="flex items-center gap-3 w-full px-4 py-3 text-left text-gray-700 dark:text-gray-200 hover:bg-green-50 dark:hover:bg-green-950/30 hover:text-green-800 dark:hover:text-green-200 rounded-lg transition-all duration-200 focus:outline-none focus:bg-green-50 dark:focus:bg-green-950/30 focus:text-green-800 dark:focus:text-green-200"
                       >
                         <FileSpreadsheet className="w-4 h-4 text-green-600" />
                         <div>
                           <div className="font-medium">Simple Import</div>
-                          <div className="text-sm text-gray-500">Use standard template</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">Use standard template</div>
                         </div>
                       </button>
                     </div>
@@ -1049,11 +1044,11 @@ const NetWorthTracker = () => {
               return (
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mt-4">
                   {/* Cash Inflow Card */}
-                  <div className="bg-white p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 border-green-500 transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group">
+                  <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 border-t-green-500 transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="text-base font-semibold text-gray-600 uppercase tracking-wider mb-2">Cash Inflow</div>
-                        <div className="text-3xl font-bold text-gray-900 mb-1">{formatCurrency(metrics.monthIncome || 0)}</div>
+                        <div className="text-base font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider mb-2">Cash Inflow</div>
+                        <div className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-1">{formatCurrency(metrics.monthIncome || 0)}</div>
                         <div className="text-sm font-medium text-green-600">
                           YTD: {formatCurrency(metrics.ytdIncome)}
                         </div>
@@ -1065,11 +1060,11 @@ const NetWorthTracker = () => {
                   </div>
 
                   {/* Cash Outflow Card */}
-                  <div className="bg-white p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 border-red-500 transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group">
+                  <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 border-t-red-500 transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="text-base font-semibold text-gray-600 uppercase tracking-wider mb-2">Cash Outflow</div>
-                        <div className="text-3xl font-bold text-gray-900 mb-1">{formatCurrency(metrics.monthExpenses || 0)}</div>
+                        <div className="text-base font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider mb-2">Cash Outflow</div>
+                        <div className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-1">{formatCurrency(metrics.monthExpenses || 0)}</div>
                         <div className="text-sm font-medium text-red-600">
                           YTD: {formatCurrency(metrics.ytdExpenses)}
                         </div>
@@ -1081,14 +1076,14 @@ const NetWorthTracker = () => {
                   </div>
 
                   {/* Net Cash Flow Card */}
-                  <div className={`bg-white p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 ${metrics.netCashflow >= 0 ? 'border-blue-500' : 'border-orange-500'} transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group`}>
+                  <div className={`bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 ${metrics.netCashflow >= 0 ? 'border-t-blue-500' : 'border-t-orange-500'} transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group`}>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="text-base font-semibold text-gray-600 uppercase tracking-wider mb-2">Net Flow</div>
-                        <div className="text-3xl font-bold text-gray-900 mb-1">
+                        <div className="text-base font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider mb-2">Net Flow</div>
+                        <div className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-1">
                           {formatCurrency(metrics.monthNetCashflow || 0)}
                         </div>
-                        <div className="text-sm font-medium text-gray-500">
+                        <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
                           {(metrics.monthNetCashflow || 0) >= 0 ? (
                             <span className="text-green-600">Positive cashflow</span>
                           ) : (
@@ -1121,11 +1116,11 @@ const NetWorthTracker = () => {
                   </div>
 
                   {/* YTD Performance Card */}
-                  <div className="bg-white p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 border-indigo-500 transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group">
+                  <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 border-t-indigo-500 transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="text-base font-semibold text-gray-600 uppercase tracking-wider mb-2">YTD Performance</div>
-                        <div className="text-3xl font-bold text-gray-900 mb-1">
+                        <div className="text-base font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider mb-2">YTD Performance</div>
+                        <div className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-1">
                           {formatCurrency(metrics.ytdNetCashflow)}
                         </div>
                         <div className="text-sm font-medium text-indigo-600">
@@ -1144,12 +1139,12 @@ const NetWorthTracker = () => {
             // Original Net Worth Dashboard Cards
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
               {/* Total Assets Card */}
-              <div className="bg-white p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 border-green-500 transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group">
+              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 border-t-green-500 transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <div className="text-base font-semibold text-gray-600 uppercase tracking-wider mb-2">Total Assets</div>
-                    <div className="text-4xl font-bold text-gray-900 mb-1">{formatCurrency(totals.assets)}</div>
-                    <div className="text-sm font-medium text-gray-500">
+                    <div className="text-base font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider mb-2">Total Assets</div>
+                    <div className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-1">{formatCurrency(totals.assets)}</div>
+                    <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
                       {accounts.assets?.length || 0} active {(accounts.assets?.length || 0) === 1 ? 'account' : 'accounts'}
                     </div>
                   </div>
@@ -1160,12 +1155,12 @@ const NetWorthTracker = () => {
               </div>
 
               {/* Total Liabilities Card */}
-              <div className="bg-white p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 border-red-500 transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group">
+              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 border-t-red-500 transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <div className="text-base font-semibold text-gray-600 uppercase tracking-wider mb-2">Total Liabilities</div>
-                    <div className="text-4xl font-bold text-gray-900 mb-1">{formatCurrency(totals.liabilities)}</div>
-                    <div className="text-sm font-medium text-gray-500">
+                    <div className="text-base font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider mb-2">Total Liabilities</div>
+                    <div className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-1">{formatCurrency(totals.liabilities)}</div>
+                    <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
                       {accounts.liabilities?.length || 0} active {(accounts.liabilities?.length || 0) === 1 ? 'account' : 'accounts'}
                     </div>
                   </div>
@@ -1176,14 +1171,14 @@ const NetWorthTracker = () => {
               </div>
 
               {/* Net Worth Card */}
-              <div className={`bg-white p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 ${totals.netWorth >= 0 ? 'border-blue-500' : 'border-orange-500'} transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group`}>
+              <div className={`bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-t-4 ${totals.netWorth >= 0 ? 'border-t-blue-500' : 'border-t-orange-500'} transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 group`}>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <div className="text-base font-semibold text-gray-600 uppercase tracking-wider mb-2">Net Worth</div>
-                    <div className="text-4xl font-bold text-gray-900 mb-1">
+                    <div className="text-base font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider mb-2">Net Worth</div>
+                    <div className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-1">
                       {formatCurrency(totals.netWorth)}
                     </div>
-                    <div className="text-sm font-medium text-gray-500">
+                    <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
                       {totals.netWorth >= 0 ? (
                         <span className="text-green-600 flex items-center gap-1">
                           <TrendingUp className="w-3 h-3" />
@@ -1206,13 +1201,13 @@ const NetWorthTracker = () => {
           )}
 
           {/* Tab Navigation */}
-          <div className="flex gap-1 mt-4 border-b">
+          <div className="flex gap-1 mt-4 border-b border-gray-200 dark:border-gray-800">
             <button
               onClick={() => setActiveTab('data')}
               className={`px-4 py-2 font-medium border-b-2 transition-all ${
                 activeTab === 'data' 
-                  ? 'text-blue-600 border-blue-600 bg-blue-50 rounded-t-lg' 
-                  : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50 rounded-t-lg'
+                  ? 'text-blue-600 border-blue-600 bg-blue-50 dark:bg-blue-950/40 rounded-t-lg' 
+                  : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/40 rounded-t-lg'
               }`}
             >
               <span className="flex items-center gap-2">
@@ -1224,8 +1219,8 @@ const NetWorthTracker = () => {
               onClick={() => setActiveTab('charts')}
               className={`px-4 py-2 font-medium border-b-2 transition-all ${
                 activeTab === 'charts'
-                  ? 'text-blue-600 border-blue-600 bg-blue-50 rounded-t-lg'
-                  : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50 rounded-t-lg'
+                  ? 'text-blue-600 border-blue-600 bg-blue-50 dark:bg-blue-950/40 rounded-t-lg'
+                  : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/40 rounded-t-lg'
               }`}
             >
               <span className="flex items-center gap-2">
@@ -1237,8 +1232,8 @@ const NetWorthTracker = () => {
               onClick={() => setActiveTab('cashflow')}
               className={`px-4 py-2 font-medium border-b-2 transition-all ${
                 activeTab === 'cashflow'
-                  ? 'text-blue-600 border-blue-600 bg-blue-50 rounded-t-lg'
-                  : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50 rounded-t-lg'
+                  ? 'text-blue-600 border-blue-600 bg-blue-50 dark:bg-blue-950/40 rounded-t-lg'
+                  : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/40 rounded-t-lg'
               }`}
             >
               <span className="flex items-center gap-2">
@@ -1253,7 +1248,7 @@ const NetWorthTracker = () => {
         {activeTab === 'data' && (
           <>
             {/* Month selector and copy button */}
-            <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+            <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm p-4 mb-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   {/* Enhanced Month Selector */}
@@ -1268,7 +1263,7 @@ const NetWorthTracker = () => {
                           }
                           setSelectedMonth(newMonth);
                         }}
-                        className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200"
+                        className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all duration-200"
                         title="Previous Month"
                       >
                         <ChevronLeft className="w-5 h-5" />
@@ -1276,10 +1271,10 @@ const NetWorthTracker = () => {
                       <button
                         ref={monthButtonRef}
                         onClick={() => setShowMonthPopup(!showMonthPopup)}
-                        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:border-gray-300 transition-all duration-200 cursor-pointer min-w-[100px]"
+                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 cursor-pointer min-w-[100px]"
                       >
-                        <Calendar className="w-5 h-5 text-gray-600" />
-                        <span className="font-semibold text-gray-700">{months[selectedMonth]}</span>
+                        <Calendar className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                        <span className="font-semibold text-gray-700 dark:text-gray-200">{months[selectedMonth]}</span>
                       </button>
                       <button
                         onClick={() => {
@@ -1290,7 +1285,7 @@ const NetWorthTracker = () => {
                           }
                           setSelectedMonth(newMonth);
                         }}
-                        className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200"
+                        className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all duration-200"
                         title="Next Month"
                       >
                         <ChevronRight className="w-5 h-5" />
@@ -1299,8 +1294,8 @@ const NetWorthTracker = () => {
 
                     {/* Month Popup */}
                     {showMonthPopup && (
-                      <div className="absolute top-full mt-2 left-0 bg-white border border-gray-200 rounded-lg shadow-xl p-4 z-50" style={{ minWidth: '300px' }}>
-                        <div className="mb-3 text-sm font-semibold text-gray-700">Select Month</div>
+                      <div className="absolute top-full mt-2 left-0 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg shadow-xl p-4 z-50" style={{ minWidth: '300px' }}>
+                        <div className="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Select Month</div>
                         <div className="grid grid-cols-4 gap-2">
                           {months.map((month, idx) => (
                             <button
@@ -1314,15 +1309,15 @@ const NetWorthTracker = () => {
                                   ? 'bg-blue-600 text-white font-semibold'
                                   : idx === currentMonth && selectedYear === currentYear
                                   ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium border border-blue-200'
-                                  : 'text-gray-700 hover:bg-gray-100'
+                                  : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
                               }`}
                             >
                               {month}
                             </button>
                           ))}
                         </div>
-                        <div className="mt-3 pt-3 border-t border-gray-200">
-                          <div className="text-xs text-gray-500">Year: {selectedYear}</div>
+                        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-800">
+                          <div className="text-xs text-gray-500 dark:text-gray-400">Year: {selectedYear}</div>
                         </div>
                       </div>
                     )}
@@ -1339,9 +1334,9 @@ const NetWorthTracker = () => {
             </div>
 
             {/* Goals Section */}
-            <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm p-4 mb-4">
               <div className="flex justify-between items-center mb-3">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                   <Target className="w-5 h-5 text-yellow-500" />
                   Goals
                 </h2>
@@ -1355,20 +1350,20 @@ const NetWorthTracker = () => {
               </div>
 
               {showNewGoal && (
-                <div className="flex gap-2 mb-3 p-3 bg-gray-50 rounded">
+                <div className="flex gap-2 mb-3 p-3 bg-gray-50 dark:bg-gray-950/40 border border-gray-200 dark:border-gray-800 rounded">
                   <input
                     type="text"
                     placeholder="Goal name"
                     value={newGoalName}
                     onChange={(e) => setNewGoalName(e.target.value)}
-                    className="flex-1 px-2 py-1 border rounded"
+                    className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
                   />
                   <input
                     type="number"
                     placeholder="Target amount"
                     value={newGoalTarget}
                     onChange={(e) => setNewGoalTarget(e.target.value)}
-                    className="w-32 px-2 py-1 border rounded"
+                    className="w-32 px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
                   />
                   <button onClick={addGoal} className="p-1 bg-green-500 text-white rounded hover:bg-green-600">
                     <Check className="w-4 h-4" />
@@ -1385,19 +1380,19 @@ const NetWorthTracker = () => {
                   const isEditingGoal = editingCell === `goal_${goal.id}`;
                   
                   return (
-                    <div key={goal.id} className="border rounded-lg p-3 relative">
+                    <div key={goal.id} className="border border-gray-200 dark:border-gray-800 rounded-lg p-3 relative bg-white dark:bg-gray-950/20">
                       <div className="flex justify-between items-start mb-2">
-                        <span className="font-medium flex items-center gap-1">
+                        <span className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-1">
                           {progress >= 100 && <Check className="w-4 h-4 text-green-600" />}
                           {goal.name}
                         </span>
                         <div className="flex items-center gap-2">
-                          <span className={`text-sm font-medium ${progress >= 100 ? 'text-green-600' : 'text-gray-500'}`}>
+                          <span className={`text-sm font-medium ${progress >= 100 ? 'text-green-600' : 'text-gray-500 dark:text-gray-400'}`}>
                             {progress.toFixed(0)}%
                           </span>
                           <button
                             onClick={() => deleteGoal(goal.id)}
-                            className="p-1 text-red-500 hover:bg-red-50 rounded transition-all"
+                            className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-all"
                             title="Delete goal"
                           >
                             <X className="w-3 h-3" />
@@ -1405,7 +1400,7 @@ const NetWorthTracker = () => {
                         </div>
                       </div>
                       
-                      <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
+                      <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-2 mb-3">
                         <div 
                           className={`h-2 rounded-full transition-all ${progress >= 100 ? 'bg-green-500' : 'bg-blue-500'}`}
                           style={{ width: `${Math.min(progress, 100)}%` }}
@@ -1434,7 +1429,7 @@ const NetWorthTracker = () => {
                                 setTempValue('');
                               }
                             }}
-                            className="flex-1 px-2 py-1 border rounded text-sm"
+                            className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-700 rounded text-sm bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100"
                             autoFocus
                           />
                         ) : (
@@ -1443,12 +1438,12 @@ const NetWorthTracker = () => {
                               setEditingCell(`goal_${goal.id}`);
                               setTempValue((goal.current_amount || 0).toString());
                             }}
-                            className="flex-1 px-2 py-1 text-sm font-medium cursor-pointer hover:bg-gray-50 rounded border border-transparent hover:border-gray-200 transition-all"
+                            className="flex-1 px-2 py-1 text-sm font-medium text-gray-900 dark:text-gray-100 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/40 rounded border border-transparent hover:border-gray-200 dark:hover:border-gray-700 transition-all"
                           >
                             {formatCurrency(goal.current_amount || 0)}
                           </div>
                         )}
-                        <span className="text-sm text-gray-500">/ {formatCurrency(goal.target_amount)}</span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">/ {formatCurrency(goal.target_amount)}</span>
                       </div>
                     </div>
                   );
@@ -1457,15 +1452,15 @@ const NetWorthTracker = () => {
             </div>
 
             {/* Assets Table */}
-            <div className="bg-white rounded-lg shadow-sm p-4 mb-4 overflow-visible">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm p-4 mb-4 overflow-visible">
               <div className="flex justify-between items-center mb-3">
                 <h2 className="text-lg font-semibold text-green-600 flex items-center gap-2">
                   <Coins className="w-5 h-5" />
                   Assets
                 </h2>
                 <button
-                  onClick={() => { setNewAccountType('asset'); setShowNewAccount(true); }}
-                  className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                  onClick={() => { setSmartAssetType('asset'); setShowSmartAssetModal(true); }}
+                  className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
                 >
                   <Plus className="w-4 h-4" />
                   Add Asset
@@ -1474,10 +1469,10 @@ const NetWorthTracker = () => {
 
               {showNewAccount && newAccountType === 'asset' && (
                 <div className="mb-3">
-                  <div className="flex gap-2 p-3 bg-gray-50 rounded">
+                  <div className="flex gap-2 p-3 bg-gray-50 dark:bg-gray-950/40 border border-gray-200 dark:border-gray-800 rounded">
                     <div className="flex items-center gap-2 flex-1">
                       {/* Live Icon Preview */}
-                      <span className="text-green-600 p-1 bg-white rounded border border-gray-200">
+                      <span className="text-green-600 p-1 bg-white dark:bg-gray-950 rounded border border-gray-200 dark:border-gray-800">
                         {getAccountIcon(newAccountName || 'default').icon}
                       </span>
                       <input
@@ -1485,7 +1480,7 @@ const NetWorthTracker = () => {
                         placeholder="Account name (e.g., House, 401k, Savings)"
                         value={newAccountName}
                         onChange={(e) => setNewAccountName(e.target.value)}
-                        className="flex-1 px-2 py-1 border rounded"
+                        className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
                       />
                     </div>
                     <button onClick={addAccount} className="p-1 bg-green-500 text-white rounded hover:bg-green-600">
@@ -1496,9 +1491,9 @@ const NetWorthTracker = () => {
                     </button>
                   </div>
                   {/* Icon Auto-Assignment Guide */}
-                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded text-xs">
-                    <div className="font-medium text-blue-900 mb-1">💡 Icon automatically assigned based on keywords:</div>
-                    <div className="grid grid-cols-2 gap-1 text-blue-700">
+                  <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 rounded text-xs">
+                    <div className="font-medium text-blue-900 dark:text-blue-100 mb-1">💡 Icon automatically assigned based on keywords:</div>
+                    <div className="grid grid-cols-2 gap-1 text-blue-700 dark:text-blue-200">
                       <div className="flex items-center gap-1"><Home className="w-3 h-3" /> home, house, property</div>
                       <div className="flex items-center gap-1"><Car className="w-3 h-3" /> car, vehicle, auto</div>
                       <div className="flex items-center gap-1"><PiggyBank className="w-3 h-3" /> 401k, retirement, IRA</div>
@@ -1515,19 +1510,19 @@ const NetWorthTracker = () => {
                 <table className="w-full table-fixed">
                 <thead>
                   <tr>
-                    <th className="text-left p-2 border-b sticky left-0 bg-white w-48">Account</th>
+                    <th className="text-left p-2 border-b border-gray-200 dark:border-gray-800 sticky left-0 bg-white dark:bg-gray-900 w-48">Account</th>
                     {months.map((month, idx) => (
-                      <th key={idx} className={`text-center p-2 border-b w-24 ${idx === selectedMonth ? 'bg-blue-50' : ''}`}>
+                      <th key={idx} className={`text-center p-2 border-b border-gray-200 dark:border-gray-800 w-24 ${idx === selectedMonth ? 'bg-blue-50 dark:bg-blue-950/40' : ''}`}>
                         {month}
                       </th>
                     ))}
-                    <th className="text-center p-2 border-b w-20">Actions</th>
+                    <th className="text-center p-2 border-b border-gray-200 dark:border-gray-800 w-20">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(accounts.assets || []).map(asset => (
-                    <tr key={asset.id} className="hover:bg-gray-50">
-                      <td className="p-2 border-b font-medium sticky left-0 bg-white">
+                    <tr key={asset.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                      <td className="p-2 border-b border-gray-200 dark:border-gray-800 font-medium sticky left-0 bg-white dark:bg-gray-900">
                         <div className="flex items-center gap-2">
                           <span className="text-green-600">{getAccountIcon(asset.name).icon}</span>
                           {asset.name}
@@ -1539,7 +1534,7 @@ const NetWorthTracker = () => {
                         const value = getValue(asset.id, monthIdx);
                         
                         return (
-                          <td key={monthIdx} className={`p-2 border-b text-center ${monthIdx === selectedMonth ? 'bg-blue-50' : ''}`}>
+                          <td key={monthIdx} className={`p-2 border-b border-gray-200 dark:border-gray-800 text-center ${monthIdx === selectedMonth ? 'bg-blue-50 dark:bg-blue-950/40' : ''}`}>
                             {isEditing ? (
                               <input
                                 type="number"
@@ -1550,13 +1545,13 @@ const NetWorthTracker = () => {
                                   if (e.key === 'Enter') saveEdit();
                                   if (e.key === 'Escape') cancelEdit();
                                 }}
-                                className="w-full px-1 py-0 border rounded text-center"
+                                className="w-full px-1 py-0 border border-gray-300 dark:border-gray-700 rounded text-center bg-white dark:bg-gray-950"
                                 autoFocus
                               />
                             ) : (
                               <div
                                 onClick={() => startEdit(asset.id, monthIdx)}
-                                className="cursor-pointer hover:bg-gray-100 rounded px-1 relative group"
+                                className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800/50 rounded px-1 relative group"
                               >
                                 {value > 0 ? formatCurrency(value) : '-'}
                                 {value > 0 && (() => {
@@ -1589,14 +1584,14 @@ const NetWorthTracker = () => {
             </div>
 
             {/* Liabilities Table */}
-            <div className="bg-white rounded-lg shadow-sm p-4 overflow-visible">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm p-4 overflow-visible">
               <div className="flex justify-between items-center mb-3">
                 <h2 className="text-lg font-semibold text-red-600 flex items-center gap-2">
                   <CreditCard className="w-5 h-5" />
                   Liabilities
                 </h2>
                 <button
-                  onClick={() => { setNewAccountType('liability'); setShowNewAccount(true); }}
+                  onClick={() => { setSmartAssetType('liability'); setShowSmartAssetModal(true); }}
                   className="flex items-center gap-1 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
                 >
                   <Plus className="w-4 h-4" />
@@ -1606,10 +1601,10 @@ const NetWorthTracker = () => {
 
               {showNewAccount && newAccountType === 'liability' && (
                 <div className="mb-3">
-                  <div className="flex gap-2 p-3 bg-gray-50 rounded">
+                  <div className="flex gap-2 p-3 bg-gray-50 dark:bg-gray-950/40 border border-gray-200 dark:border-gray-800 rounded">
                     <div className="flex items-center gap-2 flex-1">
                       {/* Live Icon Preview */}
-                      <span className="text-red-600 p-1 bg-white rounded border border-gray-200">
+                      <span className="text-red-600 p-1 bg-white dark:bg-gray-950 rounded border border-gray-200 dark:border-gray-800">
                         {getAccountIcon(newAccountName || 'default').icon}
                       </span>
                       <input
@@ -1617,7 +1612,7 @@ const NetWorthTracker = () => {
                         placeholder="Account name (e.g., Credit Card, Mortgage, Student Loan)"
                         value={newAccountName}
                         onChange={(e) => setNewAccountName(e.target.value)}
-                        className="flex-1 px-2 py-1 border rounded"
+                        className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
                       />
                     </div>
                     <button onClick={addAccount} className="p-1 bg-green-500 text-white rounded hover:bg-green-600">
@@ -1628,9 +1623,9 @@ const NetWorthTracker = () => {
                     </button>
                   </div>
                   {/* Icon Auto-Assignment Guide */}
-                  <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded text-xs">
-                    <div className="font-medium text-red-900 mb-1">💡 Icon automatically assigned based on keywords:</div>
-                    <div className="grid grid-cols-2 gap-1 text-red-700">
+                  <div className="mt-2 p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 rounded text-xs">
+                    <div className="font-medium text-red-900 dark:text-red-100 mb-1">💡 Icon automatically assigned based on keywords:</div>
+                    <div className="grid grid-cols-2 gap-1 text-red-700 dark:text-red-200">
                       <div className="flex items-center gap-1"><CreditCard className="w-3 h-3" /> credit, card</div>
                       <div className="flex items-center gap-1"><Landmark className="w-3 h-3" /> loan, mortgage</div>
                       <div className="flex items-center gap-1"><Car className="w-3 h-3" /> car, vehicle, auto</div>
@@ -1646,19 +1641,19 @@ const NetWorthTracker = () => {
                 <table className="w-full table-fixed">
                 <thead>
                   <tr>
-                    <th className="text-left p-2 border-b sticky left-0 bg-white w-48">Account</th>
+                    <th className="text-left p-2 border-b border-gray-200 dark:border-gray-800 sticky left-0 bg-white dark:bg-gray-900 w-48">Account</th>
                     {months.map((month, idx) => (
-                      <th key={idx} className={`text-center p-2 border-b w-24 ${idx === selectedMonth ? 'bg-blue-50' : ''}`}>
+                      <th key={idx} className={`text-center p-2 border-b border-gray-200 dark:border-gray-800 w-24 ${idx === selectedMonth ? 'bg-blue-50 dark:bg-blue-950/40' : ''}`}>
                         {month}
                       </th>
                     ))}
-                    <th className="text-center p-2 border-b w-20">Actions</th>
+                    <th className="text-center p-2 border-b border-gray-200 dark:border-gray-800 w-20">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(accounts.liabilities || []).map(liability => (
-                    <tr key={liability.id} className="hover:bg-gray-50">
-                      <td className="p-2 border-b font-medium sticky left-0 bg-white">
+                    <tr key={liability.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                      <td className="p-2 border-b border-gray-200 dark:border-gray-800 font-medium sticky left-0 bg-white dark:bg-gray-900">
                         <div className="flex items-center gap-2">
                           <span className="text-red-600">{getAccountIcon(liability.name).icon}</span>
                           {liability.name}
@@ -1670,7 +1665,7 @@ const NetWorthTracker = () => {
                         const value = getValue(liability.id, monthIdx);
                         
                         return (
-                          <td key={monthIdx} className={`p-2 border-b text-center ${monthIdx === selectedMonth ? 'bg-blue-50' : ''}`}>
+                          <td key={monthIdx} className={`p-2 border-b border-gray-200 dark:border-gray-800 text-center ${monthIdx === selectedMonth ? 'bg-blue-50 dark:bg-blue-950/40' : ''}`}>
                             {isEditing ? (
                               <input
                                 type="number"
@@ -1681,13 +1676,13 @@ const NetWorthTracker = () => {
                                   if (e.key === 'Enter') saveEdit();
                                   if (e.key === 'Escape') cancelEdit();
                                 }}
-                                className="w-full px-1 py-0 border rounded text-center"
+                                className="w-full px-1 py-0 border border-gray-300 dark:border-gray-700 rounded text-center bg-white dark:bg-gray-950"
                                 autoFocus
                               />
                             ) : (
                               <div
                                 onClick={() => startEdit(liability.id, monthIdx)}
-                                className="cursor-pointer hover:bg-gray-100 rounded px-1 relative group"
+                                className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800/50 rounded px-1 relative group"
                               >
                                 {value > 0 ? formatCurrency(value) : '-'}
                                 {value > 0 && (() => {
@@ -1725,16 +1720,16 @@ const NetWorthTracker = () => {
         {activeTab === 'charts' && (
           <div className="space-y-4">
             {/* Chart Controls */}
-            <div className="bg-white rounded-lg shadow-sm p-4">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm p-4">
               <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
                 {/* View Type Toggle */}
-                <div className="bg-gray-100 rounded-lg p-1 flex">
+                <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-1 flex">
                   <button
                     onClick={() => setChartViewType('MoM')}
                     className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
                       chartViewType === 'MoM'
                         ? 'bg-blue-500 text-white'
-                        : 'text-gray-600 hover:text-gray-800'
+                        : 'text-gray-600 dark:text-gray-200 hover:text-gray-800 dark:hover:text-white'
                     }`}
                   >
                     Monthly
@@ -1744,7 +1739,7 @@ const NetWorthTracker = () => {
                     className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
                       chartViewType === 'YoY'
                         ? 'bg-blue-500 text-white'
-                        : 'text-gray-600 hover:text-gray-800'
+                        : 'text-gray-600 dark:text-gray-200 hover:text-gray-800 dark:hover:text-white'
                     }`}
                   >
                     Yearly
@@ -1764,7 +1759,7 @@ const NetWorthTracker = () => {
                       className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
                         timeFrame === period
                           ? 'bg-blue-500 text-white'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700'
                       }`}
                     >
                       {period}
@@ -1775,8 +1770,8 @@ const NetWorthTracker = () => {
             </div>
 
             {/* Net Worth Over Time */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm p-6">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-gray-100">
                 <TrendingUp className="w-5 h-5 text-blue-600" />
                 {chartViewType === 'MoM' ? `Net Worth Progression - ${selectedYear}` : `Net Worth Comparison - ${timeFrame}`}
               </h3>
@@ -1809,8 +1804,9 @@ const NetWorthTracker = () => {
                         return tooltip;
                       }}
                       contentStyle={{
-                        backgroundColor: '#ffffff',
-                        border: '1px solid #e5e7eb',
+                        backgroundColor: 'var(--tooltip-bg)',
+                        color: 'var(--tooltip-text)',
+                        border: '1px solid var(--tooltip-border)',
                         borderRadius: '8px',
                         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                         fontSize: '14px'
@@ -1853,7 +1849,7 @@ const NetWorthTracker = () => {
                     // Handle empty data case
                     if (!yoyData || !yoyData.chartData || yoyData.chartData.length === 0) {
                       return (
-                        <div className="flex items-center justify-center h-full text-gray-500">
+                        <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-300">
                           <div className="text-center">
                             <p className="mb-2">No multi-year data available</p>
                             <p className="text-sm">Add data to multiple years to see Year-over-Year comparison</p>
@@ -1889,8 +1885,9 @@ const NetWorthTracker = () => {
                             return isMonthlyChart ? `Month: ${label}` : `Year: ${label}`;
                           }}
                           contentStyle={{
-                            backgroundColor: '#ffffff',
-                            border: '1px solid #e5e7eb',
+                            backgroundColor: 'var(--tooltip-bg)',
+                            color: 'var(--tooltip-text)',
+                            border: '1px solid var(--tooltip-border)',
                             borderRadius: '8px',
                             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                             fontSize: '14px'
@@ -1944,9 +1941,9 @@ const NetWorthTracker = () => {
             {/* Two column layout for smaller charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Asset Breakdown */}
-              <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <h3 className="text-lg font-semibold flex items-center gap-2 text-gray-900 dark:text-gray-100">
                     {assetChartView === 'summary' ? (
                       <PieChart className="w-5 h-5 text-green-600" />
                     ) : (
@@ -1954,13 +1951,13 @@ const NetWorthTracker = () => {
                     )}
                     Asset Distribution
                   </h3>
-                  <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                  <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
                     <button
                       onClick={() => setAssetChartView('summary')}
                       className={`px-3 py-1 text-sm rounded-md transition-all flex items-center gap-1 ${
                         assetChartView === 'summary' 
-                          ? 'bg-white shadow-sm text-green-600 font-medium' 
-                          : 'text-gray-600 hover:text-gray-800'
+                          ? 'bg-white dark:bg-gray-950 shadow-sm text-green-600 font-medium' 
+                          : 'text-gray-600 dark:text-gray-200 hover:text-gray-800 dark:hover:text-white'
                       }`}
                     >
                       <PieChart className="w-3 h-3" />
@@ -1970,8 +1967,8 @@ const NetWorthTracker = () => {
                       onClick={() => setAssetChartView('detailed')}
                       className={`px-3 py-1 text-sm rounded-md transition-all flex items-center gap-1 ${
                         assetChartView === 'detailed' 
-                          ? 'bg-white shadow-sm text-green-600 font-medium' 
-                          : 'text-gray-600 hover:text-gray-800'
+                          ? 'bg-white dark:bg-gray-950 shadow-sm text-green-600 font-medium' 
+                          : 'text-gray-600 dark:text-gray-200 hover:text-gray-800 dark:hover:text-white'
                       }`}
                     >
                       <BarChart3 className="w-3 h-3" />
@@ -2018,21 +2015,21 @@ const NetWorthTracker = () => {
                     
                     {/* Other Assets Detailed Tooltip */}
                     {showOtherTooltip && summaryData.minorAssets.length > 0 && (
-                      <div className="absolute top-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-3 max-w-xs z-10">
-                        <h4 className="font-semibold text-sm text-gray-800 mb-2">Other Assets Breakdown:</h4>
+                      <div className="absolute top-4 right-4 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg p-3 max-w-xs z-10">
+                        <h4 className="font-semibold text-sm text-gray-800 dark:text-gray-100 mb-2">Other Assets Breakdown:</h4>
                         <div className="space-y-1 max-h-32 overflow-y-auto">
                           {summaryData.minorAssets.map((asset, index) => {
                             const percentage = (asset.value / assetBreakdownData.totalValue) * 100;
                             return (
                               <div key={index} className="flex justify-between text-xs">
-                                <span className="text-gray-600 truncate mr-2" title={asset.name}>{asset.name}</span>
-                                <span className="text-gray-800 font-medium">{formatCurrency(asset.value)} ({percentage.toFixed(1)}%)</span>
+                                <span className="text-gray-600 dark:text-gray-300 truncate mr-2" title={asset.name}>{asset.name}</span>
+                                <span className="text-gray-800 dark:text-gray-100 font-medium">{formatCurrency(asset.value)} ({percentage.toFixed(1)}%)</span>
                               </div>
                             );
                           })}
                         </div>
-                        <div className="border-t border-gray-200 mt-2 pt-2">
-                          <div className="flex justify-between text-xs font-semibold">
+                        <div className="border-t border-gray-200 dark:border-gray-800 mt-2 pt-2">
+                          <div className="flex justify-between text-xs font-semibold text-gray-900 dark:text-gray-100">
                             <span>Total Other:</span>
                             <span>{formatCurrency(summaryData.minorAssets.reduce((sum, asset) => sum + asset.value, 0))}</span>
                           </div>
@@ -2057,13 +2054,13 @@ const NetWorthTracker = () => {
                                 className="w-3 h-3 rounded-sm"
                                 style={{ backgroundColor: color }}
                               ></div>
-                              <span className="font-medium text-gray-700 text-sm">{asset.name}</span>
+                              <span className="font-medium text-gray-700 dark:text-gray-200 text-sm">{asset.name}</span>
                             </div>
-                            <span className="text-sm text-gray-600">{formatCurrency(asset.value)} ({percentage}%)</span>
+                            <span className="text-sm text-gray-600 dark:text-gray-300">{formatCurrency(asset.value)} ({percentage}%)</span>
                           </div>
                           
                           {/* Progress Bar */}
-                          <div className="relative w-full bg-gray-200 rounded-lg h-8 overflow-hidden">
+                          <div className="relative w-full bg-gray-200 dark:bg-gray-800 rounded-lg h-8 overflow-hidden">
                             <div 
                               className="h-full rounded-lg transition-all duration-500 flex items-center justify-end pr-2"
                               style={{ 
@@ -2081,9 +2078,9 @@ const NetWorthTracker = () => {
                     })}
                     
                     {/* Summary Stats */}
-                    <div className="mt-6 pt-4 border-t border-gray-200">
+                    <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-800">
                       <div className="flex justify-between text-sm">
-                        <span className="font-medium text-gray-700">Total Assets:</span>
+                        <span className="font-medium text-gray-700 dark:text-gray-200">Total Assets:</span>
                         <span className="font-bold text-green-600">{formatCurrency(assetBreakdownData.totalValue)}</span>
                       </div>
                     </div>
@@ -2092,8 +2089,8 @@ const NetWorthTracker = () => {
               </div>
 
               {/* Monthly Comparison */}
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm p-6">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-gray-100">
                   <BarChart3 className="w-5 h-5 text-purple-600" />
                   Assets vs Liabilities
                 </h3>
@@ -2102,7 +2099,17 @@ const NetWorthTracker = () => {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
                     <YAxis tickFormatter={(value) => formatCurrencyShort(value)} />
-                    <Tooltip formatter={(value) => formatCurrency(value)} />
+                    <Tooltip
+                      formatter={(value) => formatCurrency(value)}
+                      contentStyle={{
+                        backgroundColor: 'var(--tooltip-bg)',
+                        color: 'var(--tooltip-text)',
+                        border: '1px solid var(--tooltip-border)',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                        fontSize: '14px'
+                      }}
+                    />
                     <Legend />
                     <Bar dataKey="assets" fill="#10b981" name="Assets" />
                     <Bar dataKey="liabilities" fill="#ef4444" name="Liabilities" />
@@ -2186,11 +2193,11 @@ const NetWorthTracker = () => {
                 const bottomMargin = finalGoals.length > 5 ? 40 : 30;
 
                 return (
-                  <div className="bg-white rounded-lg shadow-sm p-6">
-                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm p-6">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-gray-100">
                       <Target className="w-5 h-5 text-orange-600" />
                       Goal Progress
-                      <span className="text-sm text-gray-500 ml-2">({finalGoals.length} goals)</span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">({finalGoals.length} goals)</span>
                     </h3>
                     
                     <ResponsiveContainer width="100%" height={dynamicHeight}>
@@ -2233,8 +2240,9 @@ const NetWorthTracker = () => {
                             return label;
                           }}
                           contentStyle={{
-                            backgroundColor: '#ffffff',
-                            border: '1px solid #e5e7eb',
+                            backgroundColor: 'var(--tooltip-bg)',
+                            color: 'var(--tooltip-text)',
+                            border: '1px solid var(--tooltip-border)',
                             borderRadius: '6px',
                             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                           }}
@@ -2273,20 +2281,20 @@ const NetWorthTracker = () => {
                 );
               } else {
                 return (
-                  <div className="bg-white rounded-lg shadow-sm p-6">
-                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm p-6">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-gray-100">
                       <Target className="w-5 h-5 text-orange-600" />
                       Goal Progress
                     </h3>
                     <div className="text-center py-8">
-                      <Target className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500 mb-2">
+                      <Target className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                      <p className="text-gray-500 dark:text-gray-300 mb-2">
                         {goals && goals.length > 0 
                           ? 'No valid goals to display' 
                           : 'No financial goals set yet'
                         }
                       </p>
-                      <p className="text-sm text-gray-400">
+                      <p className="text-sm text-gray-400 dark:text-gray-500">
                         {goals && goals.length > 0 
                           ? 'Goals need target amounts greater than 0' 
                           : 'Add goals above to track your progress here'
@@ -2321,20 +2329,6 @@ const NetWorthTracker = () => {
         )}
       </div>
 
-      {/* Advanced Import Modal - Temporarily disabled */}
-      {false && (
-        <AdvancedImportModal
-          isOpen={showImportModal}
-          onClose={() => {
-            setShowImportModal(false);
-            reload(); // Reload data after import
-          }}
-          onImport={handleImportData}
-          selectedYear={selectedYear}
-          accounts={{ assets: accounts.assets || [], liabilities: accounts.liabilities || [] }}
-        />
-      )}
-
       {/* Simple Import Modal */}
       <SimpleImportModal
         isOpen={showSimpleImportModal}
@@ -2346,6 +2340,24 @@ const NetWorthTracker = () => {
         selectedYear={selectedYear}
         accounts={{ assets: accounts.assets || [], liabilities: accounts.liabilities || [] }}
       />
+
+      {/* Smart Asset Modal */}
+      {showSmartAssetModal && (
+        <SmartAssetModal
+          isOpen={showSmartAssetModal}
+          onClose={() => setShowSmartAssetModal(false)}
+          onSave={async (assetData) => {
+            // Set the type for the old manual flow if needed
+            if (assetData.asset_type === 'manual') {
+              setNewAccountType(assetData.type);
+            }
+            await addApiAsset(assetData);
+            reload(); // Reload data to show new asset
+          }}
+          selectedYear={selectedYear}
+          accountType={smartAssetType}
+        />
+      )}
     </div>
   );
 };

@@ -10,6 +10,38 @@
   --brand-blue-light: #6B95FF;
   --brand-purple: #8B5CF6;
   --brand-purple-hover: #7C3AED;
+
+  /* Theme-aware shared surfaces (used by inline styles, e.g. Recharts tooltips) */
+  --tooltip-bg: #ffffff;
+  --tooltip-border: #e5e7eb;
+  --tooltip-text: #111827;
+
+  /* Chart theming (Recharts text/grid) */
+  --chart-axis: #374151;
+  --chart-grid: #e5e7eb;
+}
+
+.app-theme.dark {
+  --tooltip-bg: #111827;
+  --tooltip-border: #374151;
+  --tooltip-text: #f9fafb;
+
+  --chart-axis: #9ca3af;
+  --chart-grid: #374151;
+}
+
+/* Recharts: keep axes/grid readable across themes */
+.app-theme .recharts-cartesian-axis-tick-value {
+  fill: var(--chart-axis);
+}
+
+.app-theme .recharts-cartesian-grid line {
+  stroke: var(--chart-grid);
+}
+
+.app-theme .recharts-legend-item-text {
+  color: var(--chart-axis) !important;
+  fill: var(--chart-axis);
 }
 
 body {

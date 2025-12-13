@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
-import { User, Mail, Save, AlertCircle, CheckCircle, LogOut, Play } from 'lucide-react';
+import { User, Mail, Save, AlertCircle, CheckCircle, LogOut, Play, Moon, Sun } from 'lucide-react';
 import Logo from '../components/Logo';
 import CurrencySettings from '../components/settings/CurrencySettings';
 import { useAuth } from '../contexts/AuthContext';
 import { useDemo } from '../contexts/DemoContext';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '../contexts/ThemeContext';
 
 const Profile = () => {
   const { user, updateProfile, signOut } = useAuth();
   const { isDemo, demoSessionId, endDemo } = useDemo();
   const navigate = useNavigate();
+  const { isDark, toggleTheme } = useTheme();
 
   const [fullName, setFullName] = useState(user?.user_metadata?.full_name || (isDemo ? 'Demo User' : ''));
   const email = user?.email || (isDemo ? 'demo@example.com' : '');
@@ -59,21 +61,21 @@ const Profile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 p-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 mb-6 border border-transparent dark:border-gray-800">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Logo size="small" showText={false} />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Profile Settings</h1>
-                <p className="text-sm text-gray-500">Manage your account information</p>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Profile Settings</h1>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Manage your account information</p>
               </div>
             </div>
             <button
               onClick={() => navigate('/dashboard')}
-              className="px-4 py-2 text-gray-600 hover:text-gray-900"
+              className="px-4 py-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
             >
               Back to Dashboard
             </button>
@@ -82,12 +84,12 @@ const Profile = () => {
 
         {/* Demo Account Notice */}
         {isDemo && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 rounded-lg p-4 mb-6">
             <div className="flex items-center gap-3">
-              <Play className="w-5 h-5 text-blue-600" />
+              <Play className="w-5 h-5 text-blue-600 dark:text-blue-300" />
               <div>
-                <h3 className="text-sm font-semibold text-blue-900">Demo Mode Active</h3>
-                <p className="text-sm text-blue-700 mt-1">
+                <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100">Demo Mode Active</h3>
+                <p className="text-sm text-blue-700 dark:text-blue-200 mt-1">
                   You're using a temporary demo account. Profile changes aren't saved permanently.
                   <span className="font-medium"> Sign up to keep your data and access all features!</span>
                 </p>
@@ -97,21 +99,21 @@ const Profile = () => {
         )}
 
         {/* Profile Form */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 mb-6 border border-transparent dark:border-gray-800">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
             Personal Information
-            {isDemo && <span className="text-sm font-normal text-gray-500 ml-2">(Demo - Read Only)</span>}
+            {isDemo && <span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-2">(Demo - Read Only)</span>}
           </h2>
           
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg flex items-center gap-2">
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-red-600 dark:text-red-200 rounded-lg flex items-center gap-2">
               <AlertCircle className="w-5 h-5" />
               <span className="text-sm">{error}</span>
             </div>
           )}
 
           {success && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-600 rounded-lg flex items-center gap-2">
+            <div className="mb-4 p-3 bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-900/60 text-green-600 dark:text-green-200 rounded-lg flex items-center gap-2">
               <CheckCircle className="w-5 h-5" />
               <span className="text-sm">{success}</span>
             </div>
@@ -119,7 +121,7 @@ const Profile = () => {
 
           <form onSubmit={handleUpdateProfile} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Full Name
               </label>
               <div className="relative">
@@ -131,8 +133,8 @@ const Profile = () => {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   disabled={isDemo}
-                  className={`block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    isDemo ? 'bg-gray-50 cursor-not-allowed opacity-75' : ''
+                  className={`block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-950 ${
+                    isDemo ? 'bg-gray-50 dark:bg-gray-900 cursor-not-allowed opacity-75' : ''
                   }`}
                   placeholder={isDemo ? "Demo User (Read Only)" : "John Doe"}
                 />
@@ -140,7 +142,7 @@ const Profile = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Email Address
               </label>
               <div className="relative">
@@ -150,11 +152,11 @@ const Profile = () => {
                 <input
                   type="email"
                   value={email}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 cursor-not-allowed"
                   disabled
                 />
               </div>
-              <p className="mt-1 text-xs text-gray-500">Email cannot be changed</p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Email cannot be changed</p>
             </div>
 
             <div className="flex justify-end">
@@ -176,39 +178,59 @@ const Profile = () => {
         </div>
 
         {/* Account Information */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Account Information</h2>
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 mb-6 border border-transparent dark:border-gray-800">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Account Information</h2>
           <div className="space-y-3">
-            <div className="flex justify-between py-2 border-b">
-              <span className="text-sm text-gray-600">
+            <div className="flex justify-between py-2 border-b border-gray-200 dark:border-gray-800">
+              <span className="text-sm text-gray-600 dark:text-gray-300">
                 {isDemo ? 'Demo Session ID' : 'User ID'}
               </span>
-              <span className="text-sm font-mono text-gray-900">
+              <span className="text-sm font-mono text-gray-900 dark:text-gray-100">
                 {isDemo
                   ? (demoSessionId?.slice(0, 16) || 'N/A') + '...'
                   : (user?.id?.slice(0, 8) || 'N/A') + '...'
                 }
               </span>
             </div>
-            <div className="flex justify-between py-2 border-b">
-              <span className="text-sm text-gray-600">
+            <div className="flex justify-between py-2 border-b border-gray-200 dark:border-gray-800">
+              <span className="text-sm text-gray-600 dark:text-gray-300">
                 {isDemo ? 'Session Created' : 'Account Created'}
               </span>
-              <span className="text-sm text-gray-900">
+              <span className="text-sm text-gray-900 dark:text-gray-100">
                 {isDemo
                   ? new Date().toLocaleDateString()
                   : (user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A')
                 }
               </span>
             </div>
-            <div className="flex justify-between py-2 border-b">
-              <span className="text-sm text-gray-600">
+            <div className="flex justify-between py-2 border-b border-gray-200 dark:border-gray-800">
+              <span className="text-sm text-gray-600 dark:text-gray-300">
                 {isDemo ? 'Account Type' : 'Subscription'}
               </span>
-              <span className={`text-sm ${isDemo ? 'text-blue-600 font-medium' : 'text-gray-900'}`}>
+              <span className={`text-sm ${isDemo ? 'text-blue-600 dark:text-blue-300 font-medium' : 'text-gray-900 dark:text-gray-100'}`}>
                 {isDemo ? 'Demo Account (7-day trial)' : 'Free Plan'}
               </span>
             </div>
+          </div>
+        </div>
+
+        {/* Appearance */}
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 mb-6 border border-transparent dark:border-gray-800">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Appearance</h2>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-300">Theme</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Toggle between light and dark mode</p>
+            </div>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+              aria-label="Toggle dark mode"
+            >
+              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              <span className="text-sm font-medium">{isDark ? 'Dark' : 'Light'}</span>
+            </button>
           </div>
         </div>
 
@@ -216,16 +238,16 @@ const Profile = () => {
         <CurrencySettings />
 
         {/* Danger Zone */}
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-red-200">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 border border-red-200 dark:border-red-900/60">
           <h2 className="text-lg font-semibold text-red-600 mb-4">
             {isDemo ? 'Demo Session Controls' : 'Danger Zone'}
           </h2>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
                 {isDemo ? 'End your demo session' : 'Sign out of your account'}
               </p>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 {isDemo
                   ? 'Demo data will be cleared and you\'ll return to the login page'
                   : 'You will need to sign in again to access your data'

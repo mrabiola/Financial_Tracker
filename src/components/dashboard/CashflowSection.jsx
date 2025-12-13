@@ -401,7 +401,7 @@ const CashflowSection = ({
       className="space-y-6"
     >
       {/* Month Selector and Actions */}
-      <div className="bg-white rounded-lg shadow-sm p-4">
+      <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm p-4">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-3">
             {/* Month Selector */}
@@ -416,17 +416,17 @@ const CashflowSection = ({
                     }
                     setSelectedMonth(newMonth);
                   }}
-                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200"
+                  className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all duration-200"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <button
                   ref={monthButtonRef}
                   onClick={() => setShowMonthPopup(!showMonthPopup)}
-                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:border-gray-300 transition-all duration-200 cursor-pointer min-w-[120px]"
+                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 cursor-pointer min-w-[120px]"
                 >
-                  <Calendar className="w-5 h-5 text-gray-600" />
-                  <span className="font-semibold text-gray-700">{months[selectedMonth]} {selectedYear}</span>
+                  <Calendar className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                  <span className="font-semibold text-gray-700 dark:text-gray-200">{months[selectedMonth]} {selectedYear}</span>
                 </button>
                 <button
                   onClick={() => {
@@ -437,7 +437,7 @@ const CashflowSection = ({
                     }
                     setSelectedMonth(newMonth);
                   }}
-                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200"
+                  className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all duration-200"
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
@@ -445,7 +445,7 @@ const CashflowSection = ({
 
               {/* Month Selection Popup */}
               {showMonthPopup && (
-                <div className="absolute top-full left-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 p-3 z-50 grid grid-cols-3 gap-2 w-64">
+                <div className="absolute top-full left-0 mt-2 bg-white dark:bg-gray-950 rounded-lg shadow-xl border border-gray-200 dark:border-gray-800 p-3 z-50 grid grid-cols-3 gap-2 w-64">
                   {months.map((month, idx) => (
                     <button
                       key={idx}
@@ -458,7 +458,7 @@ const CashflowSection = ({
                           ? 'bg-blue-600 text-white font-semibold'
                           : idx === currentMonth && selectedYear === currentYear
                           ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium border border-blue-200'
-                          : 'text-gray-700 hover:bg-gray-100'
+                          : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
                       }`}
                     >
                       {month}
@@ -512,9 +512,9 @@ const CashflowSection = ({
       {/* Excel-Style Tables */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Income Table */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-green-100 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-green-50 to-green-100 dark:from-green-950/40 dark:to-green-900/20 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-green-600" />
               Income
             </h3>
@@ -529,9 +529,9 @@ const CashflowSection = ({
 
           {/* Add Category Form */}
           {showAddIncome && (
-            <div className="p-4 border-b border-gray-200 bg-green-25">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-green-25 dark:bg-green-950/20">
               <div className="flex gap-2">
-                <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-md">
+                <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-950 rounded-md">
                   <span className="text-2xl">{previewIcon || '💰'}</span>
                 </div>
                 <input
@@ -539,7 +539,7 @@ const CashflowSection = ({
                   value={newCategoryName}
                   onChange={(e) => handleCategoryNameChange(e.target.value)}
                   placeholder="Enter category name..."
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleAddCategory('income');
                     if (e.key === 'Escape') {
@@ -561,7 +561,7 @@ const CashflowSection = ({
                     setNewCategoryName('');
                     setPreviewIcon('');
                   }}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
+                  className="px-4 py-2 bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-100 rounded-md hover:bg-gray-400 dark:hover:bg-gray-600 transition-colors"
                 >
                   Cancel
                 </button>
@@ -571,25 +571,25 @@ const CashflowSection = ({
 
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 sticky top-0 z-10">
+              <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0 z-10">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky left-0 bg-gray-50 dark:bg-gray-900">
                     Category
                   </th>
                   {months.map((month, idx) => (
-                    <th key={idx} className={`px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider ${idx === selectedMonth ? 'bg-blue-50' : ''}`}>
+                    <th key={idx} className={`px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${idx === selectedMonth ? 'bg-blue-50 dark:bg-blue-950/40' : ''}`}>
                       {month}
                     </th>
                   ))}
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-100">
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-100 dark:bg-gray-800">
                     Total
                   </th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                 {incomeCategories.map((category) => {
                   const calculateCategoryTotal = (categoryName) => {
                     const categoryData = cashflowData.income[categoryName] || [];
@@ -599,9 +599,9 @@ const CashflowSection = ({
                   return (
                     <tr
                       key={category.name}
-                      className="hover:bg-gray-50 transition-colors"
+                      className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
                     >
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900 sticky left-0 bg-white">
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100 sticky left-0 bg-white dark:bg-gray-950">
                         <div className="flex items-center gap-2">
                           <span className="text-lg">{category.icon}</span>
                           {category.name}
@@ -616,7 +616,7 @@ const CashflowSection = ({
                         return (
                           <td
                             key={monthIndex}
-                            className={`px-3 py-3 text-sm text-center cursor-pointer hover:bg-green-50 transition-colors ${monthIndex === selectedMonth ? 'bg-blue-50' : ''}`}
+                            className={`px-3 py-3 text-sm text-center cursor-pointer hover:bg-green-50 dark:hover:bg-green-950/30 transition-colors ${monthIndex === selectedMonth ? 'bg-blue-50 dark:bg-blue-950/40' : ''}`}
                             onClick={() => !isEditing && handleCellClick(category.name, 'income', monthIndex)}
                           >
                             {isEditing ? (
@@ -633,7 +633,7 @@ const CashflowSection = ({
                             ) : (
                               <motion.span
                                 initial={{ scale: 1 }}
-                                className={value > 0 ? 'font-medium text-gray-900' : 'text-gray-400'}
+                                className={value > 0 ? 'font-medium text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500'}
                               >
                                 {value > 0 ? formatCurrencyShort(value) : '-'}
                               </motion.span>
@@ -641,31 +641,31 @@ const CashflowSection = ({
                           </td>
                         );
                       })}
-                      <td className="px-4 py-3 text-sm text-center font-bold text-green-600 bg-gray-50">
+                      <td className="px-4 py-3 text-sm text-center font-bold text-green-600 bg-gray-50 dark:bg-gray-900">
                         {formatCurrencyShort(calculateCategoryTotal(category.name))}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <div className="relative" data-delete-dropdown>
                           <button
                             onClick={() => setOpenDeleteDropdown(openDeleteDropdown === `income-${category.name}` ? null : `income-${category.name}`)}
-                            className="flex items-center gap-1 text-gray-400 hover:text-red-500 transition-colors p-1 rounded hover:bg-gray-50"
+                            className="flex items-center gap-1 text-gray-400 hover:text-red-500 transition-colors p-1 rounded hover:bg-gray-50 dark:hover:bg-gray-800/40"
                           >
                             <Trash2 className="w-4 h-4" />
                             <ChevronDown className="w-3 h-3" />
                           </button>
 
                           {openDeleteDropdown === `income-${category.name}` && (
-                            <div className="absolute right-0 top-8 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 p-1 z-50 min-w-[160px]">
+                            <div className="absolute right-0 top-8 mt-1 bg-white dark:bg-gray-950 rounded-lg shadow-xl border border-gray-200 dark:border-gray-800 p-1 z-50 min-w-[160px]">
                               <button
                                 onClick={() => handleClearCategoryData('income', category.name)}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-900 rounded transition-colors"
                               >
                                 <Eraser className="w-4 h-4 text-blue-600" />
                                 Clear Data
                               </button>
                               <button
                                 onClick={() => handleDeleteCategoryRow('income', category.name)}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded transition-colors"
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-colors"
                               >
                                 <X className="w-4 h-4" />
                                 Delete Row
@@ -678,8 +678,8 @@ const CashflowSection = ({
                   );
                 })}
                 {/* Total Row */}
-                <tr className="bg-green-50 font-bold">
-                  <td className="px-4 py-3 text-sm text-gray-900 sticky left-0 bg-green-50">
+                <tr className="bg-green-50 dark:bg-green-950/30 font-bold">
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 sticky left-0 bg-green-50 dark:bg-green-950/30">
                     Total Income
                   </td>
                   {months.map((_, monthIndex) => (
@@ -687,7 +687,7 @@ const CashflowSection = ({
                       {formatCurrencyShort(metrics.monthlyIncome[monthIndex])}
                     </td>
                   ))}
-                  <td className="px-4 py-3 text-sm text-center text-green-700 bg-green-100">
+                  <td className="px-4 py-3 text-sm text-center text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-950/40">
                     {formatCurrencyShort(metrics.totalIncome)}
                   </td>
                   <td></td>
@@ -698,9 +698,9 @@ const CashflowSection = ({
         </div>
 
         {/* Expenses Table */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-red-50 to-red-100 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-950/40 dark:to-red-900/20 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-red-600" />
               Expenses
             </h3>
@@ -715,9 +715,9 @@ const CashflowSection = ({
 
           {/* Add Category Form */}
           {showAddExpense && (
-            <div className="p-4 border-b border-gray-200 bg-red-25">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-red-25 dark:bg-red-950/20">
               <div className="flex gap-2">
-                <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-md">
+                <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-950 rounded-md">
                   <span className="text-2xl">{previewIcon || '📦'}</span>
                 </div>
                 <input
@@ -725,7 +725,7 @@ const CashflowSection = ({
                   value={newCategoryName}
                   onChange={(e) => handleCategoryNameChange(e.target.value)}
                   placeholder="Enter category name..."
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-red-500"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleAddCategory('expenses');
                     if (e.key === 'Escape') {
@@ -747,7 +747,7 @@ const CashflowSection = ({
                     setNewCategoryName('');
                     setPreviewIcon('');
                   }}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
+                  className="px-4 py-2 bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-100 rounded-md hover:bg-gray-400 dark:hover:bg-gray-600 transition-colors"
                 >
                   Cancel
                 </button>
@@ -757,25 +757,25 @@ const CashflowSection = ({
 
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 sticky top-0 z-10">
+              <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0 z-10">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky left-0 bg-gray-50 dark:bg-gray-900">
                     Category
                   </th>
                   {months.map((month, idx) => (
-                    <th key={idx} className={`px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider ${idx === selectedMonth ? 'bg-blue-50' : ''}`}>
+                    <th key={idx} className={`px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${idx === selectedMonth ? 'bg-blue-50 dark:bg-blue-950/40' : ''}`}>
                       {month}
                     </th>
                   ))}
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-100">
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-100 dark:bg-gray-800">
                     Total
                   </th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                 {expenseCategories.map((category) => {
                   const calculateCategoryTotal = (categoryName) => {
                     const categoryData = cashflowData.expenses[categoryName] || [];
@@ -785,9 +785,9 @@ const CashflowSection = ({
                   return (
                     <tr
                       key={category.name}
-                      className="hover:bg-gray-50 transition-colors"
+                      className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
                     >
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900 sticky left-0 bg-white">
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100 sticky left-0 bg-white dark:bg-gray-950">
                         <div className="flex items-center gap-2">
                           <span className="text-lg">{category.icon}</span>
                           {category.name}
@@ -802,7 +802,7 @@ const CashflowSection = ({
                         return (
                           <td
                             key={monthIndex}
-                            className={`px-3 py-3 text-sm text-center cursor-pointer hover:bg-red-50 transition-colors ${monthIndex === selectedMonth ? 'bg-blue-50' : ''}`}
+                            className={`px-3 py-3 text-sm text-center cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors ${monthIndex === selectedMonth ? 'bg-blue-50 dark:bg-blue-950/40' : ''}`}
                             onClick={() => !isEditing && handleCellClick(category.name, 'expenses', monthIndex)}
                           >
                             {isEditing ? (
@@ -819,7 +819,7 @@ const CashflowSection = ({
                             ) : (
                               <motion.span
                                 initial={{ scale: 1 }}
-                                className={value > 0 ? 'font-medium text-gray-900' : 'text-gray-400'}
+                                className={value > 0 ? 'font-medium text-gray-900 dark:text-gray-100' : 'text-gray-400'}
                               >
                                 {value > 0 ? formatCurrencyShort(value) : '-'}
                               </motion.span>
@@ -827,31 +827,31 @@ const CashflowSection = ({
                           </td>
                         );
                       })}
-                      <td className="px-4 py-3 text-sm text-center font-bold text-red-600 bg-gray-50">
+                      <td className="px-4 py-3 text-sm text-center font-bold text-red-600 bg-gray-50 dark:bg-gray-900">
                         {formatCurrencyShort(calculateCategoryTotal(category.name))}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <div className="relative" data-delete-dropdown>
                           <button
                             onClick={() => setOpenDeleteDropdown(openDeleteDropdown === `expenses-${category.name}` ? null : `expenses-${category.name}`)}
-                            className="flex items-center gap-1 text-gray-400 hover:text-red-500 transition-colors p-1 rounded hover:bg-gray-50"
+                            className="flex items-center gap-1 text-gray-400 hover:text-red-500 transition-colors p-1 rounded hover:bg-gray-50 dark:hover:bg-gray-800/40"
                           >
                             <Trash2 className="w-4 h-4" />
                             <ChevronDown className="w-3 h-3" />
                           </button>
 
                           {openDeleteDropdown === `expenses-${category.name}` && (
-                            <div className="absolute right-0 top-8 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 p-1 z-50 min-w-[160px]">
+                            <div className="absolute right-0 top-8 mt-1 bg-white dark:bg-gray-950 rounded-lg shadow-xl border border-gray-200 dark:border-gray-800 p-1 z-50 min-w-[160px]">
                               <button
                                 onClick={() => handleClearCategoryData('expenses', category.name)}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
                               >
                                 <Eraser className="w-4 h-4 text-blue-600" />
                                 Clear Data
                               </button>
                               <button
                                 onClick={() => handleDeleteCategoryRow('expenses', category.name)}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded transition-colors"
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-colors"
                               >
                                 <X className="w-4 h-4" />
                                 Delete Row
@@ -864,16 +864,16 @@ const CashflowSection = ({
                   );
                 })}
                 {/* Total Row */}
-                <tr className="bg-red-50 font-bold">
-                  <td className="px-4 py-3 text-sm text-gray-900 sticky left-0 bg-red-50">
+                <tr className="bg-red-50 dark:bg-red-950/30 font-bold">
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 sticky left-0 bg-red-50 dark:bg-red-950/30">
                     Total Expenses
                   </td>
                   {months.map((_, monthIndex) => (
-                    <td key={monthIndex} className="px-3 py-3 text-sm text-center text-red-600">
+                    <td key={monthIndex} className="px-3 py-3 text-sm text-center text-red-600 dark:text-red-300">
                       {formatCurrencyShort(metrics.monthlyExpenses[monthIndex])}
                     </td>
                   ))}
-                  <td className="px-4 py-3 text-sm text-center text-red-700 bg-red-100">
+                  <td className="px-4 py-3 text-sm text-center text-red-700 dark:text-red-200 bg-red-100 dark:bg-red-950/50">
                     {formatCurrencyShort(metrics.totalExpenses)}
                   </td>
                   <td></td>
@@ -889,18 +889,18 @@ const CashflowSection = ({
         {/* Time Range Toggle - Compact & Elegant */}
         <div className="flex items-center justify-end gap-3 px-2 py-2">
           <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-gray-500" />
-            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Range</span>
+            <Clock className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Range</span>
           </div>
-          <div className="flex gap-1.5 bg-gray-100 rounded-lg p-1">
+          <div className="flex gap-1.5 bg-gray-100 dark:bg-gray-900/60 dark:border dark:border-gray-800 rounded-lg p-1">
             {['1M', 'YTD', '3M', '6M', 'ALL'].map((period) => (
               <button
                 key={period}
                 onClick={() => setTimeFrame(period)}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all duration-200 ${
                   timeFrame === period
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-600 hover:text-blue-600'
+                    ? 'bg-white dark:bg-gray-950 text-blue-600 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'
                 }`}
               >
                 {period}
@@ -916,7 +916,7 @@ const CashflowSection = ({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ delay: 0.2 }}
-            className="bg-white rounded-lg shadow-sm p-6"
+            className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm p-6"
           >
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <Activity className="w-5 h-5 text-blue-600" />
@@ -932,8 +932,9 @@ const CashflowSection = ({
                   formatter={(value, name) => [formatCurrency(Math.abs(value)), name]}
                   labelFormatter={(label) => `${label} ${selectedYear}`}
                   contentStyle={{
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #e5e7eb',
+                    backgroundColor: 'var(--tooltip-bg)',
+                    color: 'var(--tooltip-text)',
+                    border: '1px solid var(--tooltip-border)',
                     borderRadius: '8px',
                     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                   }}
@@ -982,7 +983,7 @@ const CashflowSection = ({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="bg-white rounded-lg shadow-sm p-6"
+          className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 dark:border dark:border-gray-800 rounded-lg shadow-sm p-6"
         >
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-orange-600" />
@@ -1031,8 +1032,8 @@ const CashflowSection = ({
 
             if (topSpendingData.length === 0) {
               return (
-                <div className="flex flex-col items-center justify-center h-32 text-gray-500">
-                  <BarChart3 className="w-12 h-12 mb-3 text-gray-300" />
+                <div className="flex flex-col items-center justify-center h-32 text-gray-500 dark:text-gray-400">
+                  <BarChart3 className="w-12 h-12 mb-3 text-gray-300 dark:text-gray-600" />
                   <p className="text-base font-medium">No expenses recorded</p>
                   <p className="text-sm">for {timeFrame === 'ALL' ? selectedYear : timeFrame}</p>
                 </div>
@@ -1048,15 +1049,15 @@ const CashflowSection = ({
                     <div className="flex justify-between items-center text-sm mb-2">
                       <div className="flex items-center gap-2">
                         <span className="text-lg">{item.icon}</span>
-                        <span className="font-medium text-gray-700">{item.category}</span>
+                        <span className="font-medium text-gray-700 dark:text-gray-200">{item.category}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-gray-900 font-semibold">{formatCurrency(item.amount)}</span>
-                        <span className="text-xs text-gray-500 min-w-[40px] text-right">({item.percentage}%)</span>
+                        <span className="text-gray-900 dark:text-gray-100 font-semibold">{formatCurrency(item.amount)}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 min-w-[40px] text-right">({item.percentage}%)</span>
                       </div>
                     </div>
 
-                    <div className="w-full bg-gray-200 rounded-full h-6 overflow-hidden">
+                    <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-6 overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${item.percentage}%` }}
@@ -1075,18 +1076,18 @@ const CashflowSection = ({
                 ))}
 
                 {/* Dynamic total from actual data */}
-                <div className="pt-4 mt-4 border-t border-gray-200">
+                <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-800">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">
+                    <span className="text-sm text-gray-600 dark:text-gray-300">
                       Total {timeFrame === '1M' ? `${months[selectedMonth]}` : timeFrame === 'ALL' ? selectedYear : timeFrame} Spending:
                     </span>
-                    <span className="text-lg font-bold text-gray-900">
+                    <span className="text-lg font-bold text-gray-900 dark:text-gray-100">
                       {formatCurrency(totalSpending)}
                     </span>
                   </div>
 
                   {topSpendingData.length > 8 && (
-                    <div className="text-xs text-gray-500 mt-1">
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       Showing top 8 of {topSpendingData.length} categories
                     </div>
                   )}
@@ -1103,7 +1104,7 @@ const CashflowSection = ({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ delay: 0.5 }}
-            className="bg-white rounded-lg shadow-sm p-6"
+            className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 dark:border dark:border-gray-800 rounded-lg shadow-sm p-6"
           >
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <LineChart className="w-5 h-5 text-indigo-600" />
@@ -1117,8 +1118,9 @@ const CashflowSection = ({
                 <Tooltip
                   formatter={(value, name) => [formatCurrency(value), name]}
                   contentStyle={{
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #e5e7eb',
+                    backgroundColor: 'var(--tooltip-bg)',
+                    color: 'var(--tooltip-text)',
+                    border: '1px solid var(--tooltip-border)',
                     borderRadius: '8px',
                     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                   }}
@@ -1173,7 +1175,7 @@ const CashflowSection = ({
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.6 }}
-              className="bg-white rounded-lg shadow-sm p-6 relative"
+              className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 dark:border dark:border-gray-800 rounded-lg shadow-sm p-6 relative"
             >
               <h4 className="text-md font-semibold mb-4 flex items-center gap-2">
                 <DollarSign className="w-4 h-4 text-green-600" />
@@ -1208,14 +1210,23 @@ const CashflowSection = ({
                       }
                       return [formatCurrency(value), name];
                     }}
+                    contentStyle={{
+                      backgroundColor: 'var(--tooltip-bg)',
+                      color: 'var(--tooltip-text)',
+                      border: '1px solid var(--tooltip-border)',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    }}
+                    itemStyle={{ color: 'var(--tooltip-text)' }}
+                    labelStyle={{ color: 'var(--tooltip-text)' }}
                   />
                 </PieChart>
               </ResponsiveContainer>
 
               {/* Other Income Breakdown Panel */}
               {showIncomeOtherTooltip && processedIncomeData.minorItems.length > 0 && (
-                <div className="absolute top-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-3 max-w-xs z-10">
-                  <h4 className="font-semibold text-sm text-gray-800 mb-2">Other Income Breakdown:</h4>
+                <div className="absolute top-4 right-4 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg p-3 max-w-xs z-10">
+                  <h4 className="font-semibold text-sm text-gray-800 dark:text-gray-100 mb-2">Other Income Breakdown:</h4>
                   <div className="space-y-1 max-h-32 overflow-y-auto">
                     {processedIncomeData.minorItems.map((item, index) => {
                       const percentage = (item.value / processedIncomeData.totalValue) * 100;
@@ -1223,14 +1234,14 @@ const CashflowSection = ({
                         <div key={index} className="flex items-center justify-between text-xs">
                           <span className="flex items-center gap-1">
                             <span>{item.icon}</span>
-                            <span className="text-gray-700">{item.name}:</span>
+                            <span className="text-gray-700 dark:text-gray-200">{item.name}:</span>
                           </span>
-                          <span className="font-medium text-gray-900">{formatCurrency(item.value)} ({percentage.toFixed(1)}%)</span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">{formatCurrency(item.value)} ({percentage.toFixed(1)}%)</span>
                         </div>
                       );
                     })}
                   </div>
-                  <div className="border-t border-gray-200 mt-2 pt-2">
+                  <div className="border-t border-gray-200 dark:border-gray-800 mt-2 pt-2">
                     <div className="flex justify-between text-xs font-semibold">
                       <span>Total Other:</span>
                       <span>{formatCurrency(processedIncomeData.minorItems.reduce((sum, item) => sum + item.value, 0))}</span>
@@ -1247,7 +1258,7 @@ const CashflowSection = ({
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.7 }}
-              className="bg-white rounded-lg shadow-sm p-6 relative"
+              className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 dark:border dark:border-gray-800 rounded-lg shadow-sm p-6 relative"
             >
               <h4 className="text-md font-semibold mb-4 flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-red-600" />
@@ -1282,14 +1293,23 @@ const CashflowSection = ({
                       }
                       return [formatCurrency(value), name];
                     }}
+                    contentStyle={{
+                      backgroundColor: 'var(--tooltip-bg)',
+                      color: 'var(--tooltip-text)',
+                      border: '1px solid var(--tooltip-border)',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    }}
+                    itemStyle={{ color: 'var(--tooltip-text)' }}
+                    labelStyle={{ color: 'var(--tooltip-text)' }}
                   />
                 </PieChart>
               </ResponsiveContainer>
 
               {/* Other Expenses Breakdown Panel */}
               {showExpenseOtherTooltip && processedExpenseData.minorItems.length > 0 && (
-                <div className="absolute top-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-3 max-w-xs z-10">
-                  <h4 className="font-semibold text-sm text-gray-800 mb-2">Other Expenses Breakdown:</h4>
+                <div className="absolute top-4 right-4 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg p-3 max-w-xs z-10">
+                  <h4 className="font-semibold text-sm text-gray-800 dark:text-gray-100 mb-2">Other Expenses Breakdown:</h4>
                   <div className="space-y-1 max-h-32 overflow-y-auto">
                     {processedExpenseData.minorItems.map((item, index) => {
                       const percentage = (item.value / processedExpenseData.totalValue) * 100;
@@ -1297,14 +1317,14 @@ const CashflowSection = ({
                         <div key={index} className="flex items-center justify-between text-xs">
                           <span className="flex items-center gap-1">
                             <span>{item.icon}</span>
-                            <span className="text-gray-700">{item.name}:</span>
+                            <span className="text-gray-700 dark:text-gray-200">{item.name}:</span>
                           </span>
-                          <span className="font-medium text-gray-900">{formatCurrency(item.value)} ({percentage.toFixed(1)}%)</span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">{formatCurrency(item.value)} ({percentage.toFixed(1)}%)</span>
                         </div>
                       );
                     })}
                   </div>
-                  <div className="border-t border-gray-200 mt-2 pt-2">
+                  <div className="border-t border-gray-200 dark:border-gray-800 mt-2 pt-2">
                     <div className="flex justify-between text-xs font-semibold">
                       <span>Total Other:</span>
                       <span>{formatCurrency(processedExpenseData.minorItems.reduce((sum, item) => sum + item.value, 0))}</span>

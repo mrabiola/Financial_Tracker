@@ -4,6 +4,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { CurrencyProvider } from './contexts/CurrencyContext';
 import { DemoProvider } from './contexts/DemoContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
+import AuthedAppShell from './components/common/AuthedAppShell';
 import LoginForm from './components/auth/LoginForm';
 import SignupForm from './components/auth/SignupForm';
 import PasswordReset from './components/auth/PasswordReset';
@@ -34,31 +35,25 @@ function App() {
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms" element={<TermsOfService />} />
             
-            {/* Protected routes */}
+            {/* Protected routes (theme-scoped; does not affect public pages) */}
             <Route
-              path="/dashboard"
               element={
                 <ProtectedRoute>
-                  <Dashboard />
+                  <AuthedAppShell />
                 </ProtectedRoute>
               }
-            />
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
+            >
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/profile" element={<Profile />} />
+            </Route>
             
             {/* Default redirect */}
             <Route path="/" element={<Navigate to="/welcome" replace />} />
             <Route path="*" element={<Navigate to="/welcome" replace />} />
-          </Routes>
-        </CurrencyProvider>
-      </DemoProvider>
-    </AuthProvider>
+            </Routes>
+          </CurrencyProvider>
+        </DemoProvider>
+      </AuthProvider>
     </Router>
   );
 }

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { User, LogOut } from 'lucide-react';
+import { User, LogOut, Moon, Sun } from 'lucide-react';
 import NetWorthTracker from '../components/dashboard/NetWorthTracker';
 import DataMigration from '../components/common/DataMigration';
 import Logo from '../components/Logo';
 import { useAuth } from '../contexts/AuthContext';
 import { useDemo } from '../contexts/DemoContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useInitialDataSetup } from '../hooks/useInitialDataSetup';
 import DemoBanner from '../components/demo/DemoBanner';
 import ConversionModal from '../components/demo/ConversionModal';
@@ -13,6 +14,7 @@ import ConversionModal from '../components/demo/ConversionModal';
 const Dashboard = () => {
   const { user, signOut } = useAuth();
   const { isDemo, showConversionPrompt, dismissConversionPrompt } = useDemo();
+  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [showMigration, setShowMigration] = useState(false);
   const [localData, setLocalData] = useState(null);
@@ -54,7 +56,7 @@ const Dashboard = () => {
   }, [showConversionPrompt, isDemo]);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 flex flex-col">
       {/* Demo Banner */}
       {isDemo && <DemoBanner />}
       
@@ -68,7 +70,7 @@ const Dashboard = () => {
       />
       
       {/* Top Navigation Bar */}
-      <div className="bg-white shadow-sm border-b">
+      <div className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
@@ -81,19 +83,26 @@ const Dashboard = () => {
               </button>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-gray-600 dark:text-gray-300">
                 Welcome, {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
               </span>
               <button
+                onClick={toggleTheme}
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 rounded-lg transition-colors opacity-70 hover:opacity-100 focus:opacity-100"
+                title="Toggle theme"
+              >
+                {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
+              <button
                 onClick={() => navigate('/profile')}
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 rounded-lg transition-colors"
                 title="Profile Settings"
               >
                 <User className="w-5 h-5" />
               </button>
               <button
                 onClick={handleSignOut}
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 rounded-lg transition-colors"
                 title="Sign Out"
               >
                 <LogOut className="w-5 h-5" />
@@ -109,7 +118,7 @@ const Dashboard = () => {
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Setting up your financial dashboard...</p>
+              <p className="text-gray-600 dark:text-gray-300">Setting up your financial dashboard...</p>
             </div>
           </div>
         ) : (
@@ -118,17 +127,17 @@ const Dashboard = () => {
       </div>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 mt-auto">
+      <footer className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 mt-auto">
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             {/* Logo and Description */}
             <div className="flex items-center gap-3">
               <Logo size="small" />
-              <span className="text-sm text-gray-600">Secure financial management platform</span>
+              <span className="text-sm text-gray-600 dark:text-gray-300">Secure financial management platform</span>
             </div>
             
             {/* Legal Links and Copyright */}
-            <div className="flex items-center gap-4 text-sm text-gray-600">
+            <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
               <Link 
                 to="/terms" 
                 className="hover:text-blue-600 transition-colors"
