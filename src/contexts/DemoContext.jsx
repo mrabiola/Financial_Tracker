@@ -11,6 +11,7 @@ import {
   getDemoSessionRemainingTime
 } from '../utils/demoSession';
 import { generateDemoData } from '../utils/demoDataGenerator';
+import { THEME_SESSION_KEY } from './ThemeContext';
 
 const DemoContext = createContext({});
 
@@ -156,6 +157,13 @@ export const DemoProvider = ({ children }) => {
 
   const endDemo = async () => {
     try {
+      // Ensure theme is scoped to the demo/authenticated session only
+      try {
+        sessionStorage.removeItem(THEME_SESSION_KEY);
+      } catch {
+        // ignore storage errors
+      }
+
       if (demoSessionId) {
         await cleanupDemoSession(demoSessionId);
       }

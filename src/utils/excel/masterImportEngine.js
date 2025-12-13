@@ -1,6 +1,7 @@
 import ExcelParser from './excelParser.js';
 import PatternRecognitionEngine from './patternRecognition.js';
 import AIClassificationEngine from './aiClassification.js';
+import LLMClassificationEngine from './llmClassification.js';
 import LearningSystem from './learningSystem.js';
 import DataTransformationPipeline from './dataTransformation.js';
 import ErrorHandler from './errorHandling.js';
@@ -13,6 +14,7 @@ export class MasterImportEngine {
       enableWorkers: true,
       enableCaching: true,
       enableLearning: true,
+      enableLLM: true, // Enable LLM-powered classification by default
       performanceMode: 'balanced', // 'speed', 'balanced', 'memory'
       ...options
     };
@@ -21,6 +23,7 @@ export class MasterImportEngine {
     this.parser = new ExcelParser();
     this.patternEngine = new PatternRecognitionEngine();
     this.aiEngine = new AIClassificationEngine();
+    this.llmEngine = new LLMClassificationEngine(); // LLM-powered classification
     this.learningSystem = new LearningSystem();
     this.transformer = new DataTransformationPipeline();
     this.errorHandler = new ErrorHandler();
@@ -321,10 +324,18 @@ export class MasterImportEngine {
   }
 
   async classifySheet(sheetData, analysis, sheetIndex, totalSheets) {
-    this.updateProgress(`classifying sheet ${sheetIndex + 1}/${totalSheets}`, 
+    this.updateProgress(`classifying sheet ${sheetIndex + 1}/${totalSheets}`,
       40 + (sheetIndex / totalSheets) * 10);
 
-    if (this.options.enableWorkers) {
+    // Use LLM classification if enabled, otherwise fall back to keyword-based
+    if (this.options.enableLLM && this.llmEngine.isLLMAvailable()) {
+      try {
+        return await this.llmEngine.classifySheet(sheetData, analysis, { useLLM: true });
+      } catch (error) {
+        console.warn('LLM classification failed, using fallback:', error.message);
+        return this.aiEngine.classifySheet(sheetData, analysis);
+      }
+    } else if (this.options.enableWorkers) {
       return await this.optimizer.executeInWorker('classifyData', {
         sheetData,
         analysis

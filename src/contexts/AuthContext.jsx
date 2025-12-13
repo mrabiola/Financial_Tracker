@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { cleanupDemoSession, isDemoSession, getDemoSessionId } from '../utils/demoSession';
+import { THEME_SESSION_KEY } from './ThemeContext';
 
 const AuthContext = createContext({});
 
@@ -59,6 +60,13 @@ export const AuthProvider = ({ children }) => {
 
   const signOut = async () => {
     try {
+      // Ensure theme is scoped to the authenticated session only
+      try {
+        sessionStorage.removeItem(THEME_SESSION_KEY);
+      } catch {
+        // ignore storage errors
+      }
+
       // Clean up demo session if it exists
       if (isDemoSession()) {
         const demoSessionId = getDemoSessionId();

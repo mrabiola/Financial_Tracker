@@ -7,9 +7,7 @@ import { useCurrency } from '../../contexts/CurrencyContext';
 import { useCashflowData } from '../../hooks/useCashflowData';
 import LoadingSpinner from '../common/LoadingSpinner';
 import SimpleImportModal from './SimpleImportModal';
-import SmartAssetModal from './SmartAssetModal';
 import CashflowSection from './CashflowSection';
-import { useApiAssets } from '../../hooks/useApiAssets';
 
 const NetWorthTracker = () => {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -40,9 +38,6 @@ const NetWorthTracker = () => {
     reload
   } = useFinancialDataDemo(selectedYear);
 
-  // API assets hook (will get yearId internally)
-  const { addApiAsset } = useApiAssets();
-
   // Cashflow data hook
   const {
     cashflowData,
@@ -70,8 +65,6 @@ const NetWorthTracker = () => {
   const [newGoalTarget, setNewGoalTarget] = useState('');
   const [showImportOptions, setShowImportOptions] = useState(false);
   const [showSimpleImportModal, setShowSimpleImportModal] = useState(false);
-  const [showSmartAssetModal, setShowSmartAssetModal] = useState(false);
-  const [smartAssetType, setSmartAssetType] = useState('asset');
   const [dropdownPosition, setDropdownPosition] = useState({ alignRight: false, alignTop: false });
   const [assetChartView, setAssetChartView] = useState('summary'); // 'summary' or 'detailed'
   const [showOtherTooltip, setShowOtherTooltip] = useState(false);
@@ -1459,7 +1452,7 @@ const NetWorthTracker = () => {
                   Assets
                 </h2>
                 <button
-                  onClick={() => { setSmartAssetType('asset'); setShowSmartAssetModal(true); }}
+                  onClick={() => { setNewAccountType('asset'); setShowNewAccount(true); }}
                   className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
                 >
                   <Plus className="w-4 h-4" />
@@ -1591,7 +1584,7 @@ const NetWorthTracker = () => {
                   Liabilities
                 </h2>
                 <button
-                  onClick={() => { setSmartAssetType('liability'); setShowSmartAssetModal(true); }}
+                  onClick={() => { setNewAccountType('liability'); setShowNewAccount(true); }}
                   className="flex items-center gap-1 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
                 >
                   <Plus className="w-4 h-4" />
@@ -2341,23 +2334,6 @@ const NetWorthTracker = () => {
         accounts={{ assets: accounts.assets || [], liabilities: accounts.liabilities || [] }}
       />
 
-      {/* Smart Asset Modal */}
-      {showSmartAssetModal && (
-        <SmartAssetModal
-          isOpen={showSmartAssetModal}
-          onClose={() => setShowSmartAssetModal(false)}
-          onSave={async (assetData) => {
-            // Set the type for the old manual flow if needed
-            if (assetData.asset_type === 'manual') {
-              setNewAccountType(assetData.type);
-            }
-            await addApiAsset(assetData);
-            reload(); // Reload data to show new asset
-          }}
-          selectedYear={selectedYear}
-          accountType={smartAssetType}
-        />
-      )}
     </div>
   );
 };
