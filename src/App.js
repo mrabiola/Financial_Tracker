@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider } from './contexts/AuthContext';
 import { CurrencyProvider } from './contexts/CurrencyContext';
 import { DemoProvider } from './contexts/DemoContext';
@@ -54,6 +55,7 @@ function App() {
           </CurrencyProvider>
         </DemoProvider>
       </AuthProvider>
+      <Analytics />
     </Router>
   );
 }
