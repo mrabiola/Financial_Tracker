@@ -16,7 +16,9 @@ import {
   Grid3X3,
   Clock,
   Copy,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  X,
+  Check
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -52,6 +54,7 @@ const MobileCashflowView = ({
   saveCashflowData,
   copyPreviousMonth,
   addCategory,
+  deleteCategory,
   calculateMetrics,
   formatCurrency,
   formatCurrencyShort,
@@ -87,6 +90,12 @@ const MobileCashflowView = ({
   const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'list'
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [timeFrame, setTimeFrame] = useState('1M');
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryIcon, setNewCategoryIcon] = useState('💰');
+
+  // Common emoji icons for categories
+  const categoryIcons = ['💰', '🏠', '🚗', '🍔', '🛒', '💊', '🎬', '✈️', '📱', '💼', '📚', '🎁', '⚡', '💧', '🏥', '👔', '🎮', '🐕', '💳', '📦'];
 
   const metrics = calculateMetrics(selectedMonth);
 
@@ -166,6 +175,22 @@ const MobileCashflowView = ({
   // Handle saving from quick entry
   const handleQuickEntrySave = ({ category, amount, month, type }) => {
     saveCashflowData(category, type === 'income' ? 'income' : 'expenses', month, amount);
+  };
+
+  // Handle adding new category
+  const handleAddCategory = () => {
+    if (!newCategoryName.trim()) return;
+    const type = activeSection === 'income' ? 'income' : 'expenses';
+    addCategory(type, newCategoryName.trim(), newCategoryIcon);
+    setNewCategoryName('');
+    setNewCategoryIcon('💰');
+    setShowAddCategory(false);
+  };
+
+  // Handle deleting category
+  const handleDeleteCategory = (categoryName) => {
+    const type = activeSection === 'income' ? 'income' : 'expenses';
+    deleteCategory(type, categoryName);
   };
 
   // Navigate months
@@ -364,6 +389,7 @@ const MobileCashflowView = ({
                 budget={0} // No budget tracking yet
                 color={activeSection === 'income' ? 'green' : COLORS[index % COLORS.length].includes('ef4444') ? 'red' : 'blue'}
                 onClick={() => handleCategoryTap(category, activeSection === 'income' ? 'income' : 'expenses')}
+                onDelete={() => handleDeleteCategory(category.name)}
                 formatCurrency={(v) => `${currencySymbol}${formatCompact(v)}`}
                 showBudget={false}
                 type={activeSection}
@@ -371,14 +397,106 @@ const MobileCashflowView = ({
             );
           })}
 
-          {/* Add Category Button */}
-          <motion.button
-            whileTap={{ scale: 0.98 }}
-            className="w-full p-4 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl text-gray-500 dark:text-gray-400 flex items-center justify-center gap-2 hover:border-gray-400 dark:hover:border-gray-600 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            Add {activeSection === 'income' ? 'Income Source' : 'Category'}
-          </motion.button>
+          {/* Add Category Form/Button */}
+          {showAddCategory ? (
+            <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium text-gray-900 dark:text-gray-100">
+                  Add {activeSection === 'income' ? 'Income Source' : 'Expense Category'}
+                </h4>
+                <button
+                  onClick={() => setShowAddCategory(false)}
+                  className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              {/* Icon Selection */}
+              <div>
+                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">Select Icon</label>
+                <div className="flex flex-wrap gap-2">
+                  {categoryIcons.map((icon) => (
+                    <button
+                      key={icon}
+                      onClick={() => setNewCategoryIcon(icon)}
+                      className={`w-10 h-10 rounded-lg text-xl flex items-center justify-center transition-all ${
+                        newCategoryIcon === icon
+                          ? activeSection === 'income'
+                            ? 'bg-green-100 dark:bg-green-900/30 ring-2 ring-green-500'
+                            : 'bg-red-100 dark:bg-red-900/30 ring-2 ring-red-500'
+                          : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      {icon}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Category Name Input */}
+              <div>
+                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">Category Name</label>
+                <input
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder={activeSection === 'income' ? 'e.g., Freelance Income' : 'e.g., Subscriptions'}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 placeholder-gray-400"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleAddCategory();
+                    if (e.key === 'Escape') setShowAddCategory(false);
+                  }}
+                />
+              </div>
+
+              {/* Preview */}
+              {newCategoryName && (
+                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                  <span className="text-2xl">{newCategoryIcon}</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{newCategoryName}</span>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                <button
+                  onClick={handleAddCategory}
+                  disabled={!newCategoryName.trim()}
+                  className={`flex-1 py-3 rounded-xl font-medium text-white flex items-center justify-center gap-2 transition-colors ${
+                    !newCategoryName.trim()
+                      ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed'
+                      : activeSection === 'income'
+                        ? 'bg-green-500 hover:bg-green-600'
+                        : 'bg-red-500 hover:bg-red-600'
+                  }`}
+                >
+                  <Check className="w-4 h-4" />
+                  Add Category
+                </button>
+                <button
+                  onClick={() => {
+                    setShowAddCategory(false);
+                    setNewCategoryName('');
+                    setNewCategoryIcon('💰');
+                  }}
+                  className="px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowAddCategory(true)}
+              className="w-full p-4 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl text-gray-500 dark:text-gray-400 flex items-center justify-center gap-2 hover:border-gray-400 dark:hover:border-gray-600 transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+              Add {activeSection === 'income' ? 'Income Source' : 'Category'}
+            </motion.button>
+          )}
         </motion.div>
       </AnimatePresence>
 

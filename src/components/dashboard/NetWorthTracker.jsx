@@ -1032,6 +1032,7 @@ const NetWorthTracker = () => {
             saveCashflowData={saveCashflowData}
             copyPreviousMonth={copyCashflowPreviousMonth}
             addCategory={addCategory}
+            deleteCategory={deleteCategory}
             calculateMetrics={calculateCashflowMetrics}
             formatCurrency={formatCurrency}
             formatCurrencyShort={formatCurrencyShort}

@@ -35,38 +35,31 @@ import {
   Cell
 } from 'recharts';
 
+// Helper function to get account icon
+const getAccountIcon = (name) => {
+  const lowerName = name.toLowerCase();
+  if (lowerName.includes('credit') || lowerName.includes('card')) return <CreditCard className="w-5 h-5" />;
+  if (lowerName.includes('house') || lowerName.includes('home') || lowerName.includes('property')) return <Home className="w-5 h-5" />;
+  if (lowerName.includes('car') || lowerName.includes('auto') || lowerName.includes('vehicle')) return <Car className="w-5 h-5" />;
+  if (lowerName.includes('401k') || lowerName.includes('retirement') || lowerName.includes('ira')) return <PiggyBank className="w-5 h-5" />;
+  if (lowerName.includes('invest') || lowerName.includes('stock')) return <TrendingUp className="w-5 h-5" />;
+  if (lowerName.includes('business')) return <Briefcase className="w-5 h-5" />;
+  if (lowerName.includes('save') || lowerName.includes('saving')) return <Wallet className="w-5 h-5" />;
+  return <DollarSign className="w-5 h-5" />;
+};
+
 /**
  * Mobile-optimized Account Card component
  */
 const MobileAccountCard = ({
   account,
   value,
-  onChange,
+  onEdit,
   onDelete,
   formatCurrency,
   type = 'asset'
 }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(value.toString());
   const [showActions, setShowActions] = useState(false);
-
-  const getAccountIcon = (name) => {
-    const lowerName = name.toLowerCase();
-    if (lowerName.includes('credit') || lowerName.includes('card')) return <CreditCard className="w-5 h-5" />;
-    if (lowerName.includes('house') || lowerName.includes('home') || lowerName.includes('property')) return <Home className="w-5 h-5" />;
-    if (lowerName.includes('car') || lowerName.includes('auto') || lowerName.includes('vehicle')) return <Car className="w-5 h-5" />;
-    if (lowerName.includes('401k') || lowerName.includes('retirement') || lowerName.includes('ira')) return <PiggyBank className="w-5 h-5" />;
-    if (lowerName.includes('invest') || lowerName.includes('stock')) return <TrendingUp className="w-5 h-5" />;
-    if (lowerName.includes('business')) return <Briefcase className="w-5 h-5" />;
-    if (lowerName.includes('save') || lowerName.includes('saving')) return <Wallet className="w-5 h-5" />;
-    return <DollarSign className="w-5 h-5" />;
-  };
-
-  const handleSave = () => {
-    const numValue = parseFloat(editValue) || 0;
-    onChange(numValue);
-    setIsEditing(false);
-  };
 
   const borderColor = type === 'asset' ? 'border-l-green-500' : 'border-l-red-500';
   const iconBg = type === 'asset' ? 'bg-green-100 dark:bg-green-900/30 text-green-600' : 'bg-red-100 dark:bg-red-900/30 text-red-600';
@@ -78,7 +71,7 @@ const MobileAccountCard = ({
     >
       <div 
         className="p-4 flex items-center justify-between cursor-pointer"
-        onClick={() => !isEditing && setShowActions(!showActions)}
+        onClick={() => setShowActions(!showActions)}
       >
         <div className="flex items-center gap-3">
           <div className={`p-2 rounded-lg ${iconBg}`}>
@@ -90,46 +83,17 @@ const MobileAccountCard = ({
           </div>
         </div>
 
-        {isEditing ? (
-          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-            <span className="text-gray-400">$</span>
-            <input
-              type="number"
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              className="w-24 px-2 py-1 text-right text-lg font-semibold border border-blue-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSave();
-                if (e.key === 'Escape') setIsEditing(false);
-              }}
-            />
-            <button
-              onClick={handleSave}
-              className="p-1.5 bg-green-500 text-white rounded-lg"
-            >
-              <Check className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setIsEditing(false)}
-              className="p-1.5 bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <span className={`text-xl font-bold ${type === 'asset' ? 'text-gray-900 dark:text-gray-100' : 'text-red-600'}`}>
-              {formatCurrency(value)}
-            </span>
-            <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${showActions ? 'rotate-180' : ''}`} />
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <span className={`text-xl font-bold ${type === 'asset' ? 'text-gray-900 dark:text-gray-100' : 'text-red-600'}`}>
+            {formatCurrency(value)}
+          </span>
+          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${showActions ? 'rotate-180' : ''}`} />
+        </div>
       </div>
 
       {/* Expandable Actions */}
       <AnimatePresence>
-        {showActions && !isEditing && (
+        {showActions && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
@@ -140,9 +104,8 @@ const MobileAccountCard = ({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setEditValue(value.toString());
-                  setIsEditing(true);
                   setShowActions(false);
+                  onEdit();
                 }}
                 className="flex-1 flex items-center justify-center gap-2 py-3 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
               >
@@ -220,11 +183,19 @@ const MobileNetWorthView = ({
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [showAddAccount, setShowAddAccount] = useState(false);
   const [newAccountName, setNewAccountName] = useState('');
+  const [newAccountValue, setNewAccountValue] = useState('');
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [newGoalName, setNewGoalName] = useState('');
   const [newGoalTarget, setNewGoalTarget] = useState('');
   const [editingGoalId, setEditingGoalId] = useState(null);
   const [editGoalValue, setEditGoalValue] = useState('');
+  
+  // Edit account modal state
+  const [showEditAccount, setShowEditAccount] = useState(false);
+  const [editingAccount, setEditingAccount] = useState(null);
+  const [editAccountValue, setEditAccountValue] = useState('');
+  const [editAccountMonth, setEditAccountMonth] = useState(selectedMonth);
+  const [showEditMonthPicker, setShowEditMonthPicker] = useState(false);
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -309,8 +280,19 @@ const MobileNetWorthView = ({
 
   const handleAddAccount = async () => {
     if (!newAccountName.trim()) return;
-    await addAccount(newAccountName, activeSection === 'liabilities' ? 'liability' : 'asset');
+    const accountType = activeSection === 'liabilities' ? 'liability' : 'asset';
+    const newAccount = await addAccount(newAccountName, accountType);
+    
+    // If initial value is set, update the snapshot
+    if (newAccountValue && newAccount?.id) {
+      const value = parseFloat(newAccountValue) || 0;
+      if (value > 0) {
+        await updateSnapshot(newAccount.id, selectedMonth, value);
+      }
+    }
+    
     setNewAccountName('');
+    setNewAccountValue('');
     setShowAddAccount(false);
   };
 
@@ -320,6 +302,24 @@ const MobileNetWorthView = ({
     setNewGoalName('');
     setNewGoalTarget('');
     setShowAddGoal(false);
+  };
+
+  // Open edit modal for an account
+  const openEditAccount = (account, type) => {
+    setEditingAccount({ ...account, type });
+    setEditAccountValue(getSnapshotValue(account.id, selectedMonth).toString());
+    setEditAccountMonth(selectedMonth);
+    setShowEditAccount(true);
+  };
+
+  // Save edited account value
+  const handleEditAccountSave = async () => {
+    if (!editingAccount) return;
+    const value = parseFloat(editAccountValue) || 0;
+    await updateSnapshot(editingAccount.id, editAccountMonth, value);
+    setShowEditAccount(false);
+    setEditingAccount(null);
+    setEditAccountValue('');
   };
 
   return (
@@ -567,54 +567,21 @@ const MobileNetWorthView = ({
                   key={account.id}
                   account={account}
                   value={getSnapshotValue(account.id, selectedMonth)}
-                  onChange={(value) => updateSnapshot(account.id, selectedMonth, value)}
+                  onEdit={() => openEditAccount(account, activeSection === 'assets' ? 'asset' : 'liability')}
                   onDelete={() => deleteAccount(account.id, activeSection === 'assets' ? 'asset' : 'liability')}
                   formatCurrency={formatCurrency}
                   type={activeSection === 'assets' ? 'asset' : 'liability'}
                 />
               ))}
 
-              {/* Add Account */}
-              {showAddAccount ? (
-                <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-4">
-                  <input
-                    type="text"
-                    placeholder={`${activeSection === 'assets' ? 'Asset' : 'Liability'} name`}
-                    value={newAccountName}
-                    onChange={(e) => setNewAccountName(e.target.value)}
-                    className="w-full px-4 py-3 mb-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100"
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleAddAccount();
-                      if (e.key === 'Escape') setShowAddAccount(false);
-                    }}
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleAddAccount}
-                      className={`flex-1 py-3 text-white rounded-xl font-medium ${
-                        activeSection === 'assets' ? 'bg-green-500' : 'bg-red-500'
-                      }`}
-                    >
-                      Add {activeSection === 'assets' ? 'Asset' : 'Liability'}
-                    </button>
-                    <button
-                      onClick={() => setShowAddAccount(false)}
-                      className="px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setShowAddAccount(true)}
-                  className="w-full p-4 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl text-gray-500 flex items-center justify-center gap-2"
-                >
-                  <Plus className="w-5 h-5" />
-                  Add {activeSection === 'assets' ? 'Asset' : 'Liability'}
-                </button>
-              )}
+              {/* Add Account Button */}
+              <button
+                onClick={() => setShowAddAccount(true)}
+                className="w-full p-4 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl text-gray-500 flex items-center justify-center gap-2"
+              >
+                <Plus className="w-5 h-5" />
+                Add {activeSection === 'assets' ? 'Asset' : 'Liability'}
+              </button>
             </>
           )}
         </motion.div>
@@ -756,10 +723,320 @@ const MobileNetWorthView = ({
         )}
       </AnimatePresence>
 
+      {/* Add Account Bottom Sheet Modal */}
+      <AnimatePresence>
+        {showAddAccount && activeSection !== 'goals' && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowAddAccount(false)}
+              className="fixed inset-0 bg-black/50 z-50"
+            />
+
+            {/* Bottom Sheet */}
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-3xl z-50 max-h-[90vh] overflow-hidden"
+            >
+              {/* Handle bar */}
+              <div className="flex justify-center pt-3 pb-2">
+                <div className="w-10 h-1 bg-gray-300 dark:bg-gray-700 rounded-full" />
+              </div>
+
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 pb-4 border-b border-gray-200 dark:border-gray-800">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  Add {activeSection === 'assets' ? 'Asset' : 'Liability'}
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowAddAccount(false);
+                    setNewAccountName('');
+                    setNewAccountValue('');
+                  }}
+                  className="p-2 -mr-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="px-5 py-4 space-y-5 overflow-y-auto max-h-[calc(90vh-160px)]">
+                {/* Account Name */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {activeSection === 'assets' ? 'Asset' : 'Liability'} Name
+                  </label>
+                  <input
+                    type="text"
+                    value={newAccountName}
+                    onChange={(e) => setNewAccountName(e.target.value)}
+                    placeholder={activeSection === 'assets' ? 'e.g., Savings Account, Investment Portfolio' : 'e.g., Credit Card, Car Loan'}
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 placeholder-gray-400"
+                    autoFocus
+                  />
+                </div>
+
+                {/* Initial Value */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Current Value <span className="text-gray-400 font-normal">(optional)</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl text-gray-400">
+                      {currencySymbol}
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={newAccountValue}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/[^0-9.]/g, '');
+                        setNewAccountValue(value);
+                      }}
+                      placeholder="0.00"
+                      className="w-full pl-10 pr-4 py-3 text-xl font-semibold bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                </div>
+
+                {/* Suggestions */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Quick Add
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {(activeSection === 'assets' 
+                      ? ['Checking Account', 'Savings Account', '401(k)', 'Roth IRA', 'Brokerage', 'Real Estate', 'Crypto', 'Emergency Fund']
+                      : ['Credit Card', 'Mortgage', 'Car Loan', 'Student Loan', 'Personal Loan', 'Medical Debt']
+                    ).map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        onClick={() => setNewAccountName(suggestion)}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                          newAccountName === suggestion
+                            ? activeSection === 'assets'
+                              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 ring-2 ring-green-500'
+                              : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 ring-2 ring-red-500'
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                        }`}
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer with Save button */}
+              <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+                <button
+                  onClick={handleAddAccount}
+                  disabled={!newAccountName.trim()}
+                  className={`
+                    w-full py-4 rounded-xl font-semibold text-white text-lg
+                    transition-all flex items-center justify-center gap-2
+                    ${!newAccountName.trim()
+                      ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed'
+                      : activeSection === 'assets'
+                        ? 'bg-green-500 hover:bg-green-600 active:scale-[0.98]'
+                        : 'bg-red-500 hover:bg-red-600 active:scale-[0.98]'
+                    }
+                  `}
+                >
+                  <Check className="w-5 h-5" />
+                  Add {activeSection === 'assets' ? 'Asset' : 'Liability'}
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Account Bottom Sheet Modal */}
+      <AnimatePresence>
+        {showEditAccount && editingAccount && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setShowEditAccount(false);
+                setEditingAccount(null);
+                setEditAccountValue('');
+              }}
+              className="fixed inset-0 bg-black/50 z-50"
+            />
+
+            {/* Bottom Sheet */}
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-3xl z-50 max-h-[90vh] overflow-hidden"
+            >
+              {/* Handle bar */}
+              <div className="flex justify-center pt-3 pb-2">
+                <div className="w-10 h-1 bg-gray-300 dark:bg-gray-700 rounded-full" />
+              </div>
+
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 pb-4 border-b border-gray-200 dark:border-gray-800">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  Edit {editingAccount.type === 'asset' ? 'Asset' : 'Liability'}
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowEditAccount(false);
+                    setEditingAccount(null);
+                    setEditAccountValue('');
+                  }}
+                  className="p-2 -mr-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="px-5 py-4 space-y-5 overflow-y-auto max-h-[calc(90vh-160px)]">
+                {/* Account Name (read-only) */}
+                <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                  <div className={`p-2 rounded-lg ${editingAccount.type === 'asset' ? 'bg-green-100 dark:bg-green-900/30 text-green-600' : 'bg-red-100 dark:bg-red-900/30 text-red-600'}`}>
+                    {getAccountIcon(editingAccount.name)}
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-900 dark:text-gray-100">{editingAccount.name}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">{editingAccount.type}</div>
+                  </div>
+                </div>
+
+                {/* Amount Input */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Amount
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl text-gray-400">
+                      {currencySymbol}
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={editAccountValue}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/[^0-9.]/g, '');
+                        setEditAccountValue(value);
+                      }}
+                      placeholder="0.00"
+                      className={`
+                        w-full pl-10 pr-4 py-4 
+                        text-3xl font-semibold text-gray-900 dark:text-gray-100
+                        bg-gray-50 dark:bg-gray-800 
+                        border-2 border-gray-200 dark:border-gray-700 
+                        rounded-xl
+                        focus:outline-none focus:border-2 
+                        ${editingAccount.type === 'asset' ? 'focus:border-green-500 focus:ring-green-500' : 'focus:border-red-500 focus:ring-red-500'} 
+                        focus:ring-2 transition-colors
+                      `}
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                {/* Month Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Month
+                  </label>
+                  <button
+                    onClick={() => setShowEditMonthPicker(!showEditMonthPicker)}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Calendar className="w-5 h-5 text-gray-400" />
+                      <span>{MONTHS[editAccountMonth]} {selectedYear}</span>
+                    </div>
+                    <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${showEditMonthPicker ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* Month Picker Grid */}
+                  <AnimatePresence>
+                    {showEditMonthPicker && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700"
+                      >
+                        <div className="grid grid-cols-4 gap-2">
+                          {MONTHS.map((m, idx) => (
+                            <button
+                              key={m}
+                              onClick={() => {
+                                setEditAccountMonth(idx);
+                                setShowEditMonthPicker(false);
+                                // Update value to show current value for selected month
+                                setEditAccountValue(getSnapshotValue(editingAccount.id, idx).toString());
+                              }}
+                              className={`
+                                py-2.5 rounded-lg text-sm font-medium transition-colors
+                                ${editAccountMonth === idx
+                                  ? editingAccount.type === 'asset' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                }
+                              `}
+                            >
+                              {m}
+                            </button>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+
+              {/* Footer with Save button */}
+              <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+                <button
+                  onClick={handleEditAccountSave}
+                  className={`
+                    w-full py-4 rounded-xl font-semibold text-white text-lg
+                    transition-all flex items-center justify-center gap-2 active:scale-[0.98]
+                    ${editingAccount.type === 'asset'
+                      ? 'bg-green-500 hover:bg-green-600'
+                      : 'bg-red-500 hover:bg-red-600'
+                    }
+                  `}
+                >
+                  <Check className="w-5 h-5" />
+                  Save {editingAccount.type === 'asset' ? 'Asset' : 'Liability'}
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Floating Action Button */}
       <motion.button
         whileTap={{ scale: 0.95 }}
-        onClick={() => setShowAddAccount(true)}
+        onClick={() => {
+          if (activeSection === 'goals') {
+            setShowAddGoal(true);
+          } else {
+            setShowAddAccount(true);
+          }
+        }}
         className={`fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg flex items-center justify-center z-40 ${
           activeSection === 'assets'
             ? 'bg-green-500 hover:bg-green-600'
