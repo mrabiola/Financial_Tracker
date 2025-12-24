@@ -122,3 +122,103 @@ html, body, #root {
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
+
+/* ============================================
+   MOBILE-SPECIFIC STYLES
+   ============================================ */
+
+/* Hide scrollbars but allow scrolling (for horizontal scroll cards) */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari, Opera */
+}
+
+/* Safe area padding for iOS notch/home indicator */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+  }
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom, 20px);
+  }
+}
+
+/* Mobile touch optimization */
+@media (max-width: 767px) {
+  /* Larger touch targets */
+  button, 
+  [role="button"],
+  input[type="button"],
+  input[type="submit"] {
+    min-height: 44px;
+  }
+  
+  /* Prevent text selection on interactive elements */
+  .no-select {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+  
+  /* Smoother scrolling on iOS */
+  .scroll-smooth {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Disable desktop scale on mobile */
+  #root {
+    transform: none !important;
+    width: 100% !important;
+    min-height: 100% !important;
+    margin-left: 0 !important;
+  }
+  
+  /* Full bleed on mobile */
+  body {
+    overflow-x: hidden;
+  }
+}
+
+/* Mobile bottom sheet animation helper */
+.bottom-sheet-enter {
+  transform: translateY(100%);
+}
+.bottom-sheet-enter-active {
+  transform: translateY(0);
+  transition: transform 300ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.bottom-sheet-exit {
+  transform: translateY(0);
+}
+.bottom-sheet-exit-active {
+  transform: translateY(100%);
+  transition: transform 300ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Floating action button positioning with safe area */
+.fab-position {
+  bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  right: 1.5rem;
+}
+
+/* Mobile card active state */
+@media (max-width: 767px) {
+  .mobile-card-active:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease-out;
+  }
+}
+
+/* Progress bar animation */
+@keyframes progressGrow {
+  from {
+    width: 0;
+  }
+}
+.animate-progress {
+  animation: progressGrow 0.5s ease-out forwards;
+}

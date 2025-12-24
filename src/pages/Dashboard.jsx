@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useDemo } from '../contexts/DemoContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useInitialDataSetup } from '../hooks/useInitialDataSetup';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import DemoBanner from '../components/demo/DemoBanner';
 import ConversionModal from '../components/demo/ConversionModal';
 
@@ -20,6 +21,7 @@ const Dashboard = () => {
   const [localData, setLocalData] = useState(null);
   const [showConversionModal, setShowConversionModal] = useState(false);
   const { isInitializing } = useInitialDataSetup();
+  const isMobile = useMediaQuery('(max-width: 767px)');
 
   useEffect(() => {
     // Check for local storage data on mount
@@ -72,42 +74,73 @@ const Dashboard = () => {
       {/* Top Navigation Bar */}
       <div className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex justify-between items-center h-14 sm:h-16">
             <div className="flex items-center">
               <button
                 onClick={() => navigate('/dashboard')}
                 className="hover:opacity-80 transition-opacity"
                 title="Go to Dashboard"
               >
-                <Logo size="default" />
+                <Logo size={isMobile ? "small" : "default"} />
               </button>
             </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600 dark:text-gray-300">
-                Welcome, {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
-              </span>
-              <button
-                onClick={toggleTheme}
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 rounded-lg transition-colors opacity-70 hover:opacity-100 focus:opacity-100"
-                title="Toggle theme"
-              >
-                {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              </button>
-              <button
-                onClick={() => navigate('/profile')}
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 rounded-lg transition-colors"
-                title="Profile Settings"
-              >
-                <User className="w-5 h-5" />
-              </button>
-              <button
-                onClick={handleSignOut}
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 rounded-lg transition-colors"
-                title="Sign Out"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
-            </div>
+            
+            {/* Desktop Navigation */}
+            {!isMobile && (
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-gray-600 dark:text-gray-300">
+                  Welcome, {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
+                </span>
+                <button
+                  onClick={toggleTheme}
+                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 rounded-lg transition-colors opacity-70 hover:opacity-100 focus:opacity-100"
+                  title="Toggle theme"
+                >
+                  {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                </button>
+                <button
+                  onClick={() => navigate('/profile')}
+                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  title="Profile Settings"
+                >
+                  <User className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={handleSignOut}
+                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  title="Sign Out"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+
+            {/* Mobile Navigation Icons */}
+            {isMobile && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={toggleTheme}
+                  className="p-2 text-gray-500 dark:text-gray-400 rounded-lg"
+                  title="Toggle theme"
+                >
+                  {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                </button>
+                <button
+                  onClick={() => navigate('/profile')}
+                  className="p-2 text-gray-500 dark:text-gray-400 rounded-lg"
+                  title="Profile"
+                >
+                  <User className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={handleSignOut}
+                  className="p-2 text-gray-500 dark:text-gray-400 rounded-lg"
+                  title="Sign Out"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -128,33 +161,46 @@ const Dashboard = () => {
 
       {/* Footer */}
       <footer className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 mt-auto">
-        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            {/* Logo and Description */}
-            <div className="flex items-center gap-3">
-              <Logo size="small" />
-              <span className="text-sm text-gray-600 dark:text-gray-300">Secure financial management platform</span>
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+          {/* Mobile Footer - Compact single line */}
+          {isMobile ? (
+            <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+              <div className="flex items-center gap-3">
+                <Link to="/terms" className="hover:text-blue-600">Terms</Link>
+                <span>•</span>
+                <Link to="/privacy" className="hover:text-blue-600">Privacy</Link>
+              </div>
+              <span>© 2025 Techbrov</span>
             </div>
-            
-            {/* Legal Links and Copyright */}
-            <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
-              <Link 
-                to="/terms" 
-                className="hover:text-blue-600 transition-colors"
-              >
-                Terms
-              </Link>
-              <span className="text-gray-400">•</span>
-              <Link 
-                to="/privacy" 
-                className="hover:text-blue-600 transition-colors"
-              >
-                Privacy
-              </Link>
-              <span className="text-gray-400">•</span>
-              <span>© 2025 Techbrov. All rights reserved.</span>
+          ) : (
+            /* Desktop Footer - Full layout */
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              {/* Logo and Description */}
+              <div className="flex items-center gap-3">
+                <Logo size="small" />
+                <span className="text-sm text-gray-600 dark:text-gray-300">Secure financial management platform</span>
+              </div>
+              
+              {/* Legal Links and Copyright */}
+              <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
+                <Link 
+                  to="/terms" 
+                  className="hover:text-blue-600 transition-colors"
+                >
+                  Terms
+                </Link>
+                <span className="text-gray-400">•</span>
+                <Link 
+                  to="/privacy" 
+                  className="hover:text-blue-600 transition-colors"
+                >
+                  Privacy
+                </Link>
+                <span className="text-gray-400">•</span>
+                <span>© 2025 Techbrov. All rights reserved.</span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </footer>
 

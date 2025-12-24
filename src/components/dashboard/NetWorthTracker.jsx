@@ -7,18 +7,27 @@ import { useCurrency } from '../../contexts/CurrencyContext';
 import { useCashflowData } from '../../hooks/useCashflowData';
 import LoadingSpinner from '../common/LoadingSpinner';
 import SimpleImportModal from './SimpleImportModal';
+import SmartAssetModal from './SmartAssetModal';
 import CashflowSection from './CashflowSection';
+import { useApiAssets } from '../../hooks/useApiAssets';
+import { useIsMobile } from '../../hooks/useMediaQuery';
+import MobileNetWorthView from '../mobile/MobileNetWorthView';
+import MobileCashflowView from '../mobile/MobileCashflowView';
+import MobileAnalyticsView from '../mobile/MobileAnalyticsView';
 
 const NetWorthTracker = () => {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth();
 
+  // Mobile detection
+  const isMobile = useIsMobile();
+
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   
   // Use currency context for formatting
-  const { formatCurrency, formatCurrencyShort } = useCurrency();
+  const { formatCurrency, formatCurrencyShort, getCurrencySymbol, currency } = useCurrency();
 
   // Use demo-aware data hook with currency support
   const {
@@ -37,6 +46,9 @@ const NetWorthTracker = () => {
     fetchMultiYearSnapshots,
     reload
   } = useFinancialDataDemo(selectedYear);
+
+  // API assets hook (will get yearId internally)
+  const { addApiAsset } = useApiAssets();
 
   // Cashflow data hook
   const {
@@ -65,6 +77,8 @@ const NetWorthTracker = () => {
   const [newGoalTarget, setNewGoalTarget] = useState('');
   const [showImportOptions, setShowImportOptions] = useState(false);
   const [showSimpleImportModal, setShowSimpleImportModal] = useState(false);
+  const [showSmartAssetModal, setShowSmartAssetModal] = useState(false);
+  const [smartAssetType, setSmartAssetType] = useState('asset');
   const [dropdownPosition, setDropdownPosition] = useState({ alignRight: false, alignTop: false });
   const [assetChartView, setAssetChartView] = useState('summary'); // 'summary' or 'detailed'
   const [showOtherTooltip, setShowOtherTooltip] = useState(false);
@@ -902,6 +916,134 @@ const NetWorthTracker = () => {
     );
   }
 
+  // Mobile View - completely different UI optimized for touch
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 text-gray-900 dark:text-gray-100 pb-safe">
+        {/* Mobile Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Landmark className="w-6 h-6 text-blue-600" />
+            <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100">WealthTrak</h1>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setSelectedYear(selectedYear - 1)}
+              className="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+            </button>
+            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 min-w-[50px] text-center">
+              {selectedYear}
+            </span>
+            <button
+              onClick={() => setSelectedYear(selectedYear + 1)}
+              className="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            >
+              <ChevronRight className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Tab Navigation */}
+        <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1 mb-4">
+          <button
+            onClick={() => setActiveTab('data')}
+            className={`flex-1 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === 'data'
+                ? 'bg-white dark:bg-gray-700 text-blue-600 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400'
+            }`}
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            Netsheet
+          </button>
+          <button
+            onClick={() => setActiveTab('charts')}
+            className={`flex-1 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === 'charts'
+                ? 'bg-white dark:bg-gray-700 text-blue-600 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400'
+            }`}
+          >
+            <LineChart className="w-4 h-4" />
+            Analytics
+          </button>
+          <button
+            onClick={() => setActiveTab('cashflow')}
+            className={`flex-1 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === 'cashflow'
+                ? 'bg-white dark:bg-gray-700 text-blue-600 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400'
+            }`}
+          >
+            <Banknote className="w-4 h-4" />
+            Cashflow
+          </button>
+        </div>
+
+        {/* Mobile Content */}
+        {activeTab === 'data' && (
+          <MobileNetWorthView
+            selectedYear={selectedYear}
+            selectedMonth={selectedMonth}
+            setSelectedMonth={setSelectedMonth}
+            setSelectedYear={setSelectedYear}
+            accounts={accounts}
+            goals={goals}
+            getSnapshotValue={getSnapshotValue}
+            updateSnapshot={updateSnapshot}
+            addAccount={addAccountToDb}
+            deleteAccount={deleteAccountFromDb}
+            addGoal={addGoalToDb}
+            updateGoalProgress={updateGoalProgress}
+            deleteGoal={deleteGoalFromDb}
+            formatCurrency={formatCurrency}
+            formatCurrencyShort={formatCurrencyShort}
+            getCurrencySymbol={getCurrencySymbol}
+            currency={currency}
+            copyPreviousMonth={copyPreviousMonth}
+          />
+        )}
+        {activeTab === 'charts' && (
+          <MobileAnalyticsView
+            selectedYear={selectedYear}
+            selectedMonth={selectedMonth}
+            setSelectedMonth={setSelectedMonth}
+            setSelectedYear={setSelectedYear}
+            accounts={accounts}
+            goals={goals}
+            getSnapshotValue={getSnapshotValue}
+            formatCurrency={formatCurrency}
+            formatCurrencyShort={formatCurrencyShort}
+            getCurrencySymbol={getCurrencySymbol}
+            currency={currency}
+          />
+        )}
+        {activeTab === 'cashflow' && (
+          <MobileCashflowView
+            selectedYear={selectedYear}
+            selectedMonth={selectedMonth}
+            setSelectedMonth={setSelectedMonth}
+            setSelectedYear={setSelectedYear}
+            cashflowData={cashflowData}
+            incomeCategories={incomeCategories}
+            expenseCategories={expenseCategories}
+            saveCashflowData={saveCashflowData}
+            copyPreviousMonth={copyCashflowPreviousMonth}
+            addCategory={addCategory}
+            calculateMetrics={calculateCashflowMetrics}
+            formatCurrency={formatCurrency}
+            formatCurrencyShort={formatCurrencyShort}
+            getCurrencySymbol={getCurrencySymbol}
+            currency={currency}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // Desktop View - original UI
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 text-gray-900 dark:text-gray-100">
       <div className="max-w-full mx-auto">
@@ -1452,7 +1594,7 @@ const NetWorthTracker = () => {
                   Assets
                 </h2>
                 <button
-                  onClick={() => { setNewAccountType('asset'); setShowNewAccount(true); }}
+                  onClick={() => { setSmartAssetType('asset'); setShowSmartAssetModal(true); }}
                   className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
                 >
                   <Plus className="w-4 h-4" />
@@ -1584,7 +1726,7 @@ const NetWorthTracker = () => {
                   Liabilities
                 </h2>
                 <button
-                  onClick={() => { setNewAccountType('liability'); setShowNewAccount(true); }}
+                  onClick={() => { setSmartAssetType('liability'); setShowSmartAssetModal(true); }}
                   className="flex items-center gap-1 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
                 >
                   <Plus className="w-4 h-4" />
@@ -2002,6 +2144,16 @@ const NetWorthTracker = () => {
                             }
                             return [formatCurrency(value), name];
                           }}
+                          contentStyle={{
+                            backgroundColor: 'var(--tooltip-bg)',
+                            color: 'var(--tooltip-text)',
+                            border: '1px solid var(--tooltip-border)',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                            fontSize: '14px'
+                          }}
+                          itemStyle={{ color: 'var(--tooltip-text)' }}
+                          labelStyle={{ color: 'var(--tooltip-text)' }}
                         />
                       </RechartsPieChart>
                     </ResponsiveContainer>
@@ -2102,6 +2254,9 @@ const NetWorthTracker = () => {
                         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                         fontSize: '14px'
                       }}
+                      itemStyle={{ color: 'var(--tooltip-text)' }}
+                      labelStyle={{ color: 'var(--tooltip-text)' }}
+                      cursor={{ fill: 'rgba(100, 100, 100, 0.2)' }}
                     />
                     <Legend />
                     <Bar dataKey="assets" fill="#10b981" name="Assets" />
@@ -2239,6 +2394,9 @@ const NetWorthTracker = () => {
                             borderRadius: '6px',
                             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                           }}
+                          itemStyle={{ color: 'var(--tooltip-text)' }}
+                          labelStyle={{ color: 'var(--tooltip-text)' }}
+                          cursor={{ fill: 'rgba(100, 100, 100, 0.2)' }}
                         />
                         {/* Dynamic Bar with computed fill colors */}
                         <Bar 
@@ -2334,6 +2492,23 @@ const NetWorthTracker = () => {
         accounts={{ assets: accounts.assets || [], liabilities: accounts.liabilities || [] }}
       />
 
+      {/* Smart Asset Modal */}
+      {showSmartAssetModal && (
+        <SmartAssetModal
+          isOpen={showSmartAssetModal}
+          onClose={() => setShowSmartAssetModal(false)}
+          onSave={async (assetData) => {
+            // Set the type for the old manual flow if needed
+            if (assetData.asset_type === 'manual') {
+              setNewAccountType(assetData.type);
+            }
+            await addApiAsset(assetData);
+            reload(); // Reload data to show new asset
+          }}
+          selectedYear={selectedYear}
+          accountType={smartAssetType}
+        />
+      )}
     </div>
   );
 };
