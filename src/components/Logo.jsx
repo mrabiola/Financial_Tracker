@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Logo = ({ className = '', size = 'default', showText = true }) => {
+const Logo = ({ className = '', size = 'default', showText = true, variant = 'light' }) => {
   const sizes = {
     small: { icon: 32, text: 18 },
     default: { icon: 40, text: 24 },
@@ -9,6 +9,8 @@ const Logo = ({ className = '', size = 'default', showText = true }) => {
   };
 
   const currentSize = sizes[size] || sizes.default;
+  const textColor = variant === 'dark' ? '#ffffff' : '#334155';
+  const subtextColor = variant === 'dark' ? '#94a3b8' : '#6b7280';
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
@@ -72,13 +74,13 @@ const Logo = ({ className = '', size = 'default', showText = true }) => {
             className="font-bold tracking-tight leading-none"
             style={{ 
               fontSize: `${currentSize.text}px`,
-              color: '#334155'
+              color: textColor
             }}
           >
             WealthTrak
           </span>
           {size === 'large' || size === 'xlarge' ? (
-            <span className="text-xs text-gray-500 mt-0.5">Financial Net Worth Tracker</span>
+            <span className="text-xs mt-0.5" style={{ color: subtextColor }}>Financial Net Worth Tracker</span>
           ) : null}
         </div>
       )}

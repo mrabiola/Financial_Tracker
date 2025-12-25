@@ -13,6 +13,10 @@ import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
+// New landing page with Financial Health Diagnostic funnel
+import LandingPage from './components/landing/LandingPage';
+import FinancialHealthWizard from './components/diagnostic/FinancialHealthWizard';
+// Legacy demo components (kept for reference, can be removed if bundle size is a concern)
 import DemoLanding from './components/demo/DemoLanding';
 import DemoExpirationCheck from './components/demo/DemoExpirationCheck';
 
@@ -24,8 +28,14 @@ function App() {
           <CurrencyProvider>
             <DemoExpirationCheck />
             <Routes>
-            {/* Landing page */}
-            <Route path="/welcome" element={<DemoLanding />} />
+            {/* New Landing page with Financial Health Diagnostic */}
+            <Route path="/welcome" element={<LandingPage />} />
+            
+            {/* Financial Health Diagnostic Wizard */}
+            <Route path="/diagnostic" element={<FinancialHealthWizard />} />
+            
+            {/* Legacy demo landing (kept for backwards compatibility) */}
+            <Route path="/demo-legacy" element={<DemoLanding />} />
             
             {/* Public routes */}
             <Route path="/login" element={<LoginForm />} />
