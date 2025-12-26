@@ -14,6 +14,7 @@ const MobileCategoryCard = ({
   color = 'blue',
   onClick,
   onDelete,
+  onRequestDelete,
   formatCurrency,
   showBudget = true,
   type = 'expense' // 'expense' | 'income'
@@ -55,8 +56,11 @@ const MobileCategoryCard = ({
 
   const handleDelete = (e) => {
     e.stopPropagation();
-    if (window.confirm(`Delete "${name}" category? This will also remove all data for this category.`)) {
-      if (onDelete) onDelete();
+    setShowActions(false);
+    if (onRequestDelete) {
+      onRequestDelete({ name, type });
+    } else if (onDelete) {
+      onDelete();
     }
   };
 
@@ -65,7 +69,7 @@ const MobileCategoryCard = ({
       layout
       className={`
         bg-white dark:bg-gray-900 
-        rounded-xl shadow-sm 
+        rounded-lg shadow-sm 
         border border-gray-200 dark:border-gray-800
         border-l-4 ${colorVariants[color] || colorVariants.blue}
         overflow-hidden
@@ -73,24 +77,24 @@ const MobileCategoryCard = ({
       `}
     >
       <div 
-        className="p-4 cursor-pointer"
+        className="p-3 cursor-pointer"
         onClick={handleCardClick}
       >
         {/* Header row: Icon, Name, Amount */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">{icon}</span>
-            <span className="font-medium text-gray-900 dark:text-gray-100 text-base">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{icon}</span>
+            <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">
               {name}
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${showActions ? 'rotate-180' : ''}`} />
+          <div className="flex items-center gap-1.5">
+            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showActions ? 'rotate-180' : ''}`} />
           </div>
         </div>
 
         {/* Progress bar */}
-        <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden mb-2">
+        <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden mb-1.5">
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${showBudget && budget > 0 ? progress : (spent > 0 ? 100 : 0)}%` }}
@@ -135,21 +139,21 @@ const MobileCategoryCard = ({
             <div className="flex divide-x divide-gray-100 dark:divide-gray-800">
               <button
                 onClick={handleEdit}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 ${
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs ${
                   type === 'income' 
                     ? 'text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30' 
                     : 'text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30'
                 } transition-colors`}
               >
-                <Edit2 className="w-4 h-4" />
-                Edit Amount
+                <Edit2 className="w-3 h-3" />
+                Edit
               </button>
               {onDelete && (
                 <button
                   onClick={handleDelete}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-3 h-3" />
                   Delete
                 </button>
               )}

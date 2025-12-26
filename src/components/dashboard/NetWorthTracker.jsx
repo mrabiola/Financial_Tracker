@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Plus, X, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, Copy, Download, Upload, TrendingUp, PieChart, BarChart3, LineChart, Target, Wallet, CreditCard, DollarSign, TrendingDown, PiggyBank, Landmark, Home, Car, School, Heart, Briefcase, Coins, AlertCircle, FileSpreadsheet, Calendar, TrendingUp as TrendUpIcon, TrendingDown as TrendDownIcon, Banknote, ArrowDownCircle, ArrowUpCircle, Activity, Gauge } from 'lucide-react';
+import { Plus, X, Trash2, Check, ChevronLeft, ChevronRight, Copy, Download, Upload, TrendingUp, PieChart, BarChart3, LineChart, Target, Wallet, CreditCard, DollarSign, TrendingDown, PiggyBank, Landmark, Home, Car, School, Heart, Briefcase, Coins, AlertCircle, FileSpreadsheet, Calendar, TrendingUp as TrendUpIcon, TrendingDown as TrendDownIcon, Banknote, ArrowDownCircle, ArrowUpCircle, Activity, Gauge } from 'lucide-react';
 import { LineChart as RechartsLineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, ComposedChart } from 'recharts';
 import { useFinancialDataDemo } from '../../hooks/useFinancialDataDemo';
 import { getConversionIndicator } from '../../utils/currencyConversion';
@@ -14,6 +14,7 @@ import { useIsMobile } from '../../hooks/useMediaQuery';
 import MobileNetWorthView from '../mobile/MobileNetWorthView';
 import MobileCashflowView from '../mobile/MobileCashflowView';
 import MobileAnalyticsView from '../mobile/MobileAnalyticsView';
+import MobileDatePicker from '../mobile/MobileDatePicker';
 
 const NetWorthTracker = () => {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -90,7 +91,6 @@ const NetWorthTracker = () => {
   const [timeFrame, setTimeFrame] = useState('ALL'); // 'YTD', '6M', '3M', '1Y', '3Y', '5Y', 'ALL'
   const [availableYears, setAvailableYears] = useState([]);
   const importButtonRef = useRef(null);
-  const monthButtonRef = useRef(null);
   const yearButtonRef = useRef(null);
 
   // Close dropdowns and popups when clicking outside or pressing ESC
@@ -919,65 +919,65 @@ const NetWorthTracker = () => {
   // Mobile View - completely different UI optimized for touch
   if (isMobile) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 text-gray-900 dark:text-gray-100 pb-safe">
-        {/* Mobile Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Landmark className="w-6 h-6 text-blue-600" />
-            <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100">WealthTrak</h1>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 px-3 py-3 text-gray-900 dark:text-gray-100 pb-safe">
+        {/* Mobile Header with Unified Date Picker */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-1.5">
+            <Landmark className="w-5 h-5 text-blue-600" />
+            <h1 className="text-base font-bold text-gray-900 dark:text-gray-100">WealthTrak</h1>
           </div>
           <div className="flex items-center gap-1">
+            {/* Copy Previous Button - Icon only with tooltip */}
             <button
-              onClick={() => setSelectedYear(selectedYear - 1)}
-              className="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              onClick={activeTab === 'cashflow' ? copyCashflowPreviousMonth : copyPreviousMonth}
+              className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              title="Copy values from previous month"
             >
-              <ChevronLeft className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+              <Copy className="w-3.5 h-3.5 text-gray-600 dark:text-gray-400" />
             </button>
-            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 min-w-[50px] text-center">
-              {selectedYear}
-            </span>
-            <button
-              onClick={() => setSelectedYear(selectedYear + 1)}
-              className="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-            >
-              <ChevronRight className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-            </button>
+            {/* Unified Date Picker */}
+            <MobileDatePicker
+              selectedMonth={selectedMonth}
+              setSelectedMonth={setSelectedMonth}
+              selectedYear={selectedYear}
+              setSelectedYear={setSelectedYear}
+            />
           </div>
         </div>
 
         {/* Mobile Tab Navigation */}
-        <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1 mb-4">
+        <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 mb-3">
           <button
             onClick={() => setActiveTab('data')}
-            className={`flex-1 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 rounded-md font-medium text-xs transition-all flex items-center justify-center gap-1 ${
               activeTab === 'data'
                 ? 'bg-white dark:bg-gray-700 text-blue-600 shadow-sm'
                 : 'text-gray-600 dark:text-gray-400'
             }`}
           >
-            <FileSpreadsheet className="w-4 h-4" />
+            <FileSpreadsheet className="w-3.5 h-3.5" />
             Netsheet
           </button>
           <button
             onClick={() => setActiveTab('charts')}
-            className={`flex-1 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 rounded-md font-medium text-xs transition-all flex items-center justify-center gap-1 ${
               activeTab === 'charts'
                 ? 'bg-white dark:bg-gray-700 text-blue-600 shadow-sm'
                 : 'text-gray-600 dark:text-gray-400'
             }`}
           >
-            <LineChart className="w-4 h-4" />
+            <LineChart className="w-3.5 h-3.5" />
             Analytics
           </button>
           <button
             onClick={() => setActiveTab('cashflow')}
-            className={`flex-1 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 rounded-md font-medium text-xs transition-all flex items-center justify-center gap-1 ${
               activeTab === 'cashflow'
                 ? 'bg-white dark:bg-gray-700 text-blue-600 shadow-sm'
                 : 'text-gray-600 dark:text-gray-400'
             }`}
           >
-            <Banknote className="w-4 h-4" />
+            <Banknote className="w-3.5 h-3.5" />
             Cashflow
           </button>
         </div>
@@ -1057,80 +1057,136 @@ const NetWorthTracker = () => {
                 Financial Tracker
               </h1>
             </div>
-            <div className="flex items-center gap-4">
-              {/* Enhanced Year Selector */}
+            <div className="flex items-center gap-2">
+              {/* Enhanced Year/Month Picker */}
               <div className="relative" data-year-picker>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                   <button
-                    onClick={() => setSelectedYear(selectedYear - 1)}
+                    onClick={() => {
+                      if (selectedMonth === 0) {
+                        setSelectedMonth(11);
+                        setSelectedYear(selectedYear - 1);
+                      } else {
+                        setSelectedMonth(selectedMonth - 1);
+                      }
+                    }}
                     className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all duration-200"
-                    title="Previous Year"
+                    title="Previous Month"
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
                   <button
                     ref={yearButtonRef}
                     onClick={() => setShowYearPopup(!showYearPopup)}
-                    className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 cursor-pointer"
+                    className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 cursor-pointer"
                   >
-                    <Calendar className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                    <span className="font-semibold text-gray-700 dark:text-gray-200">{selectedYear}</span>
+                    <Calendar className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                    <span className="font-medium text-sm text-gray-700 dark:text-gray-200">
+                      {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][selectedMonth]} {selectedYear}
+                    </span>
                   </button>
                   <button
-                    onClick={() => setSelectedYear(selectedYear + 1)}
+                    onClick={() => {
+                      if (selectedMonth === 11) {
+                        setSelectedMonth(0);
+                        setSelectedYear(selectedYear + 1);
+                      } else {
+                        setSelectedMonth(selectedMonth + 1);
+                      }
+                    }}
                     className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all duration-200"
-                    title="Next Year"
+                    title="Next Month"
                   >
                     <ChevronRight className="w-5 h-5" />
                   </button>
                 </div>
 
-                {/* Year Popup */}
+                {/* Month/Year Popup */}
                 {showYearPopup && (
-                  <div className="absolute top-full mt-2 right-0 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg shadow-xl p-4 z-50" style={{ minWidth: '280px' }}>
-                    <div className="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Select Year</div>
-                    <div className="grid grid-cols-4 gap-2">
-                      {Array.from({ length: 20 }, (_, i) => currentYear - 10 + i).map((year) => (
-                        <button
-                          key={year}
-                          onClick={() => {
-                            setSelectedYear(year);
-                            setShowYearPopup(false);
-                          }}
-                          className={`px-3 py-2 text-sm rounded-lg transition-all ${
-                            year === selectedYear
-                              ? 'bg-blue-600 text-white font-semibold'
-                              : year === currentYear
-                              ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium'
-                              : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
-                          }`}
-                        >
-                          {year}
-                        </button>
-                      ))}
+                  <div className="absolute top-full mt-2 right-0 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg shadow-xl p-4 z-50" style={{ minWidth: '300px' }}>
+                    {/* Month Grid */}
+                    <div className="mb-4">
+                      <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">Month</div>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((month, idx) => (
+                          <button
+                            key={month}
+                            onClick={() => setSelectedMonth(idx)}
+                            className={`px-2 py-1.5 text-xs rounded-md transition-all ${
+                              idx === selectedMonth
+                                ? 'bg-blue-600 text-white font-semibold'
+                                : idx === new Date().getMonth() && selectedYear === currentYear
+                                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50'
+                                : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
+                            }`}
+                          >
+                            {month}
+                          </button>
+                        ))}
+                      </div>
                     </div>
+                    {/* Year Grid */}
+                    <div>
+                      <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">Year</div>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {Array.from({ length: 12 }, (_, i) => currentYear - 5 + i).map((year) => (
+                          <button
+                            key={year}
+                            onClick={() => setSelectedYear(year)}
+                            className={`px-2 py-1.5 text-xs rounded-md transition-all ${
+                              year === selectedYear
+                                ? 'bg-blue-600 text-white font-semibold'
+                                : year === currentYear
+                                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50'
+                                : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
+                            }`}
+                          >
+                            {year}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Jump to Today */}
+                    <button
+                      onClick={() => {
+                        setSelectedMonth(new Date().getMonth());
+                        setSelectedYear(new Date().getFullYear());
+                        setShowYearPopup(false);
+                      }}
+                      className="mt-3 w-full py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors"
+                    >
+                      Jump to Today
+                    </button>
                   </div>
                 )}
               </div>
 
-              {/* Import/Export buttons */}
-              <div className="flex gap-2">
+              {/* Copy Previous Button - Icon only */}
+              <button
+                onClick={activeTab === 'cashflow' ? copyCashflowPreviousMonth : copyPreviousMonth}
+                className="p-2 bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors shadow-sm"
+                title="Copy values from previous month"
+              >
+                <Copy className="w-4 h-4" />
+              </button>
+
+              {/* Import/Export buttons - Icon only */}
+              <div className="flex gap-1">
                 <button
                   onClick={exportToCSV}
-                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors shadow-sm"
+                  className="p-2 bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors shadow-sm"
+                  title="Export to CSV"
                 >
                   <Download className="w-4 h-4" />
-                  Export
                 </button>
                 <div className="relative z-50" data-import-dropdown>
                   <button
                     ref={importButtonRef}
                     onClick={handleImportOptionsToggle}
-                    className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors shadow-sm"
+                    className="p-2 bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors shadow-sm"
+                    title="Import data"
                   >
                     <Upload className="w-4 h-4" />
-                    Import
-                    <ChevronDown className="w-4 h-4" />
                   </button>
                   
                   {/* Import Options Dropdown */}
@@ -1383,92 +1439,6 @@ const NetWorthTracker = () => {
         {/* Netsheet Tab */}
         {activeTab === 'data' && (
           <>
-            {/* Month selector and copy button */}
-            <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm p-4 mb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {/* Enhanced Month Selector */}
-                  <div className="relative" data-month-picker>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          const newMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
-                          const newYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
-                          if (newMonth === 11 && selectedMonth === 0) {
-                            setSelectedYear(newYear);
-                          }
-                          setSelectedMonth(newMonth);
-                        }}
-                        className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all duration-200"
-                        title="Previous Month"
-                      >
-                        <ChevronLeft className="w-5 h-5" />
-                      </button>
-                      <button
-                        ref={monthButtonRef}
-                        onClick={() => setShowMonthPopup(!showMonthPopup)}
-                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 cursor-pointer min-w-[100px]"
-                      >
-                        <Calendar className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                        <span className="font-semibold text-gray-700 dark:text-gray-200">{months[selectedMonth]}</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          const newMonth = selectedMonth === 11 ? 0 : selectedMonth + 1;
-                          const newYear = selectedMonth === 11 ? selectedYear + 1 : selectedYear;
-                          if (newMonth === 0 && selectedMonth === 11) {
-                            setSelectedYear(newYear);
-                          }
-                          setSelectedMonth(newMonth);
-                        }}
-                        className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all duration-200"
-                        title="Next Month"
-                      >
-                        <ChevronRight className="w-5 h-5" />
-                      </button>
-                    </div>
-
-                    {/* Month Popup */}
-                    {showMonthPopup && (
-                      <div className="absolute top-full mt-2 left-0 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg shadow-xl p-4 z-50" style={{ minWidth: '300px' }}>
-                        <div className="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Select Month</div>
-                        <div className="grid grid-cols-4 gap-2">
-                          {months.map((month, idx) => (
-                            <button
-                              key={idx}
-                              onClick={() => {
-                                setSelectedMonth(idx);
-                                setShowMonthPopup(false);
-                              }}
-                              className={`px-3 py-2 text-sm rounded-lg transition-all ${
-                                idx === selectedMonth
-                                  ? 'bg-blue-600 text-white font-semibold'
-                                  : idx === currentMonth && selectedYear === currentYear
-                                  ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium border border-blue-200'
-                                  : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
-                              }`}
-                            >
-                              {month}
-                            </button>
-                          ))}
-                        </div>
-                        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-800">
-                          <div className="text-xs text-gray-500 dark:text-gray-400">Year: {selectedYear}</div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <button
-                  onClick={copyPreviousMonth}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors shadow-sm"
-                >
-                  <Copy className="w-4 h-4" />
-                  Copy Previous Month
-                </button>
-              </div>
-            </div>
-
             {/* Goals Section */}
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm p-4 mb-4">
               <div className="flex justify-between items-center mb-3">

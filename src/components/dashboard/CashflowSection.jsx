@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Copy, Plus, Trash2, Calendar, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Activity, DollarSign, AlertCircle, CheckCircle, Edit, BarChart3, LineChart, ChevronDown, Eraser, X, Clock } from 'lucide-react';
+import { Plus, Trash2, TrendingUp, TrendingDown, Activity, DollarSign, AlertCircle, CheckCircle, Edit, BarChart3, LineChart, ChevronDown, Eraser, X, Clock } from 'lucide-react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Line, PieChart, Pie, Cell, Bar, LineChart as RechartsLineChart } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -20,12 +20,9 @@ const CashflowSection = ({
   formatCurrencyShort
 }) => {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth();
 
   const [editingCell, setEditingCell] = useState(null);
   const [tempValue, setTempValue] = useState('');
-  const [showMonthPopup, setShowMonthPopup] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [previewIcon, setPreviewIcon] = useState('');
   const [showAddIncome, setShowAddIncome] = useState(false);
@@ -36,7 +33,6 @@ const CashflowSection = ({
   const [showIncomeOtherTooltip, setShowIncomeOtherTooltip] = useState(false);
   const [showExpenseOtherTooltip, setShowExpenseOtherTooltip] = useState(false);
   const inputRef = useRef(null);
-  const monthButtonRef = useRef(null);
 
   const metrics = calculateMetrics(selectedMonth);
 
@@ -51,16 +47,12 @@ const CashflowSection = ({
   // Close dropdowns when clicking outside or pressing ESC
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (showMonthPopup && !event.target.closest('[data-month-picker]')) {
-        setShowMonthPopup(false);
-      }
       if (openDeleteDropdown && !event.target.closest('[data-delete-dropdown]')) {
         setOpenDeleteDropdown(null);
       }
     };
     const handleEscape = (event) => {
       if (event.key === 'Escape') {
-        if (showMonthPopup) setShowMonthPopup(false);
         if (openDeleteDropdown) setOpenDeleteDropdown(null);
         if (editingCell) handleCancelEdit();
       }
@@ -71,7 +63,7 @@ const CashflowSection = ({
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [showMonthPopup, openDeleteDropdown, editingCell]);
+  }, [openDeleteDropdown, editingCell]);
 
   // Handle cell click to edit
   const handleCellClick = (category, type, monthIndex) => {
@@ -400,131 +392,50 @@ const CashflowSection = ({
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
-      {/* Month Selector and Actions */}
-      <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm p-4">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-3">
-            {/* Month Selector */}
-            <div className="relative" data-month-picker>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    const newMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
-                    const newYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
-                    if (newMonth === 11 && selectedMonth === 0) {
-                      setSelectedYear(newYear);
-                    }
-                    setSelectedMonth(newMonth);
-                  }}
-                  className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all duration-200"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <button
-                  ref={monthButtonRef}
-                  onClick={() => setShowMonthPopup(!showMonthPopup)}
-                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 cursor-pointer min-w-[120px]"
-                >
-                  <Calendar className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                  <span className="font-semibold text-gray-700 dark:text-gray-200">{months[selectedMonth]} {selectedYear}</span>
-                </button>
-                <button
-                  onClick={() => {
-                    const newMonth = selectedMonth === 11 ? 0 : selectedMonth + 1;
-                    const newYear = selectedMonth === 11 ? selectedYear + 1 : selectedYear;
-                    if (newMonth === 0 && selectedMonth === 11) {
-                      setSelectedYear(newYear);
-                    }
-                    setSelectedMonth(newMonth);
-                  }}
-                  className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all duration-200"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Month Selection Popup */}
-              {showMonthPopup && (
-                <div className="absolute top-full left-0 mt-2 bg-white dark:bg-gray-950 rounded-lg shadow-xl border border-gray-200 dark:border-gray-800 p-3 z-50 grid grid-cols-3 gap-2 w-64">
-                  {months.map((month, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => {
-                        setSelectedMonth(idx);
-                        setShowMonthPopup(false);
-                      }}
-                      className={`px-3 py-2 text-sm rounded-lg transition-all ${
-                        idx === selectedMonth
-                          ? 'bg-blue-600 text-white font-semibold'
-                          : idx === currentMonth && selectedYear === currentYear
-                          ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium border border-blue-200'
-                          : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
-                      }`}
-                    >
-                      {month}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              onClick={() => copyPreviousMonth(selectedMonth)}
-              disabled={selectedMonth === 0}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-            >
-              <Copy className="w-4 h-4" />
-              Copy Previous Month
-            </button>
-          </div>
-        </div>
-
-        {/* Auto-insights */}
-        {showInsights && insights.length > 0 && (
-          <div className="flex gap-3 flex-wrap mt-4">
-            <AnimatePresence>
-              {insights.map((insight, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  transition={{ delay: index * 0.1 }}
-                  className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium ${
-                    insight.type === 'positive'
-                      ? 'bg-green-50 text-green-800'
-                      : insight.type === 'warning'
-                      ? 'bg-orange-50 text-orange-800'
-                      : 'bg-blue-50 text-blue-800'
-                  }`}
-                >
-                  {insight.icon}
-                  <span>{insight.text}</span>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-        )}
-      </div>
-
       {/* Excel-Style Tables */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Income Table */}
         <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-green-50 to-green-100 dark:from-green-950/40 dark:to-green-900/20 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-green-600" />
-              Income
-            </h3>
-            <button
-              onClick={() => setShowAddIncome(!showAddIncome)}
-              className="flex items-center gap-2 px-3 py-1 text-sm bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Add
-            </button>
+          <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-green-50 to-green-100 dark:from-green-950/40 dark:to-green-900/20">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-green-600" />
+                Income
+              </h3>
+              <button
+                onClick={() => setShowAddIncome(!showAddIncome)}
+                className="flex items-center gap-2 px-3 py-1 text-sm bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add
+              </button>
+            </div>
+            {/* Auto-insights moved here */}
+            {showInsights && insights.length > 0 && (
+              <div className="flex gap-2 flex-wrap">
+                <AnimatePresence>
+                  {insights.map((insight, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      transition={{ delay: index * 0.1 }}
+                      className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 text-xs font-medium ${
+                        insight.type === 'positive'
+                          ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200'
+                          : insight.type === 'warning'
+                          ? 'bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-200'
+                          : 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200'
+                      }`}
+                    >
+                      {insight.icon}
+                      <span>{insight.text}</span>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            )}
           </div>
 
           {/* Add Category Form */}

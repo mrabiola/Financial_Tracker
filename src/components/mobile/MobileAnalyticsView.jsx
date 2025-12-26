@@ -3,9 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp,
   Target,
-  Calendar,
-  ChevronLeft,
-  ChevronRight,
   PieChart as PieChartIcon,
   BarChart3,
   ArrowUpRight,
@@ -51,7 +48,6 @@ const MobileAnalyticsView = ({
   getCurrencySymbol,
   currency
 }) => {
-  const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth();
   const currencySymbol = getCurrencySymbol ? getCurrencySymbol() : '$';
 
@@ -74,7 +70,6 @@ const MobileAnalyticsView = ({
   // State
   const [activeChart, setActiveChart] = useState('networth'); // 'networth' | 'comparison' | 'assets' | 'goals'
   const [timeFrame, setTimeFrame] = useState('6M');
-  const [showMonthPicker, setShowMonthPicker] = useState(false);
 
   // Calculate totals for current month
   const totals = useMemo(() => {
@@ -194,25 +189,6 @@ const MobileAnalyticsView = ({
     }).filter(g => g.target > 0.01);
   }, [goals]);
 
-  // Navigate months
-  const handlePrevMonth = () => {
-    if (selectedMonth === 0) {
-      setSelectedYear(selectedYear - 1);
-      setSelectedMonth(11);
-    } else {
-      setSelectedMonth(selectedMonth - 1);
-    }
-  };
-
-  const handleNextMonth = () => {
-    if (selectedMonth === 11) {
-      setSelectedYear(selectedYear + 1);
-      setSelectedMonth(0);
-    } else {
-      setSelectedMonth(selectedMonth + 1);
-    }
-  };
-
   // Render change indicator
   const renderChangeIndicator = (value, percent, inverse = false) => {
     const isPositive = inverse ? value < 0 : value > 0;
@@ -241,115 +217,88 @@ const MobileAnalyticsView = ({
   };
 
   return (
-    <div className="space-y-4 pb-20">
-      {/* Quick Insights - MOVED TO TOP */}
-      <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl p-4 text-white">
-        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-          <Lightbulb className="w-4 h-4" />
+    <div className="space-y-3 pb-20">
+      {/* Quick Insights - Compact */}
+      <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg p-3 text-white">
+        <h3 className="text-xs font-semibold mb-2 flex items-center gap-1.5">
+          <Lightbulb className="w-3.5 h-3.5" />
           Quick Insights
         </h3>
-        <div className="space-y-2 text-sm">
+        <div className="space-y-1.5 text-xs">
           {totals.netWorth !== 0 && (
-            <p className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
+            <p className="flex items-center gap-1.5">
+              <span className="w-1 h-1 rounded-full bg-white/60" />
               Your net worth is <span className="font-semibold">{formatCurrency(totals.netWorth)}</span>
             </p>
           )}
           {totals.liabilities > 0 && totals.assets > 0 && (
-            <p className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
+            <p className="flex items-center gap-1.5">
+              <span className="w-1 h-1 rounded-full bg-white/60" />
               Debt-to-asset ratio: <span className="font-semibold">{((totals.liabilities / totals.assets) * 100).toFixed(1)}%</span>
             </p>
           )}
           {change.netWorth !== 0 && (
-            <p className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
+            <p className="flex items-center gap-1.5">
+              <span className="w-1 h-1 rounded-full bg-white/60" />
               {change.netWorth > 0 ? 'Grew' : 'Decreased'} by <span className="font-semibold">{currencySymbol}{formatCompact(Math.abs(change.netWorth))}</span> this month
             </p>
           )}
           {goalProgress.length > 0 && (
-            <p className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
+            <p className="flex items-center gap-1.5">
+              <span className="w-1 h-1 rounded-full bg-white/60" />
               {goalProgress.filter(g => g.percentage >= 100).length} of {goalProgress.length} goals completed
             </p>
           )}
         </div>
       </div>
 
-      {/* Month Selector */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm p-4 border border-gray-200 dark:border-gray-800">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={handlePrevMonth}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
-            <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-          </button>
-          <button
-            onClick={() => setShowMonthPicker(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg"
-          >
-            <Calendar className="w-4 h-4 text-blue-600" />
-            <span className="font-medium text-gray-900 dark:text-gray-100">
-              {MONTHS[selectedMonth]} {selectedYear}
-            </span>
-          </button>
-          <button
-            onClick={handleNextMonth}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
-            <ChevronRight className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-          </button>
-        </div>
-      </div>
-
-      {/* Summary Cards with Currency Symbol */}
-      <div className="grid grid-cols-1 gap-3">
+      {/* Summary Cards with Currency Symbol - Compact */}
+      <div className="grid grid-cols-1 gap-2">
         {/* Net Worth Card */}
         <motion.div
           whileTap={{ scale: 0.98 }}
-          className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white shadow-lg"
+          className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-3 text-white shadow-lg"
         >
-          <div className="flex justify-between items-start mb-2">
+          <div className="flex justify-between items-start mb-1.5">
             <div>
-              <p className="text-blue-100 text-sm">Net Worth</p>
-              <p className="text-2xl font-bold">{formatCurrency(totals.netWorth)}</p>
+              <p className="text-blue-100 text-xs">Net Worth</p>
+              <p className="text-xl font-bold">{formatCurrency(totals.netWorth)}</p>
             </div>
-            <div className="p-2 bg-white/20 rounded-lg">
-              <TrendingUp className="w-5 h-5" />
+            <div className="p-1.5 bg-white/20 rounded-md">
+              <TrendingUp className="w-4 h-4" />
             </div>
           </div>
           <div className="flex items-center gap-1 text-blue-100">
             {change.netWorth >= 0 ? (
-              <ArrowUpRight className="w-4 h-4" />
+              <ArrowUpRight className="w-3 h-3" />
             ) : (
-              <ArrowDownRight className="w-4 h-4" />
+              <ArrowDownRight className="w-3 h-3" />
             )}
-            <span className="text-sm">
+            <span className="text-xs">
               {change.netWorth >= 0 ? '+' : ''}{currencySymbol}{formatCompact(change.netWorth)} from last month
             </span>
           </div>
         </motion.div>
 
         {/* Assets & Liabilities Row */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white dark:bg-gray-900 rounded-xl p-3 border border-gray-200 dark:border-gray-800">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-2 h-2 rounded-full bg-green-500" />
-              <span className="text-xs text-gray-500 dark:text-gray-400">Assets</span>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-white dark:bg-gray-900 rounded-lg p-2.5 border border-gray-200 dark:border-gray-800">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+              <span className="text-[10px] text-gray-500 dark:text-gray-400">Assets</span>
             </div>
-            <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
               {currencySymbol}{formatCompact(totals.assets)}
             </p>
             {renderChangeIndicator(change.assets, change.assetsPercent)}
           </div>
 
-          <div className="bg-white dark:bg-gray-900 rounded-xl p-3 border border-gray-200 dark:border-gray-800">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-2 h-2 rounded-full bg-red-500" />
-              <span className="text-xs text-gray-500 dark:text-gray-400">Liabilities</span>
+          <div className="bg-white dark:bg-gray-900 rounded-lg p-2.5 border border-gray-200 dark:border-gray-800">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+              <span className="text-[10px] text-gray-500 dark:text-gray-400">Liabilities</span>
             </div>
-            <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
               {currencySymbol}{formatCompact(totals.liabilities)}
             </p>
             {renderChangeIndicator(change.liabilities, change.liabilitiesPercent, true)}
@@ -358,61 +307,61 @@ const MobileAnalyticsView = ({
       </div>
 
       {/* Chart Type Selector - Added Comparison Tab */}
-      <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1 overflow-x-auto">
+      <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 overflow-x-auto">
         <button
           onClick={() => setActiveChart('networth')}
-          className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1 min-w-[70px] ${
+          className={`flex-1 py-1.5 rounded-md text-[10px] font-medium transition-all flex items-center justify-center gap-1 min-w-[60px] ${
             activeChart === 'networth'
               ? 'bg-white dark:bg-gray-700 text-blue-600 shadow-sm'
               : 'text-gray-600 dark:text-gray-400'
           }`}
         >
-          <TrendingUp className="w-3.5 h-3.5" />
+          <TrendingUp className="w-3 h-3" />
           Trend
         </button>
         <button
           onClick={() => setActiveChart('comparison')}
-          className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1 min-w-[70px] ${
+          className={`flex-1 py-1.5 rounded-md text-[10px] font-medium transition-all flex items-center justify-center gap-1 min-w-[60px] ${
             activeChart === 'comparison'
               ? 'bg-white dark:bg-gray-700 text-purple-600 shadow-sm'
               : 'text-gray-600 dark:text-gray-400'
           }`}
         >
-          <BarChart3 className="w-3.5 h-3.5" />
+          <BarChart3 className="w-3 h-3" />
           Compare
         </button>
         <button
           onClick={() => setActiveChart('assets')}
-          className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1 min-w-[70px] ${
+          className={`flex-1 py-1.5 rounded-md text-[10px] font-medium transition-all flex items-center justify-center gap-1 min-w-[60px] ${
             activeChart === 'assets'
               ? 'bg-white dark:bg-gray-700 text-green-600 shadow-sm'
               : 'text-gray-600 dark:text-gray-400'
           }`}
         >
-          <PieChartIcon className="w-3.5 h-3.5" />
+          <PieChartIcon className="w-3 h-3" />
           Assets
         </button>
         <button
           onClick={() => setActiveChart('goals')}
-          className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1 min-w-[70px] ${
+          className={`flex-1 py-1.5 rounded-md text-[10px] font-medium transition-all flex items-center justify-center gap-1 min-w-[60px] ${
             activeChart === 'goals'
               ? 'bg-white dark:bg-gray-700 text-yellow-600 shadow-sm'
               : 'text-gray-600 dark:text-gray-400'
           }`}
         >
-          <Target className="w-3.5 h-3.5" />
+          <Target className="w-3 h-3" />
           Goals
         </button>
       </div>
 
       {/* Time Frame Selector */}
       {(activeChart === 'networth' || activeChart === 'comparison') && (
-        <div className="flex gap-2 justify-center">
+        <div className="flex gap-1.5 justify-center">
           {['3M', '6M', 'YTD', '1Y'].map((period) => (
             <button
               key={period}
               onClick={() => setTimeFrame(period)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              className={`px-2 py-1 rounded-md text-xs font-medium transition-all ${
                 timeFrame === period
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
@@ -432,13 +381,13 @@ const MobileAnalyticsView = ({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="bg-white dark:bg-gray-900 rounded-xl p-4 border border-gray-200 dark:border-gray-800"
+            className="bg-white dark:bg-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-800"
           >
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-blue-500" />
+            <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-1.5">
+              <TrendingUp className="w-4 h-4 text-blue-500" />
               Net Worth Progression
             </h3>
-            <div className="h-64">
+            <div className="h-52">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData}>
                   <defs>
@@ -456,14 +405,14 @@ const MobileAnalyticsView = ({
                     dataKey="month"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 12, fill: 'var(--chart-axis)' }}
+                    tick={{ fontSize: 10, fill: 'var(--chart-axis)' }}
                   />
                   <YAxis
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 10, fill: 'var(--chart-axis)' }}
+                    tick={{ fontSize: 9, fill: 'var(--chart-axis)' }}
                     tickFormatter={(value) => `${currencySymbol}${formatCompact(value)}`}
-                    width={60}
+                    width={50}
                   />
                   <Tooltip
                     contentStyle={{
@@ -586,7 +535,7 @@ const MobileAnalyticsView = ({
             </h3>
             {assetDistribution.length > 0 ? (
               <>
-                <div className="h-56">
+                <div className="h-56 relative">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -616,6 +565,15 @@ const MobileAnalyticsView = ({
                       />
                     </PieChart>
                   </ResponsiveContainer>
+                  {/* Center Total Label */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="text-center">
+                      <div className="text-[10px] text-gray-500 dark:text-gray-400">Total</div>
+                      <div className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                        {currencySymbol}{formatCompact(totals.assets)}
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 {/* Asset List */}
                 <div className="space-y-2 mt-4">
@@ -718,69 +676,6 @@ const MobileAnalyticsView = ({
               </div>
             )}
           </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Month Picker Modal */}
-      <AnimatePresence>
-        {showMonthPicker && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-40"
-              onClick={() => setShowMonthPicker(false)}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-900 rounded-2xl p-5 z-50 w-[90%] max-w-sm shadow-xl"
-            >
-              <h3 className="text-lg font-semibold text-center mb-4 text-gray-900 dark:text-gray-100">
-                Select Month
-              </h3>
-              <div className="grid grid-cols-3 gap-2">
-                {MONTHS.map((month, idx) => (
-                  <button
-                    key={month}
-                    onClick={() => {
-                      setSelectedMonth(idx);
-                      setShowMonthPicker(false);
-                    }}
-                    className={`py-3 rounded-lg font-medium transition-all ${
-                      idx === selectedMonth
-                        ? 'bg-blue-600 text-white'
-                        : idx === currentMonth && selectedYear === currentYear
-                        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                    }`}
-                  >
-                    {month}
-                  </button>
-                ))}
-              </div>
-              {/* Year Navigation */}
-              <div className="flex items-center justify-center gap-4 mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
-                <button
-                  onClick={() => setSelectedYear(selectedYear - 1)}
-                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                >
-                  <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                </button>
-                <span className="font-semibold text-gray-900 dark:text-gray-100 min-w-[60px] text-center">
-                  {selectedYear}
-                </span>
-                <button
-                  onClick={() => setSelectedYear(selectedYear + 1)}
-                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                >
-                  <ChevronRight className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                </button>
-              </div>
-            </motion.div>
-          </>
         )}
       </AnimatePresence>
     </div>

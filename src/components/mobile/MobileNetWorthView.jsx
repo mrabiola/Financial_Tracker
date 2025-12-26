@@ -1,9 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ChevronLeft,
-  ChevronRight,
-  Calendar,
   Plus,
   TrendingUp,
   Wallet,
@@ -20,7 +17,8 @@ import {
   Check,
   X,
   BarChart3,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  Calendar
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -38,14 +36,14 @@ import {
 // Helper function to get account icon
 const getAccountIcon = (name) => {
   const lowerName = name.toLowerCase();
-  if (lowerName.includes('credit') || lowerName.includes('card')) return <CreditCard className="w-5 h-5" />;
-  if (lowerName.includes('house') || lowerName.includes('home') || lowerName.includes('property')) return <Home className="w-5 h-5" />;
-  if (lowerName.includes('car') || lowerName.includes('auto') || lowerName.includes('vehicle')) return <Car className="w-5 h-5" />;
-  if (lowerName.includes('401k') || lowerName.includes('retirement') || lowerName.includes('ira')) return <PiggyBank className="w-5 h-5" />;
-  if (lowerName.includes('invest') || lowerName.includes('stock')) return <TrendingUp className="w-5 h-5" />;
-  if (lowerName.includes('business')) return <Briefcase className="w-5 h-5" />;
-  if (lowerName.includes('save') || lowerName.includes('saving')) return <Wallet className="w-5 h-5" />;
-  return <DollarSign className="w-5 h-5" />;
+  if (lowerName.includes('credit') || lowerName.includes('card')) return <CreditCard className="w-4 h-4" />;
+  if (lowerName.includes('house') || lowerName.includes('home') || lowerName.includes('property')) return <Home className="w-4 h-4" />;
+  if (lowerName.includes('car') || lowerName.includes('auto') || lowerName.includes('vehicle')) return <Car className="w-4 h-4" />;
+  if (lowerName.includes('401k') || lowerName.includes('retirement') || lowerName.includes('ira')) return <PiggyBank className="w-4 h-4" />;
+  if (lowerName.includes('invest') || lowerName.includes('stock')) return <TrendingUp className="w-4 h-4" />;
+  if (lowerName.includes('business')) return <Briefcase className="w-4 h-4" />;
+  if (lowerName.includes('save') || lowerName.includes('saving')) return <Wallet className="w-4 h-4" />;
+  return <DollarSign className="w-4 h-4" />;
 };
 
 /**
@@ -57,7 +55,8 @@ const MobileAccountCard = ({
   onEdit,
   onDelete,
   formatCurrency,
-  type = 'asset'
+  type = 'asset',
+  onRequestDelete
 }) => {
   const [showActions, setShowActions] = useState(false);
 
@@ -67,27 +66,27 @@ const MobileAccountCard = ({
   return (
     <motion.div
       layout
-      className={`bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 border-l-4 ${borderColor} overflow-hidden`}
+      className={`bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 border-l-4 ${borderColor} overflow-hidden`}
     >
       <div 
-        className="p-4 flex items-center justify-between cursor-pointer"
+        className="p-3 flex items-center justify-between cursor-pointer"
         onClick={() => setShowActions(!showActions)}
       >
-        <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${iconBg}`}>
+        <div className="flex items-center gap-2">
+          <div className={`p-1.5 rounded-md ${iconBg}`}>
             {getAccountIcon(account.name)}
           </div>
           <div>
-            <div className="font-medium text-gray-900 dark:text-gray-100">{account.name}</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">{type}</div>
+            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{account.name}</div>
+            <div className="text-[10px] text-gray-500 dark:text-gray-400 capitalize">{type}</div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className={`text-xl font-bold ${type === 'asset' ? 'text-gray-900 dark:text-gray-100' : 'text-red-600'}`}>
+        <div className="flex items-center gap-1.5">
+          <span className={`text-sm font-semibold ${type === 'asset' ? 'text-gray-900 dark:text-gray-100' : 'text-red-600'}`}>
             {formatCurrency(value)}
           </span>
-          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${showActions ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showActions ? 'rotate-180' : ''}`} />
         </div>
       </div>
 
@@ -107,21 +106,20 @@ const MobileAccountCard = ({
                   setShowActions(false);
                   onEdit();
                 }}
-                className="flex-1 flex items-center justify-center gap-2 py-3 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
               >
-                <Edit2 className="w-4 h-4" />
+                <Edit2 className="w-3 h-3" />
                 Edit
               </button>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (window.confirm(`Delete ${account.name}?`)) {
-                    onDelete();
-                  }
+                  setShowActions(false);
+                  onRequestDelete(account);
                 }}
-                className="flex-1 flex items-center justify-center gap-2 py-3 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-3 h-3" />
                 Delete
               </button>
             </div>
@@ -158,8 +156,6 @@ const MobileNetWorthView = ({
   currency,
   copyPreviousMonth
 }) => {
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth();
   const currencySymbol = getCurrencySymbol ? getCurrencySymbol() : '$';
 
   // Smart formatting: shows full number with commas, abbreviates only for very large values
@@ -180,7 +176,6 @@ const MobileNetWorthView = ({
 
   // State
   const [activeSection, setActiveSection] = useState('assets'); // 'assets' | 'liabilities' | 'goals'
-  const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [showAddAccount, setShowAddAccount] = useState(false);
   const [newAccountName, setNewAccountName] = useState('');
   const [newAccountValue, setNewAccountValue] = useState('');
@@ -196,6 +191,9 @@ const MobileNetWorthView = ({
   const [editAccountValue, setEditAccountValue] = useState('');
   const [editAccountMonth, setEditAccountMonth] = useState(selectedMonth);
   const [showEditMonthPicker, setShowEditMonthPicker] = useState(false);
+
+  // Delete confirmation state
+  const [deleteConfirm, setDeleteConfirm] = useState({ show: false, account: null, type: null });
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -259,25 +257,6 @@ const MobileNetWorthView = ({
 
   const COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6'];
 
-  // Navigate months
-  const goToPrevMonth = () => {
-    if (selectedMonth === 0) {
-      setSelectedYear(selectedYear - 1);
-      setSelectedMonth(11);
-    } else {
-      setSelectedMonth(selectedMonth - 1);
-    }
-  };
-
-  const goToNextMonth = () => {
-    if (selectedMonth === 11) {
-      setSelectedYear(selectedYear + 1);
-      setSelectedMonth(0);
-    } else {
-      setSelectedMonth(selectedMonth + 1);
-    }
-  };
-
   const handleAddAccount = async () => {
     if (!newAccountName.trim()) return;
     const accountType = activeSection === 'liabilities' ? 'liability' : 'asset';
@@ -323,68 +302,92 @@ const MobileNetWorthView = ({
   };
 
   return (
-    <div className="space-y-4 pb-20">
-      {/* Header - Month/Year Selector */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-4">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={goToPrevMonth}
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
-            <ChevronLeft className="w-6 h-6 text-gray-600 dark:text-gray-300" />
-          </button>
-          
-          <button
-            onClick={() => setShowMonthPicker(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
-            <Calendar className="w-5 h-5 text-gray-500" />
-            <span className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              {MONTHS[selectedMonth]} {selectedYear}
-            </span>
-          </button>
-          
-          <button
-            onClick={goToNextMonth}
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
-            <ChevronRight className="w-6 h-6 text-gray-600 dark:text-gray-300" />
-          </button>
-        </div>
-      </div>
-
-      {/* Net Worth Summary */}
-      <div className={`rounded-xl p-5 ${totals.netWorth >= 0 ? 'bg-gradient-to-br from-blue-500 to-blue-600' : 'bg-gradient-to-br from-orange-500 to-red-500'}`}>
-        <div className="text-white/80 text-sm font-medium mb-1">Net Worth</div>
-        <div className="text-white text-3xl font-bold mb-4">{formatCurrency(totals.netWorth)}</div>
-        
-        <div className="flex justify-between text-sm">
+    <div className="space-y-3 pb-20">
+      {/* Net Worth Summary - Analytics Style - Compact */}
+      <div className={`rounded-lg p-4 ${totals.netWorth >= 0 ? 'bg-gradient-to-br from-blue-500 to-blue-600' : 'bg-gradient-to-br from-orange-500 to-red-500'}`}>
+        <div className="flex justify-between items-start mb-2">
           <div>
-            <div className="text-white/70">Assets</div>
-            <div className="text-white font-semibold">{currencySymbol}{formatCompact(totals.assets)}</div>
+            <div className="text-white/80 text-xs font-medium mb-0.5">Net Worth</div>
+            <div className="text-white text-2xl font-bold">{formatCurrency(totals.netWorth)}</div>
           </div>
-          <div className="text-right">
-            <div className="text-white/70">Liabilities</div>
-            <div className="text-white font-semibold">{currencySymbol}{formatCompact(totals.liabilities)}</div>
+          <div className="p-1.5 bg-white/20 rounded-md">
+            <TrendingUp className="w-4 h-4 text-white" />
           </div>
         </div>
+        
+        {/* Change indicator */}
+        {chartData.length >= 2 && (
+          <div className="flex items-center gap-1 text-white/80 text-xs">
+            {chartData[chartData.length - 1].netWorth >= chartData[chartData.length - 2].netWorth ? (
+              <>
+                <TrendingUp className="w-3 h-3" />
+                <span>+{currencySymbol}{formatCompact(Math.abs(chartData[chartData.length - 1].netWorth - chartData[chartData.length - 2].netWorth))} from last month</span>
+              </>
+            ) : (
+              <>
+                <TrendingUp className="w-3 h-3 rotate-180" />
+                <span>-{currencySymbol}{formatCompact(Math.abs(chartData[chartData.length - 1].netWorth - chartData[chartData.length - 2].netWorth))} from last month</span>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Quick Actions */}
-      <div className="flex gap-3">
-        <button
-          onClick={copyPreviousMonth}
-          className="flex-1 py-3 px-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center justify-center gap-2"
-        >
-          Copy Previous
-        </button>
+      {/* Assets & Liabilities Cards - Analytics Style */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="bg-white dark:bg-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-800">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+            <span className="text-[10px] text-gray-500 dark:text-gray-400">Assets</span>
+          </div>
+          <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            {currencySymbol}{formatCompact(totals.assets)}
+          </p>
+          {chartData.length >= 2 ? (
+            (() => {
+              const assetChange = chartData[chartData.length - 1].assets - chartData[chartData.length - 2].assets;
+              if (assetChange === 0) return <p className="text-[10px] text-gray-500 dark:text-gray-400">— No change</p>;
+              return (
+                <p className={`text-[10px] ${assetChange > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {assetChange > 0 ? '↑' : '↓'} {currencySymbol}{formatCompact(Math.abs(assetChange))}
+                </p>
+              );
+            })()
+          ) : (
+            <p className="text-[10px] text-gray-500 dark:text-gray-400">— No change</p>
+          )}
+        </div>
+
+        <div className="bg-white dark:bg-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-800">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+            <span className="text-[10px] text-gray-500 dark:text-gray-400">Liabilities</span>
+          </div>
+          <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            {currencySymbol}{formatCompact(totals.liabilities)}
+          </p>
+          {chartData.length >= 2 ? (
+            (() => {
+              const liabilityChange = chartData[chartData.length - 1].liabilities - chartData[chartData.length - 2].liabilities;
+              if (liabilityChange === 0) return <p className="text-[10px] text-gray-500 dark:text-gray-400">— No change</p>;
+              // For liabilities, decrease is good (green), increase is bad (red)
+              return (
+                <p className={`text-[10px] ${liabilityChange < 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {liabilityChange > 0 ? '↑' : '↓'} {currencySymbol}{formatCompact(Math.abs(liabilityChange))}
+                </p>
+              );
+            })()
+          ) : (
+            <p className="text-[10px] text-gray-500 dark:text-gray-400">— No change</p>
+          )}
+        </div>
       </div>
 
       {/* Section Tabs */}
-      <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
+      <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
         <button
           onClick={() => setActiveSection('assets')}
-          className={`flex-1 py-3 rounded-lg font-medium transition-all text-sm ${
+          className={`flex-1 py-2 rounded-md font-medium transition-all text-xs ${
             activeSection === 'assets'
               ? 'bg-white dark:bg-gray-700 text-green-600 shadow-sm'
               : 'text-gray-600 dark:text-gray-400'
@@ -394,7 +397,7 @@ const MobileNetWorthView = ({
         </button>
         <button
           onClick={() => setActiveSection('liabilities')}
-          className={`flex-1 py-3 rounded-lg font-medium transition-all text-sm ${
+          className={`flex-1 py-2 rounded-md font-medium transition-all text-xs ${
             activeSection === 'liabilities'
               ? 'bg-white dark:bg-gray-700 text-red-600 shadow-sm'
               : 'text-gray-600 dark:text-gray-400'
@@ -404,7 +407,7 @@ const MobileNetWorthView = ({
         </button>
         <button
           onClick={() => setActiveSection('goals')}
-          className={`flex-1 py-3 rounded-lg font-medium transition-all text-sm ${
+          className={`flex-1 py-2 rounded-md font-medium transition-all text-xs ${
             activeSection === 'goals'
               ? 'bg-white dark:bg-gray-700 text-yellow-600 shadow-sm'
               : 'text-gray-600 dark:text-gray-400'
@@ -422,7 +425,7 @@ const MobileNetWorthView = ({
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
           transition={{ duration: 0.2 }}
-          className="space-y-3"
+          className="space-y-2"
         >
           {activeSection === 'goals' ? (
             // Goals Section
@@ -434,15 +437,15 @@ const MobileNetWorthView = ({
                 return (
                   <div
                     key={goal.id}
-                    className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 border-l-4 border-l-yellow-500 p-4"
+                    className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 border-l-4 border-l-yellow-500 p-3"
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Target className="w-5 h-5 text-yellow-500" />
-                        <span className="font-medium text-gray-900 dark:text-gray-100">{goal.name}</span>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <Target className="w-4 h-4 text-yellow-500" />
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{goal.name}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-sm font-semibold ${progress >= 100 ? 'text-green-600' : 'text-gray-500'}`}>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-xs font-semibold ${progress >= 100 ? 'text-green-600' : 'text-gray-500'}`}>
                           {progress.toFixed(0)}%
                         </span>
                         {!isEditing && (
@@ -452,21 +455,21 @@ const MobileNetWorthView = ({
                                 setEditingGoalId(goal.id);
                                 setEditGoalValue(goal.current_amount?.toString() || '0');
                               }}
-                              className="p-1.5 text-gray-400 hover:text-blue-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                              className="p-1 text-gray-400 hover:text-blue-500 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
                             >
-                              <Edit2 className="w-4 h-4" />
+                              <Edit2 className="w-3 h-3" />
                             </button>
                             <button
                               onClick={() => deleteGoal(goal.id)}
-                              className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                              className="p-1 text-gray-400 hover:text-red-500 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3 h-3" />
                             </button>
                           </>
                         )}
                       </div>
                     </div>
-                    <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden mb-2">
+                    <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden mb-1.5">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${Math.min(progress, 100)}%` }}
@@ -569,6 +572,7 @@ const MobileNetWorthView = ({
                   value={getSnapshotValue(account.id, selectedMonth)}
                   onEdit={() => openEditAccount(account, activeSection === 'assets' ? 'asset' : 'liability')}
                   onDelete={() => deleteAccount(account.id, activeSection === 'assets' ? 'asset' : 'liability')}
+                  onRequestDelete={(acc) => setDeleteConfirm({ show: true, account: acc, type: activeSection === 'assets' ? 'asset' : 'liability' })}
                   formatCurrency={formatCurrency}
                   type={activeSection === 'assets' ? 'asset' : 'liability'}
                 />
@@ -635,35 +639,46 @@ const MobileNetWorthView = ({
             <PieChartIcon className="w-5 h-5 text-green-500" />
             Asset Distribution
           </h3>
-          <ResponsiveContainer width="100%" height={180}>
-            <PieChart>
-              <Pie
-                data={assetDistribution}
-                cx="50%"
-                cy="50%"
-                innerRadius={45}
-                outerRadius={70}
-                paddingAngle={2}
-                dataKey="value"
-              >
-                {assetDistribution.map((entry, index) => (
-                  <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(value) => formatCurrency(value)}
-                contentStyle={{
-                  backgroundColor: 'var(--tooltip-bg)',
-                  border: '1px solid var(--tooltip-border)',
-                  borderRadius: '8px',
-                  color: 'var(--tooltip-text)',
-                  fontSize: '12px'
-                }}
-                labelStyle={{ color: 'var(--tooltip-text)' }}
-                itemStyle={{ color: 'var(--tooltip-text)' }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+          <div className="h-44 relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={assetDistribution}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={45}
+                  outerRadius={70}
+                  paddingAngle={2}
+                  dataKey="value"
+                >
+                  {assetDistribution.map((entry, index) => (
+                    <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value) => formatCurrency(value)}
+                  contentStyle={{
+                    backgroundColor: 'var(--tooltip-bg)',
+                    border: '1px solid var(--tooltip-border)',
+                    borderRadius: '8px',
+                    color: 'var(--tooltip-text)',
+                    fontSize: '12px'
+                  }}
+                  labelStyle={{ color: 'var(--tooltip-text)' }}
+                  itemStyle={{ color: 'var(--tooltip-text)' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            {/* Center Total Label */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="text-center">
+                <div className="text-[10px] text-gray-500 dark:text-gray-400">Total</div>
+                <div className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                  {currencySymbol}{formatCompact(totals.assets)}
+                </div>
+              </div>
+            </div>
+          </div>
           <div className="flex flex-wrap justify-center gap-3 mt-2">
             {assetDistribution.slice(0, 5).map((item, idx) => (
               <div key={item.name} className="flex items-center gap-1.5 text-xs">
@@ -677,51 +692,6 @@ const MobileNetWorthView = ({
           </div>
         </div>
       )}
-
-      {/* Month Picker Modal */}
-      <AnimatePresence>
-        {showMonthPicker && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowMonthPicker(false)}
-              className="fixed inset-0 bg-black/50 z-50"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-900 rounded-2xl p-5 z-50 w-[90%] max-w-sm shadow-xl"
-            >
-              <h3 className="text-lg font-semibold text-center mb-4 text-gray-900 dark:text-gray-100">
-                Select Month
-              </h3>
-              <div className="grid grid-cols-3 gap-2">
-                {MONTHS.map((month, idx) => (
-                  <button
-                    key={month}
-                    onClick={() => {
-                      setSelectedMonth(idx);
-                      setShowMonthPicker(false);
-                    }}
-                    className={`py-3 rounded-lg font-medium transition-all ${
-                      idx === selectedMonth
-                        ? 'bg-blue-600 text-white'
-                        : idx === currentMonth && selectedYear === currentYear
-                        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                    }`}
-                  >
-                    {month}
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
 
       {/* Add Account Bottom Sheet Modal */}
       <AnimatePresence>
@@ -876,22 +846,22 @@ const MobileNetWorthView = ({
               className="fixed inset-0 bg-black/50 z-50"
             />
 
-            {/* Bottom Sheet */}
+            {/* Compact Bottom Sheet */}
             <motion.div
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-3xl z-50 max-h-[90vh] overflow-hidden"
+              className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl z-50"
             >
               {/* Handle bar */}
-              <div className="flex justify-center pt-3 pb-2">
-                <div className="w-10 h-1 bg-gray-300 dark:bg-gray-700 rounded-full" />
+              <div className="flex justify-center pt-2 pb-1">
+                <div className="w-8 h-1 bg-gray-300 dark:bg-gray-700 rounded-full" />
               </div>
 
-              {/* Header */}
-              <div className="flex items-center justify-between px-5 pb-4 border-b border-gray-200 dark:border-gray-800">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              {/* Header - Compact */}
+              <div className="flex items-center justify-between px-4 pb-3 border-b border-gray-200 dark:border-gray-800">
+                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
                   Edit {editingAccount.type === 'asset' ? 'Asset' : 'Liability'}
                 </h2>
                 <button
@@ -900,32 +870,32 @@ const MobileNetWorthView = ({
                     setEditingAccount(null);
                     setEditAccountValue('');
                   }}
-                  className="p-2 -mr-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                  className="p-1.5 -mr-1.5 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Content */}
-              <div className="px-5 py-4 space-y-5 overflow-y-auto max-h-[calc(90vh-160px)]">
-                {/* Account Name (read-only) */}
-                <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
-                  <div className={`p-2 rounded-lg ${editingAccount.type === 'asset' ? 'bg-green-100 dark:bg-green-900/30 text-green-600' : 'bg-red-100 dark:bg-red-900/30 text-red-600'}`}>
+              {/* Content - Compact */}
+              <div className="px-4 py-3 space-y-3">
+                {/* Account Name (read-only) - Compact */}
+                <div className="flex items-center gap-2 p-2.5 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <div className={`p-1.5 rounded-md ${editingAccount.type === 'asset' ? 'bg-green-100 dark:bg-green-900/30 text-green-600' : 'bg-red-100 dark:bg-red-900/30 text-red-600'}`}>
                     {getAccountIcon(editingAccount.name)}
                   </div>
                   <div>
-                    <div className="font-medium text-gray-900 dark:text-gray-100">{editingAccount.name}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">{editingAccount.type}</div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{editingAccount.name}</div>
+                    <div className="text-[10px] text-gray-500 dark:text-gray-400 capitalize">{editingAccount.type}</div>
                   </div>
                 </div>
 
-                {/* Amount Input */}
+                {/* Amount Input - Compact */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                     Amount
                   </label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl text-gray-400">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-lg text-gray-400">
                       {currencySymbol}
                     </span>
                     <input
@@ -938,46 +908,46 @@ const MobileNetWorthView = ({
                       }}
                       placeholder="0.00"
                       className={`
-                        w-full pl-10 pr-4 py-4 
-                        text-3xl font-semibold text-gray-900 dark:text-gray-100
+                        w-full pl-8 pr-3 py-2.5 
+                        text-xl font-semibold text-gray-900 dark:text-gray-100
                         bg-gray-50 dark:bg-gray-800 
-                        border-2 border-gray-200 dark:border-gray-700 
-                        rounded-xl
+                        border border-gray-200 dark:border-gray-700 
+                        rounded-lg
                         focus:outline-none focus:border-2 
-                        ${editingAccount.type === 'asset' ? 'focus:border-green-500 focus:ring-green-500' : 'focus:border-red-500 focus:ring-red-500'} 
-                        focus:ring-2 transition-colors
+                        ${editingAccount.type === 'asset' ? 'focus:border-green-500' : 'focus:border-red-500'} 
+                        transition-colors
                       `}
                       autoFocus
                     />
                   </div>
                 </div>
 
-                {/* Month Selection */}
+                {/* Month Selection - Compact */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                     Month
                   </label>
                   <button
                     onClick={() => setShowEditMonthPicker(!showEditMonthPicker)}
-                    className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100"
+                    className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-900 dark:text-gray-100"
                   >
-                    <div className="flex items-center gap-3">
-                      <Calendar className="w-5 h-5 text-gray-400" />
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-gray-400" />
                       <span>{MONTHS[editAccountMonth]} {selectedYear}</span>
                     </div>
-                    <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${showEditMonthPicker ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showEditMonthPicker ? 'rotate-180' : ''}`} />
                   </button>
 
-                  {/* Month Picker Grid */}
+                  {/* Month Picker Grid - Compact */}
                   <AnimatePresence>
                     {showEditMonthPicker && (
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="mt-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700"
+                        className="mt-1.5 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
                       >
-                        <div className="grid grid-cols-4 gap-2">
+                        <div className="grid grid-cols-4 gap-1">
                           {MONTHS.map((m, idx) => (
                             <button
                               key={m}
@@ -988,7 +958,7 @@ const MobileNetWorthView = ({
                                 setEditAccountValue(getSnapshotValue(editingAccount.id, idx).toString());
                               }}
                               className={`
-                                py-2.5 rounded-lg text-sm font-medium transition-colors
+                                py-1.5 rounded-md text-xs font-medium transition-colors
                                 ${editAccountMonth === idx
                                   ? editingAccount.type === 'asset' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
                                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
@@ -1005,21 +975,97 @@ const MobileNetWorthView = ({
                 </div>
               </div>
 
-              {/* Footer with Save button */}
-              <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+              {/* Footer with Save button - Compact */}
+              <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
                 <button
                   onClick={handleEditAccountSave}
                   className={`
-                    w-full py-4 rounded-xl font-semibold text-white text-lg
-                    transition-all flex items-center justify-center gap-2 active:scale-[0.98]
+                    w-full py-2.5 rounded-lg font-semibold text-white text-sm
+                    transition-all flex items-center justify-center gap-1.5 active:scale-[0.98]
                     ${editingAccount.type === 'asset'
                       ? 'bg-green-500 hover:bg-green-600'
                       : 'bg-red-500 hover:bg-red-600'
                     }
                   `}
                 >
-                  <Check className="w-5 h-5" />
+                  <Check className="w-4 h-4" />
                   Save {editingAccount.type === 'asset' ? 'Asset' : 'Liability'}
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deleteConfirm.show && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDeleteConfirm({ show: false, account: null, type: null })}
+              className="fixed inset-0 bg-black/50 z-50"
+            />
+            
+            {/* Modal */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="fixed inset-x-4 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-900 rounded-xl shadow-xl z-50 max-w-sm mx-auto overflow-hidden"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-red-100 dark:bg-red-900/30">
+                    <Trash2 className="w-4 h-4 text-red-600" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    Delete {deleteConfirm.type === 'asset' ? 'Asset' : 'Liability'}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setDeleteConfirm({ show: false, account: null, type: null })}
+                  className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                  Are you sure you want to delete this {deleteConfirm.type}?
+                </p>
+                {deleteConfirm.account && (
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    "{deleteConfirm.account.name}"
+                  </p>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex border-t border-gray-200 dark:border-gray-800">
+                <button
+                  onClick={() => setDeleteConfirm({ show: false, account: null, type: null })}
+                  className="flex-1 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (deleteConfirm.account) {
+                      deleteAccount(deleteConfirm.account.id, deleteConfirm.type);
+                    }
+                    setDeleteConfirm({ show: false, account: null, type: null });
+                  }}
+                  className="flex-1 py-3 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 border-l border-gray-200 dark:border-gray-800 transition-colors"
+                >
+                  Delete
                 </button>
               </div>
             </motion.div>

@@ -96,35 +96,35 @@ const MobileQuickEntry = ({
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-3xl z-50 max-h-[90vh] overflow-hidden"
+            className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl z-50 max-h-[85vh] overflow-hidden"
           >
             {/* Handle bar */}
-            <div className="flex justify-center pt-3 pb-2">
-              <div className="w-10 h-1 bg-gray-300 dark:bg-gray-700 rounded-full" />
+            <div className="flex justify-center pt-2 pb-1">
+              <div className="w-8 h-1 bg-gray-300 dark:bg-gray-700 rounded-full" />
             </div>
 
             {/* Header */}
-            <div className="flex items-center justify-between px-5 pb-4 border-b border-gray-200 dark:border-gray-800">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            <div className="flex items-center justify-between px-4 pb-3 border-b border-gray-200 dark:border-gray-800">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
                 {type === 'income' ? 'Add Income' : 'Add Expense'}
               </h2>
               <button
                 onClick={onClose}
-                className="p-2 -mr-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                className="p-1.5 -mr-1.5 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Content */}
-            <div className="px-5 py-4 space-y-5 overflow-y-auto max-h-[calc(90vh-160px)]">
+            <div className="px-4 py-3 space-y-3 overflow-y-auto max-h-[calc(85vh-120px)]">
               {/* Amount Input */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   Amount
                 </label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl text-gray-400">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-lg text-gray-400">
                     $
                   </span>
                   <input
@@ -135,12 +135,12 @@ const MobileQuickEntry = ({
                     onChange={handleAmountChange}
                     placeholder="0.00"
                     className={`
-                      w-full pl-10 pr-4 py-4 
-                      text-3xl font-semibold text-gray-900 dark:text-gray-100
+                      w-full pl-8 pr-3 py-2.5 
+                      text-xl font-semibold text-gray-900 dark:text-gray-100
                       bg-gray-50 dark:bg-gray-800 
-                      border-2 border-gray-200 dark:border-gray-700 
-                      rounded-xl
-                      focus:outline-none focus:border-2 ${accentBorder} ${accentRing} focus:ring-2
+                      border border-gray-200 dark:border-gray-700 
+                      rounded-lg
+                      focus:outline-none focus:border-2 ${accentBorder} ${accentRing}
                       transition-colors
                     `}
                   />
@@ -149,18 +149,18 @@ const MobileQuickEntry = ({
 
               {/* Category Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   Category
                 </label>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5">
                   {categories.map((cat) => (
                     <button
                       key={cat.name}
                       onClick={() => setCategory(cat.name)}
                       className={`
-                        flex items-center gap-2 px-4 py-2.5
-                        rounded-full border-2 
-                        text-sm font-medium
+                        flex items-center gap-1.5 px-2.5 py-1.5
+                        rounded-full border 
+                        text-xs font-medium
                         transition-all
                         ${category === cat.name
                           ? `${accentBgLight} ${accentBorder} ${accentText}`
@@ -168,10 +168,10 @@ const MobileQuickEntry = ({
                         }
                       `}
                     >
-                      <span>{cat.icon}</span>
+                      <span className="text-sm">{cat.icon}</span>
                       <span>{cat.name}</span>
                       {category === cat.name && (
-                        <Check className="w-4 h-4" />
+                        <Check className="w-3 h-3" />
                       )}
                     </button>
                   ))}
@@ -180,18 +180,18 @@ const MobileQuickEntry = ({
 
               {/* Month Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   Date
                 </label>
                 <button
                   onClick={() => setShowMonthPicker(!showMonthPicker)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100"
+                  className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-900 dark:text-gray-100"
                 >
-                  <div className="flex items-center gap-3">
-                    <Calendar className="w-5 h-5 text-gray-400" />
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-gray-400" />
                     <span>{months[month]} {selectedYear}</span>
                   </div>
-                  <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${showMonthPicker ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showMonthPicker ? 'rotate-180' : ''}`} />
                 </button>
 
                 {/* Month Picker Grid */}
@@ -201,9 +201,9 @@ const MobileQuickEntry = ({
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="mt-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700"
+                      className="mt-1.5 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
                     >
-                      <div className="grid grid-cols-4 gap-2">
+                      <div className="grid grid-cols-4 gap-1.5">
                         {months.map((m, idx) => (
                           <button
                             key={m}
@@ -212,7 +212,7 @@ const MobileQuickEntry = ({
                               setShowMonthPicker(false);
                             }}
                             className={`
-                              py-2.5 rounded-lg text-sm font-medium transition-colors
+                              py-2 rounded-lg text-xs font-medium transition-colors
                               ${month === idx
                                 ? `${accentBg} text-white`
                                 : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
@@ -230,7 +230,7 @@ const MobileQuickEntry = ({
 
               {/* Notes (optional) */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   Notes <span className="text-gray-400 font-normal">(optional)</span>
                 </label>
                 <textarea
@@ -238,18 +238,18 @@ const MobileQuickEntry = ({
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Add notes..."
                   rows={2}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 />
               </div>
             </div>
 
             {/* Footer with Save button */}
-            <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+            <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
               <button
                 onClick={handleSave}
                 disabled={!category || !amount}
                 className={`
-                  w-full py-4 rounded-xl font-semibold text-white text-lg
+                  w-full py-2.5 rounded-lg font-semibold text-white text-sm
                   transition-all
                   ${!category || !amount
                     ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed'
