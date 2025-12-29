@@ -7,6 +7,7 @@ export const THEME_SESSION_KEY = 'authed_theme'; // 'light' | 'dark'
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState('light');
 
+  // Initialize theme from storage or system preference
   useEffect(() => {
     const saved = sessionStorage.getItem(THEME_SESSION_KEY);
     if (saved === 'light' || saved === 'dark') {
@@ -22,7 +23,18 @@ export function ThemeProvider({ children }) {
     setTheme(prefersDark ? 'dark' : 'light');
   }, []);
 
+  // Apply theme to document element and persist to storage
   useEffect(() => {
+    const root = document.documentElement;
+    
+    if (theme === 'dark') {
+      root.classList.add('dark');
+      root.style.colorScheme = 'dark';
+    } else {
+      root.classList.remove('dark');
+      root.style.colorScheme = 'light';
+    }
+    
     sessionStorage.setItem(THEME_SESSION_KEY, theme);
   }, [theme]);
 
