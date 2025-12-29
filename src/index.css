@@ -21,7 +21,8 @@
   --chart-grid: #e5e7eb;
 }
 
-.app-theme.dark {
+/* Dark mode CSS variables - applies when html has dark class */
+html.dark, .dark {
   --tooltip-bg: #111827;
   --tooltip-border: #374151;
   --tooltip-text: #f9fafb;
@@ -31,15 +32,15 @@
 }
 
 /* Recharts: keep axes/grid readable across themes */
-.app-theme .recharts-cartesian-axis-tick-value {
+.recharts-cartesian-axis-tick-value {
   fill: var(--chart-axis);
 }
 
-.app-theme .recharts-cartesian-grid line {
+.recharts-cartesian-grid line {
   stroke: var(--chart-grid);
 }
 
-.app-theme .recharts-legend-item-text {
+.recharts-legend-item-text {
   color: var(--chart-axis) !important;
   fill: var(--chart-axis);
 }
