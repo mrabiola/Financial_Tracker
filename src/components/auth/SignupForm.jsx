@@ -5,6 +5,8 @@ import Logo from '../Logo';
 import { supabase } from '../../lib/supabase';
 import { shouldConvertDemo, convertDemoToRealAccount } from '../../utils/demoConversion';
 import { useDemo } from '../../contexts/DemoContext';
+import { calculateHealthScore, calculateFIREPlan, scoreToGrade, formatCurrency } from '../../utils/financeLogic';
+import { getStoredDiagnosticResults } from '../../utils/diagnosticStorage';
 
 const SignupForm = () => {
   const navigate = useNavigate();
@@ -19,11 +21,40 @@ const SignupForm = () => {
   const [success, setSuccess] = useState('');
   const [isConvertingDemo, setIsConvertingDemo] = useState(false);
   const [conversionMessage, setConversionMessage] = useState('');
+  const [diagnosticSummary, setDiagnosticSummary] = useState(null);
+  const hasDiagnosticSummary = diagnosticSummary?.grade && diagnosticSummary?.totalScore !== undefined;
 
   useEffect(() => {
     if (shouldConvertDemo()) {
       setIsConvertingDemo(true);
       setConversionMessage('Your demo data will be saved to your new account');
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const parsed = getStoredDiagnosticResults();
+      if (!parsed) return;
+      if (parsed.summary) {
+        setDiagnosticSummary(parsed.summary);
+        return;
+      }
+      if (parsed.formData) {
+        const healthScore = calculateHealthScore(parsed.formData);
+        const firePlan = calculateFIREPlan(parsed.formData);
+        const grade = parsed.grade || scoreToGrade(healthScore.totalScore);
+        const annualSavings = Math.max(0, parsed.formData.monthlySavings * 12);
+        const projectedNetWorth = firePlan.currentNetWorth + annualSavings;
+        setDiagnosticSummary({
+          grade,
+          totalScore: healthScore.totalScore,
+          currentNetWorth: firePlan.currentNetWorth,
+          annualSavings,
+          projectedNetWorth
+        });
+      }
+    } catch (err) {
+      setDiagnosticSummary(null);
     }
   }, []);
 
@@ -135,6 +166,34 @@ const SignupForm = () => {
                 {conversionMessage}
               </p>
             </div>
+          </div>
+        )}
+
+        {hasDiagnosticSummary && (
+          <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Your report is ready to save</p>
+                <p className="text-xs text-gray-600">
+                  Grade {diagnosticSummary.grade} • {diagnosticSummary.totalScore}/100
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[11px] uppercase text-gray-500">Baseline net worth</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {formatCurrency(diagnosticSummary.currentNetWorth || 0)}
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 flex items-center justify-between text-xs text-gray-600">
+              <span>Projected 12-month net worth</span>
+              <span className="font-semibold text-gray-900">
+                {formatCurrency(diagnosticSummary.projectedNetWorth || 0)}
+              </span>
+            </div>
+            <p className="mt-2 text-xs text-gray-600">
+              We'll save this as your baseline and track your grade over time.
+            </p>
           </div>
         )}
 

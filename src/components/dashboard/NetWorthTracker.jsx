@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, X, Trash2, Check, ChevronLeft, ChevronRight, Copy, Download, Upload, TrendingUp, PieChart, BarChart3, LineChart, Target, Wallet, CreditCard, DollarSign, TrendingDown, PiggyBank, Landmark, Home, Car, School, Heart, Briefcase, Coins, AlertCircle, FileSpreadsheet, Calendar, TrendingUp as TrendUpIcon, TrendingDown as TrendDownIcon, Banknote, ArrowDownCircle, ArrowUpCircle, Activity, Gauge } from 'lucide-react';
-import { LineChart as RechartsLineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, ComposedChart } from 'recharts';
+import { LineChart as RechartsLineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, ComposedChart, ReferenceArea } from 'recharts';
+import { supabase } from '../../lib/supabase';
 import { useFinancialDataDemo } from '../../hooks/useFinancialDataDemo';
 import { getConversionIndicator } from '../../utils/currencyConversion';
 import { useCurrency } from '../../contexts/CurrencyContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { useCashflowData } from '../../hooks/useCashflowData';
+import { useFinancialHealthTrend } from '../../hooks/useFinancialHealthTrend';
 import LoadingSpinner from '../common/LoadingSpinner';
 import SimpleImportModal from './SimpleImportModal';
 import SmartAssetModal from './SmartAssetModal';
@@ -15,14 +19,30 @@ import MobileNetWorthView from '../mobile/MobileNetWorthView';
 import MobileCashflowView from '../mobile/MobileCashflowView';
 import MobileAnalyticsView from '../mobile/MobileAnalyticsView';
 import MobileDatePicker from '../mobile/MobileDatePicker';
+import DiagnosticBaselineModal from '../diagnostic/DiagnosticBaselineModal';
+import {
+  buildBaselineSettings,
+  buildHealthSnapshotPayload,
+  clearStoredDiagnosticResults,
+  getStoredDiagnosticResults
+} from '../../utils/diagnosticStorage';
 
 const NetWorthTracker = () => {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth();
+  const healthGradeBands = [
+    { from: 90, to: 100, color: '#dcfce7' },
+    { from: 75, to: 90, color: '#e7f5ff' },
+    { from: 60, to: 75, color: '#fef9c3' },
+    { from: 45, to: 60, color: '#ffedd5' },
+    { from: 0, to: 45, color: '#fee2e2' }
+  ];
 
   // Mobile detection
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
@@ -45,8 +65,16 @@ const NetWorthTracker = () => {
     getSnapshotValue,
     getSnapshotCurrencyData,
     fetchMultiYearSnapshots,
-    reload
+    reload,
+    isDemo
   } = useFinancialDataDemo(selectedYear);
+
+  const {
+    snapshots: healthSnapshots,
+    settings: healthSettings,
+    loading: healthTrendLoading,
+    reload: reloadHealthTrend
+  } = useFinancialHealthTrend();
 
   // API assets hook (will get yearId internally)
   const { addApiAsset } = useApiAssets();
@@ -85,6 +113,11 @@ const NetWorthTracker = () => {
   const [showOtherTooltip, setShowOtherTooltip] = useState(false);
   const [showMonthPopup, setShowMonthPopup] = useState(false);
   const [showYearPopup, setShowYearPopup] = useState(false);
+  const [showBaselineModal, setShowBaselineModal] = useState(false);
+  const [baselinePayload, setBaselinePayload] = useState(null);
+  const [baselineSaving, setBaselineSaving] = useState(false);
+  const [baselineError, setBaselineError] = useState('');
+  const hasCheckedBaseline = useRef(false);
 
   // New state for MoM/YoY view and time periods
   const [chartViewType, setChartViewType] = useState('MoM'); // 'MoM' or 'YoY'
@@ -445,6 +478,95 @@ const NetWorthTracker = () => {
     }
   }, [accountIds.length, loadMultiYearData]);
 
+  // Diagnostic baseline onboarding
+  useEffect(() => {
+    if (!user?.id || isDemo) return;
+    if (healthTrendLoading || hasCheckedBaseline.current) return;
+
+    const stored = getStoredDiagnosticResults();
+    if (!stored) {
+      hasCheckedBaseline.current = true;
+      return;
+    }
+
+    const hasBaseline =
+      Boolean(healthSettings?.diagnosticBaseline) ||
+      (healthSnapshots && healthSnapshots.length > 0);
+
+    if (hasBaseline) {
+      clearStoredDiagnosticResults();
+      hasCheckedBaseline.current = true;
+      return;
+    }
+
+    setBaselinePayload(stored);
+    setShowBaselineModal(true);
+    hasCheckedBaseline.current = true;
+  }, [
+    user?.id,
+    isDemo,
+    healthTrendLoading,
+    healthSettings,
+    healthSnapshots
+  ]);
+
+  const handleBaselineConfirm = async (reminderFrequency) => {
+    if (!user?.id || !baselinePayload) return;
+
+    setBaselineSaving(true);
+    setBaselineError('');
+
+    try {
+      const snapshotPayload = buildHealthSnapshotPayload(baselinePayload);
+      if (!snapshotPayload) {
+        throw new Error('Missing diagnostic data to save');
+      }
+
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('settings')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      const updatedSettings = buildBaselineSettings(
+        profileData?.settings || {},
+        baselinePayload,
+        reminderFrequency
+      );
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ settings: updatedSettings })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      const { error: snapshotError } = await supabase
+        .from('financial_health_snapshots')
+        .insert([{ user_id: user.id, ...snapshotPayload }]);
+
+      if (snapshotError) throw snapshotError;
+
+      clearStoredDiagnosticResults();
+      setShowBaselineModal(false);
+      setBaselinePayload(null);
+      reloadHealthTrend();
+    } catch (err) {
+      console.error('Failed to save diagnostic baseline:', err);
+      setBaselineError(err.message || 'Failed to save baseline');
+    } finally {
+      setBaselineSaving(false);
+    }
+  };
+
+  const handleBaselineSkip = () => {
+    clearStoredDiagnosticResults();
+    setShowBaselineModal(false);
+    setBaselinePayload(null);
+  };
+
   // Get date range based on time frame
   const getDateRange = (timeFrame, currentDate = new Date()) => {
     const endMonth = currentDate.getMonth();
@@ -562,7 +684,7 @@ const NetWorthTracker = () => {
   };
 
   // Calculate totals for a specific month and year using multi-year data
-  const calculateTotalsForYearMonth = (year, monthIndex) => {
+  const calculateTotalsForYearMonth = useCallback((year, monthIndex) => {
     let assetTotal = 0;
     let liabilityTotal = 0;
 
@@ -621,7 +743,7 @@ const NetWorthTracker = () => {
       liabilities: liabilityTotal,
       netWorth: assetTotal - liabilityTotal
     };
-  };
+  }, [accounts.assets, accounts.liabilities, getSnapshotValue, multiYearData, selectedYear]);
 
   // Prepare Year-over-Year comparison data
   const prepareYoYChartData = () => {
@@ -674,6 +796,59 @@ const NetWorthTracker = () => {
       return prepareAnnualYoYData(yearsWithPossibleData);
     }
   };
+
+  const healthTrendData = useMemo(() => {
+    const data = (healthSnapshots || []).map((entry) => {
+      const date = new Date(entry.created_at);
+      return {
+        label: date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+        score: entry.score,
+        grade: entry.grade,
+        breakdown: entry.breakdown || {},
+        createdAt: entry.created_at
+      };
+    });
+
+    if (data.length === 0 && healthSettings?.diagnosticBaseline) {
+      const baselineDate = healthSettings.diagnosticBaseline.capturedAt
+        ? new Date(healthSettings.diagnosticBaseline.capturedAt)
+        : new Date();
+      data.push({
+        label: baselineDate.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+        score: healthSettings.diagnosticBaseline.score,
+        grade: healthSettings.diagnosticBaseline.grade,
+        breakdown: healthSettings.diagnosticBaseline.breakdown || {},
+        createdAt: baselineDate.toISOString()
+      });
+    }
+
+    return data;
+  }, [healthSnapshots, healthSettings]);
+
+  const latestHealthSnapshot = healthTrendData.length > 0
+    ? healthTrendData[healthTrendData.length - 1]
+    : null;
+
+  const healthStats = useMemo(() => {
+    if (!healthTrendData.length) return null;
+    const scores = healthTrendData
+      .map((entry) => entry.score)
+      .filter((score) => typeof score === 'number');
+    if (!scores.length) return null;
+
+    const latest = scores[scores.length - 1];
+    const previous = scores.length > 1 ? scores[scores.length - 2] : null;
+    const best = Math.max(...scores);
+    const avg = Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
+
+    return {
+      latest,
+      previous,
+      delta: previous !== null ? latest - previous : null,
+      best,
+      avg
+    };
+  }, [healthTrendData]);
 
   // Prepare monthly YoY data (for YTD/1Y timeframes)
   const prepareMonthlyYoYData = (years) => {
@@ -1015,9 +1190,11 @@ const NetWorthTracker = () => {
             goals={goals}
             getSnapshotValue={getSnapshotValue}
             formatCurrency={formatCurrency}
-            formatCurrencyShort={formatCurrencyShort}
             getCurrencySymbol={getCurrencySymbol}
             currency={currency}
+            multiYearData={multiYearData}
+            healthTrend={healthTrendData}
+            healthSettings={healthSettings}
           />
         )}
         {activeTab === 'cashflow' && (
@@ -1040,6 +1217,15 @@ const NetWorthTracker = () => {
             currency={currency}
           />
         )}
+
+        <DiagnosticBaselineModal
+          isOpen={showBaselineModal}
+          baseline={baselinePayload}
+          onConfirm={handleBaselineConfirm}
+          onSkip={handleBaselineSkip}
+          isSaving={baselineSaving}
+          error={baselineError}
+        />
       </div>
     );
   }
@@ -1876,13 +2062,13 @@ const NetWorthTracker = () => {
             </div>
 
             {/* Net Worth Over Time */}
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-gray-100">
-                <TrendingUp className="w-5 h-5 text-blue-600" />
-                {chartViewType === 'MoM' ? `Net Worth Progression - ${selectedYear}` : `Net Worth Comparison - ${timeFrame}`}
-              </h3>
-              <ResponsiveContainer width="100%" height={350}>
-                {chartViewType === 'MoM' ? (
+            {chartViewType === 'MoM' && (
+              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm p-6">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-gray-100">
+                  <TrendingUp className="w-5 h-5 text-blue-600" />
+                  {`Net Worth Progression - ${selectedYear}`}
+                </h3>
+                <ResponsiveContainer width="100%" height={350}>
                   <ComposedChart data={prepareNetWorthChartData()}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
@@ -1892,7 +2078,6 @@ const NetWorthTracker = () => {
                         const data = props.payload;
                         let tooltip = [formatCurrency(value), name];
 
-                        // Add percentage growth information
                         if (name === 'Assets' && data.assetGrowth !== null) {
                           const growth = data.assetGrowth >= 0 ? `+${data.assetGrowth.toFixed(1)}%` : `${data.assetGrowth.toFixed(1)}%`;
                           const prevValue = data.prevAssets ? formatCurrency(data.prevAssets) : 'N/A';
@@ -1946,19 +2131,28 @@ const NetWorthTracker = () => {
                       dot={{ fill: '#3b82f6', r: 4 }}
                     />
                   </ComposedChart>
-                ) : (
-                  // Year-over-Year Line Chart
-                  (() => {
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* Net Worth Comparison (YoY) */}
+            {chartViewType === 'YoY' && (
+              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm p-6">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-gray-100">
+                  <LineChart className="w-5 h-5 text-indigo-600" />
+                  Net Worth Comparison - {timeFrame}
+                </h3>
+                <ResponsiveContainer width="100%" height={320}>
+                  {(() => {
                     const yoyData = prepareYoYChartData();
                     const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
-                    // Handle empty data case
                     if (!yoyData || !yoyData.chartData || yoyData.chartData.length === 0) {
                       return (
                         <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-300">
                           <div className="text-center">
                             <p className="mb-2">No multi-year data available</p>
-                            <p className="text-sm">Add data to multiple years to see Year-over-Year comparison</p>
+                            <p className="text-sm">Add data to multiple years to compare year-over-year</p>
                           </div>
                         </div>
                       );
@@ -1970,10 +2164,7 @@ const NetWorthTracker = () => {
                     return (
                       <RechartsLineChart data={yoyData.chartData}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis
-                          dataKey={xAxisKey}
-                          tick={{ fontSize: 12 }}
-                        />
+                        <XAxis dataKey={xAxisKey} tick={{ fontSize: 12 }} />
                         <YAxis tickFormatter={(value) => formatCurrencyShort(value)} />
                         <Tooltip
                           formatter={(value, name) => {
@@ -1983,13 +2174,10 @@ const NetWorthTracker = () => {
                                 return [formatCurrency(value), `${year}`];
                               }
                               return [formatCurrency(value), name];
-                            } else {
-                              return [formatCurrency(value), 'Net Worth'];
                             }
+                            return [formatCurrency(value), 'Net Worth'];
                           }}
-                          labelFormatter={(label) => {
-                            return isMonthlyChart ? `Month: ${label}` : `Year: ${label}`;
-                          }}
+                          labelFormatter={(label) => (isMonthlyChart ? `Month: ${label}` : `Year: ${label}`)}
                           contentStyle={{
                             backgroundColor: 'var(--tooltip-bg)',
                             color: 'var(--tooltip-text)',
@@ -2006,13 +2194,11 @@ const NetWorthTracker = () => {
                                 return value.replace('netWorth_', '');
                               }
                               return value;
-                            } else {
-                              return 'Net Worth';
                             }
+                            return 'Net Worth';
                           }}
                         />
                         {isMonthlyChart ? (
-                          // Monthly chart: multiple year lines
                           (yoyData.years || []).map((year, index) => (
                             <Line
                               key={year}
@@ -2026,7 +2212,6 @@ const NetWorthTracker = () => {
                             />
                           ))
                         ) : (
-                          // Annual chart: single line showing year progression
                           <Line
                             type="monotone"
                             dataKey="netWorth"
@@ -2039,9 +2224,138 @@ const NetWorthTracker = () => {
                         )}
                       </RechartsLineChart>
                     );
-                  })()
-                )}
-              </ResponsiveContainer>
+                  })()}
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* Financial Health Trend */}
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm p-6">
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+                <h3 className="text-lg font-semibold flex items-center gap-2 text-gray-900 dark:text-gray-100">
+                  <Activity className="w-5 h-5 text-blue-600" />
+                  Financial Health Trend
+                </h3>
+                <button
+                  onClick={() => navigate('/diagnostic')}
+                  className="text-xs font-medium text-blue-600 hover:text-blue-700"
+                >
+                  Re-run diagnostic
+                </button>
+              </div>
+              {healthStats && (
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                  <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Current grade</p>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      {latestHealthSnapshot?.grade || '--'}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-950/40">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Score change</p>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      {healthStats.delta !== null ? `${healthStats.delta > 0 ? '+' : ''}${healthStats.delta}` : '--'}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-950/40">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Best score</p>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      {healthStats.best}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-950/40">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Average score</p>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      {healthStats.avg}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {healthTrendData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={240}>
+                  <ComposedChart data={healthTrendData}>
+                    <defs>
+                      <linearGradient id="healthScoreGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#2563eb" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    {healthGradeBands.map((band) => (
+                      <ReferenceArea
+                        key={`${band.from}-${band.to}`}
+                        y1={band.from}
+                        y2={band.to}
+                        fill={band.color}
+                        fillOpacity={0.35}
+                        strokeOpacity={0}
+                      />
+                    ))}
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                    <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
+                    <Tooltip
+                      formatter={(value, name, props) => {
+                        const grade = props?.payload?.grade;
+                        return [`${value}/100`, grade ? `Score (${grade})` : 'Score'];
+                      }}
+                      contentStyle={{
+                        backgroundColor: 'var(--tooltip-bg)',
+                        color: 'var(--tooltip-text)',
+                        border: '1px solid var(--tooltip-border)',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                        fontSize: '14px'
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="score"
+                      stroke="#2563eb"
+                      strokeWidth={2}
+                      fill="url(#healthScoreGradient)"
+                      name="Score"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="score"
+                      stroke="#2563eb"
+                      strokeWidth={3}
+                      dot={{ r: 4, fill: '#2563eb' }}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="text-center py-10 text-gray-500 dark:text-gray-400">
+                  Run the diagnostic to see your health trend.
+                </div>
+              )}
+              {latestHealthSnapshot && (
+                <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-3 text-sm text-gray-600 dark:text-gray-300">
+                  <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-950/40 rounded-lg px-3 py-2">
+                    <span>Runway</span>
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">
+                      {latestHealthSnapshot.breakdown?.liquidity?.monthsOfRunway ?? '--'} mo
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-950/40 rounded-lg px-3 py-2">
+                    <span>Savings rate</span>
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">
+                      {latestHealthSnapshot.breakdown?.savings?.savingsRate ?? '--'}%
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-950/40 rounded-lg px-3 py-2">
+                    <span>Debt-to-income</span>
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">
+                      {latestHealthSnapshot.breakdown?.solvency?.debtToIncomeRatio ?? '--'}%
+                    </span>
+                  </div>
+                </div>
+              )}
+              {healthSettings?.diagnosticReminder?.nextReminderAt && (
+                <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Next reminder: {new Date(healthSettings.diagnosticReminder.nextReminderAt).toLocaleDateString()}
+                </div>
+              )}
             </div>
 
             {/* Two column layout for smaller charts */}
@@ -2086,48 +2400,72 @@ const NetWorthTracker = () => {
                 {assetChartView === 'summary' ? (
                   // Pie Chart for Summary View
                   <div className="relative">
-                    <ResponsiveContainer width="100%" height={300}>
-                      <RechartsPieChart>
-                        <Pie
-                          data={getChartData('summary')}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                          onMouseEnter={(data) => {
-                            if (data.isOther) {
-                              setShowOtherTooltip(true);
-                            }
-                          }}
-                          onMouseLeave={() => setShowOtherTooltip(false)}
-                        >
-                          {getChartData('summary').map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip 
-                          formatter={(value, name, props) => {
-                            if (props.payload.isOther) {
-                              return [formatCurrency(value), `${name} (${props.payload.count} assets)`];
-                            }
-                            return [formatCurrency(value), name];
-                          }}
-                          contentStyle={{
-                            backgroundColor: 'var(--tooltip-bg)',
-                            color: 'var(--tooltip-text)',
-                            border: '1px solid var(--tooltip-border)',
-                            borderRadius: '8px',
-                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                            fontSize: '14px'
-                          }}
-                          itemStyle={{ color: 'var(--tooltip-text)' }}
-                          labelStyle={{ color: 'var(--tooltip-text)' }}
-                        />
-                      </RechartsPieChart>
-                    </ResponsiveContainer>
+                    <div className="relative h-72">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RechartsPieChart>
+                          <Pie
+                            data={getChartData('summary')}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={70}
+                            outerRadius={110}
+                            paddingAngle={2}
+                            dataKey="value"
+                            nameKey="name"
+                            onMouseEnter={(data) => {
+                              if (data.isOther) {
+                                setShowOtherTooltip(true);
+                              }
+                            }}
+                            onMouseLeave={() => setShowOtherTooltip(false)}
+                          >
+                            {getChartData('summary').map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            formatter={(value, name, props) => {
+                              if (props.payload.isOther) {
+                                return [formatCurrency(value), `${name} (${props.payload.count} assets)`];
+                              }
+                              return [formatCurrency(value), name];
+                            }}
+                            contentStyle={{
+                              backgroundColor: 'var(--tooltip-bg)',
+                              color: 'var(--tooltip-text)',
+                              border: '1px solid var(--tooltip-border)',
+                              borderRadius: '8px',
+                              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                              fontSize: '14px'
+                            }}
+                            itemStyle={{ color: 'var(--tooltip-text)' }}
+                            labelStyle={{ color: 'var(--tooltip-text)' }}
+                          />
+                        </RechartsPieChart>
+                      </ResponsiveContainer>
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="text-center">
+                          <div className="text-xs text-gray-500 dark:text-gray-400">Total</div>
+                          <div className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                            {formatCurrencyShort(assetBreakdownData.totalValue)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap justify-center gap-3 mt-4">
+                      {getChartData('summary').slice(0, 6).map((asset, index) => (
+                        <div key={asset.name} className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+                          <span
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                          />
+                          <span className="truncate max-w-[120px]">
+                            {asset.isOther ? `${asset.name} (${asset.count})` : asset.name}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                     
                     {/* Other Assets Detailed Tooltip */}
                     {showOtherTooltip && summaryData.minorAssets.length > 0 && (
@@ -2480,6 +2818,15 @@ const NetWorthTracker = () => {
           accountType={smartAssetType}
         />
       )}
+
+      <DiagnosticBaselineModal
+        isOpen={showBaselineModal}
+        baseline={baselinePayload}
+        onConfirm={handleBaselineConfirm}
+        onSkip={handleBaselineSkip}
+        isSaving={baselineSaving}
+        error={baselineError}
+      />
     </div>
   );
 };

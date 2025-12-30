@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   User,
@@ -69,10 +69,44 @@ const STEPS = [
   }
 ];
 
+const SLIDER_TARGET_STEPS = 200;
+
+const getNiceMax = (value, baseMax) => {
+  if (value <= baseMax) return baseMax;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(value)));
+  const normalized = value / magnitude;
+  if (normalized <= 1) return magnitude;
+  if (normalized <= 2) return magnitude * 2;
+  if (normalized <= 5) return magnitude * 5;
+  return magnitude * 10;
+};
+
 // Input component with slider and manual entry
-const CurrencyInput = ({ label, value, onChange, min = 0, max = 1000000, step = 1000, tooltip }) => {
+const CurrencyInput = ({
+  label,
+  value,
+  onChange,
+  min = 0,
+  max = 1000000,
+  step = 1000,
+  hardMax = Number.MAX_SAFE_INTEGER,
+  tooltip
+}) => {
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState(value.toString());
+  const [sliderMax, setSliderMax] = useState(max);
+
+  useEffect(() => {
+    const nextMax = value > max ? getNiceMax(value, max) : max;
+    if (nextMax !== sliderMax) {
+      setSliderMax(nextMax);
+    }
+  }, [value, max, sliderMax]);
+
+  const sliderStep = Math.max(step, Math.round(sliderMax / SLIDER_TARGET_STEPS));
+  const safeRange = Math.max(sliderMax - min, 1);
+  const sliderValue = Math.min(Math.max(value, min), sliderMax);
+  const sliderPercent = ((sliderValue - min) / safeRange) * 100;
 
   const handleSliderChange = (e) => {
     onChange(Number(e.target.value));
@@ -84,7 +118,7 @@ const CurrencyInput = ({ label, value, onChange, min = 0, max = 1000000, step = 
 
   const handleInputBlur = () => {
     const numValue = parseFloat(inputValue.replace(/[^0-9.-]+/g, '')) || 0;
-    onChange(Math.max(min, Math.min(max, numValue)));
+    onChange(Math.max(min, Math.min(hardMax, numValue)));
     setIsEditing(false);
   };
 
@@ -130,18 +164,18 @@ const CurrencyInput = ({ label, value, onChange, min = 0, max = 1000000, step = 
       <input
         type="range"
         min={min}
-        max={max}
-        step={step}
-        value={value}
+        max={sliderMax}
+        step={sliderStep}
+        value={sliderValue}
         onChange={handleSliderChange}
         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
         style={{
-          background: `linear-gradient(to right, #4F85FF 0%, #4F85FF ${(value - min) / (max - min) * 100}%, #E5E7EB ${(value - min) / (max - min) * 100}%, #E5E7EB 100%)`
+          background: `linear-gradient(to right, #4F85FF 0%, #4F85FF ${sliderPercent}%, #E5E7EB ${sliderPercent}%, #E5E7EB 100%)`
         }}
       />
       <div className="flex justify-between text-xs text-gray-400 mt-1">
         <span>{formatCurrency(min)}</span>
-        <span>{formatCurrency(max)}</span>
+        <span>{formatCurrency(sliderMax)}+</span>
       </div>
     </div>
   );
@@ -274,6 +308,7 @@ const FinancialHealthWizard = () => {
     liquidAssets: 25000,
     realEstateValue: 0,
     totalDebt: 15000,
+    monthlyDebtPayments: 0,
     monthlyExpenses: 4000,
     monthlySavings: 1000
   });
@@ -314,12 +349,33 @@ const FinancialHealthWizard = () => {
   };
 
   const handleSaveReport = () => {
+    const healthScore = calculateHealthScore(formData);
+    const firePlan = calculateFIREPlan(formData);
+    const grade = scoreToGrade(healthScore.totalScore);
+    const freedomDate = firePlan.freedomDate ? firePlan.freedomDate.toISOString() : null;
+    const annualSavings = Math.max(0, formData.monthlySavings * 12);
+    const projectedNetWorth = firePlan.currentNetWorth + annualSavings;
+
     // Store results in sessionStorage for potential use after signup
     sessionStorage.setItem('healthDiagnosticResults', JSON.stringify({
       formData,
+      grade,
+      healthScore,
+      freedomDate,
+      summary: {
+        grade,
+        totalScore: healthScore.totalScore,
+        currentNetWorth: firePlan.currentNetWorth,
+        annualSavings,
+        projectedNetWorth,
+        freedomDate,
+        monthsOfRunway: healthScore.breakdown.liquidity.monthsOfRunway,
+        savingsRate: healthScore.breakdown.savings.savingsRate,
+        debtToIncomeRatio: healthScore.breakdown.solvency.debtToIncomeRatio
+      },
       timestamp: new Date().toISOString()
     }));
-    navigate('/signup');
+    navigate('/signup?source=diagnostic');
   };
 
   // Calculate results
@@ -328,6 +384,8 @@ const FinancialHealthWizard = () => {
   const grade = scoreToGrade(healthScore.totalScore);
   const gradeColors = getGradeColor(grade);
   const quickWins = generateQuickWins(formData, healthScore);
+  const annualSavings = Math.max(0, formData.monthlySavings * 12);
+  const projectedNetWorth = firePlan.currentNetWorth + annualSavings;
 
   // Animation variants
   const pageVariants = {
@@ -371,7 +429,8 @@ const FinancialHealthWizard = () => {
               value={formData.annualIncome}
               onChange={(v) => updateField('annualIncome', v)}
               min={0}
-              max={500000}
+              max={1000000}
+              hardMax={100000000}
               step={5000}
               tooltip="Your total household income before taxes"
             />
@@ -386,6 +445,7 @@ const FinancialHealthWizard = () => {
               onChange={(v) => updateField('liquidAssets', v)}
               min={0}
               max={2000000}
+              hardMax={100000000}
               step={5000}
               tooltip="Cash, savings, stocks, bonds, crypto"
             />
@@ -395,6 +455,7 @@ const FinancialHealthWizard = () => {
               onChange={(v) => updateField('realEstateValue', v)}
               min={0}
               max={5000000}
+              hardMax={200000000}
               step={10000}
               tooltip="Current market value of properties you own"
             />
@@ -408,13 +469,27 @@ const FinancialHealthWizard = () => {
               value={formData.totalDebt}
               onChange={(v) => updateField('totalDebt', v)}
               min={0}
-              max={1000000}
+              max={2000000}
+              hardMax={100000000}
               step={5000}
               tooltip="Credit cards, mortgages, student loans, car loans"
+            />
+            <CurrencyInput
+              label="Monthly Debt Payments"
+              value={formData.monthlyDebtPayments}
+              onChange={(v) => updateField('monthlyDebtPayments', v)}
+              min={0}
+              max={20000}
+              hardMax={500000}
+              step={100}
+              tooltip="Minimum monthly debt payments (mortgage, loans, cards). If unsure, leave it blank and we'll estimate."
             />
             <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
               <p className="text-sm text-amber-800">
                 <strong>Tip:</strong> Include all debts — mortgage balance, car loans, student loans, and credit cards.
+                <span className="block mt-1 text-xs text-amber-700">
+                  We estimate payments at ~1% of balance if you leave them blank.
+                </span>
               </p>
             </div>
           </>
@@ -428,20 +503,25 @@ const FinancialHealthWizard = () => {
               onChange={(v) => updateField('monthlyExpenses', v)}
               min={0}
               max={30000}
+              hardMax={500000}
               step={250}
-              tooltip="All monthly spending including housing, food, transport"
+              tooltip="All monthly spending including housing, food, transport, and debt"
             />
             <CurrencyInput
               label="Monthly Savings"
               value={formData.monthlySavings}
               onChange={(v) => updateField('monthlySavings', v)}
               min={0}
-              max={20000}
+              max={50000}
+              hardMax={500000}
               step={100}
               tooltip="Amount you save or invest each month"
             />
           </>
         )}
+        <p className="text-center text-xs text-gray-400">
+          Tip: click any amount to type a custom value; ranges expand for larger numbers.
+        </p>
       </motion.div>
     );
   };
@@ -714,6 +794,47 @@ const FinancialHealthWizard = () => {
           )}
         </AnimatePresence>
 
+        <div className="rounded-2xl bg-white border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            Save this report to unlock
+          </h3>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-50">
+                <Target className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Baseline snapshot</p>
+                <p className="text-xs text-gray-600">
+                  Grade {grade} • Net worth {formatCurrency(firePlan.currentNetWorth)}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-emerald-50">
+                <PiggyBank className="h-5 w-5 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Savings power</p>
+                <p className="text-xs text-gray-600">
+                  {formatCurrency(annualSavings)}/year at your current pace
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-indigo-50">
+                <TrendingUp className="h-5 w-5 text-indigo-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">12-month projection</p>
+                <p className="text-xs text-gray-600">
+                  Projected net worth {formatCurrency(projectedNetWorth)}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Save Report CTA */}
         <motion.button
           onClick={handleSaveReport}
@@ -722,11 +843,11 @@ const FinancialHealthWizard = () => {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
         >
-          Save Report & Track Over Time
+          Save Report & Start My Timeline
           <ArrowRight className="h-5 w-5" />
         </motion.button>
         <p className="text-center text-sm text-gray-500">
-          Create a free account to save and monitor your progress
+          Create a free account to save your baseline and track your grade over time
         </p>
       </motion.div>
     );

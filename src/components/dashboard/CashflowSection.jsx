@@ -1092,47 +1092,71 @@ const CashflowSection = ({
                 <DollarSign className="w-4 h-4 text-green-600" />
                 Income Sources - {timeFrame === '1M' ? `${months[selectedMonth]} ${selectedYear}` : timeFrame === 'ALL' ? `${selectedYear}` : timeFrame}
               </h4>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={incomeData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                    onMouseEnter={(data) => {
-                      if (data.isOther) {
-                        setShowIncomeOtherTooltip(true);
-                      }
-                    }}
-                    onMouseLeave={() => setShowIncomeOtherTooltip(false)}
-                  >
-                    {incomeData.map((entry, index) => (
-                      <Cell key={`income-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value, name, props) => {
-                      if (props.payload.isOther) {
-                        return [formatCurrency(value), `${name} (${props.payload.count} sources)`];
-                      }
-                      return [formatCurrency(value), name];
-                    }}
-                    contentStyle={{
-                      backgroundColor: 'var(--tooltip-bg)',
-                      color: 'var(--tooltip-text)',
-                      border: '1px solid var(--tooltip-border)',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                    }}
-                    itemStyle={{ color: 'var(--tooltip-text)' }}
-                    labelStyle={{ color: 'var(--tooltip-text)' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              <div className="relative h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={incomeData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={70}
+                      outerRadius={110}
+                      paddingAngle={2}
+                      dataKey="value"
+                      nameKey="name"
+                      onMouseEnter={(data) => {
+                        if (data.isOther) {
+                          setShowIncomeOtherTooltip(true);
+                        }
+                      }}
+                      onMouseLeave={() => setShowIncomeOtherTooltip(false)}
+                    >
+                      {incomeData.map((entry, index) => (
+                        <Cell key={`income-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value, name, props) => {
+                        if (props.payload.isOther) {
+                          return [formatCurrency(value), `${name} (${props.payload.count} sources)`];
+                        }
+                        return [formatCurrency(value), name];
+                      }}
+                      contentStyle={{
+                        backgroundColor: 'var(--tooltip-bg)',
+                        color: 'var(--tooltip-text)',
+                        border: '1px solid var(--tooltip-border)',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                      }}
+                      itemStyle={{ color: 'var(--tooltip-text)' }}
+                      labelStyle={{ color: 'var(--tooltip-text)' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="text-center">
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Total</div>
+                    <div className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                      {formatCurrencyShort(processedIncomeData.totalValue)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap justify-center gap-3 mt-4">
+                {incomeData.slice(0, 6).map((item, index) => (
+                  <div key={item.name} className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+                    <span
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                    />
+                    <span className="truncate max-w-[120px]">
+                      {item.isOther ? `${item.name} (${item.count})` : item.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
 
               {/* Other Income Breakdown Panel */}
               {showIncomeOtherTooltip && processedIncomeData.minorItems.length > 0 && (
@@ -1175,47 +1199,71 @@ const CashflowSection = ({
                 <TrendingUp className="w-4 h-4 text-red-600" />
                 Expense Categories - {timeFrame === '1M' ? `${months[selectedMonth]} ${selectedYear}` : timeFrame === 'ALL' ? `${selectedYear}` : timeFrame}
               </h4>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={expenseData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                    onMouseEnter={(data) => {
-                      if (data.isOther) {
-                        setShowExpenseOtherTooltip(true);
-                      }
-                    }}
-                    onMouseLeave={() => setShowExpenseOtherTooltip(false)}
-                  >
-                    {expenseData.map((entry, index) => (
-                      <Cell key={`expense-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value, name, props) => {
-                      if (props.payload.isOther) {
-                        return [formatCurrency(value), `${name} (${props.payload.count} categories)`];
-                      }
-                      return [formatCurrency(value), name];
-                    }}
-                    contentStyle={{
-                      backgroundColor: 'var(--tooltip-bg)',
-                      color: 'var(--tooltip-text)',
-                      border: '1px solid var(--tooltip-border)',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                    }}
-                    itemStyle={{ color: 'var(--tooltip-text)' }}
-                    labelStyle={{ color: 'var(--tooltip-text)' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              <div className="relative h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={expenseData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={70}
+                      outerRadius={110}
+                      paddingAngle={2}
+                      dataKey="value"
+                      nameKey="name"
+                      onMouseEnter={(data) => {
+                        if (data.isOther) {
+                          setShowExpenseOtherTooltip(true);
+                        }
+                      }}
+                      onMouseLeave={() => setShowExpenseOtherTooltip(false)}
+                    >
+                      {expenseData.map((entry, index) => (
+                        <Cell key={`expense-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value, name, props) => {
+                        if (props.payload.isOther) {
+                          return [formatCurrency(value), `${name} (${props.payload.count} categories)`];
+                        }
+                        return [formatCurrency(value), name];
+                      }}
+                      contentStyle={{
+                        backgroundColor: 'var(--tooltip-bg)',
+                        color: 'var(--tooltip-text)',
+                        border: '1px solid var(--tooltip-border)',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                      }}
+                      itemStyle={{ color: 'var(--tooltip-text)' }}
+                      labelStyle={{ color: 'var(--tooltip-text)' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="text-center">
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Total</div>
+                    <div className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                      {formatCurrencyShort(processedExpenseData.totalValue)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap justify-center gap-3 mt-4">
+                {expenseData.slice(0, 6).map((item, index) => (
+                  <div key={item.name} className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+                    <span
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                    />
+                    <span className="truncate max-w-[120px]">
+                      {item.isOther ? `${item.name} (${item.count})` : item.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
 
               {/* Other Expenses Breakdown Panel */}
               {showExpenseOtherTooltip && processedExpenseData.minorItems.length > 0 && (

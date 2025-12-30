@@ -15,43 +15,86 @@ const GRADE_THRESHOLDS = {
   F: 0
 };
 
+const HEALTH_TARGETS = {
+  runwayMonths: 6,
+  savingsRate: 0.2,
+  debtToIncomeRatio: 0.3,
+  maxDebtToIncomeRatio: 0.6
+};
+
+const HEALTH_SCORE_MAX = {
+  liquidity: 30,
+  solvency: 30,
+  savings: 40
+};
+
+const ESTIMATED_DEBT_PAYMENT_RATE = 0.01; // 1% of balance if payments are unknown
+
+function resolveMonthlyDebtPayments(monthlyDebtPayments, totalDebt) {
+  if (monthlyDebtPayments > 0) return monthlyDebtPayments;
+  return Math.max(0, totalDebt * ESTIMATED_DEBT_PAYMENT_RATE);
+}
+
+function calculateSolvencyScore(debtToIncomeRatio) {
+  if (debtToIncomeRatio <= HEALTH_TARGETS.debtToIncomeRatio) {
+    return HEALTH_SCORE_MAX.solvency;
+  }
+  if (debtToIncomeRatio >= HEALTH_TARGETS.maxDebtToIncomeRatio) {
+    return 0;
+  }
+  const ratioRange = HEALTH_TARGETS.maxDebtToIncomeRatio - HEALTH_TARGETS.debtToIncomeRatio;
+  const normalized = (debtToIncomeRatio - HEALTH_TARGETS.debtToIncomeRatio) / ratioRange;
+  return HEALTH_SCORE_MAX.solvency * (1 - normalized);
+}
+
 /**
  * Calculate the Financial Health Score (0-100)
  * 
  * Scoring breakdown:
  * - Liquidity (30 pts): Months of runway (Cash / Monthly Expenses). Max at 6+ months.
- * - Solvency (30 pts): Debt-to-Income ratio. Lower is better.
+ * - Solvency (30 pts): Monthly debt-to-income ratio (debt payments / income). Lower is better.
  * - Savings Performance (40 pts): Savings Rate %.
  */
 export function calculateHealthScore(data) {
   const {
     liquidAssets = 0,      // Cash + Stocks
-    totalDebt = 0,         // All debt combined
+    totalDebt = 0,         // Total debt balance
     annualIncome = 0,      // Pre-tax household income
     monthlyExpenses = 0,   // Monthly spending
-    monthlySavings = 0     // Monthly savings amount
+    monthlySavings = 0,    // Monthly savings amount
+    monthlyDebtPayments = 0 // Monthly debt payments
   } = data;
 
   // Avoid division by zero
   const safeMonthlyExpenses = Math.max(monthlyExpenses, 1);
-  const safeAnnualIncome = Math.max(annualIncome, 1);
-  const monthlyIncome = safeAnnualIncome / 12;
+  const monthlyIncome = annualIncome > 0 ? annualIncome / 12 : 0;
+  const resolvedMonthlyDebtPayments = resolveMonthlyDebtPayments(monthlyDebtPayments, totalDebt);
 
   // 1. Liquidity Score (30 points max)
   // Target: 6 months of expenses in liquid assets
   const monthsOfRunway = liquidAssets / safeMonthlyExpenses;
-  const liquidityScore = Math.min(30, (monthsOfRunway / 6) * 30);
+  const liquidityScore = Math.min(
+    HEALTH_SCORE_MAX.liquidity,
+    (monthsOfRunway / HEALTH_TARGETS.runwayMonths) * HEALTH_SCORE_MAX.liquidity
+  );
 
   // 2. Solvency Score (30 points max)
   // Debt-to-Income ratio (lower is better)
-  // 0% DTI = 30 points, 100%+ DTI = 0 points
-  const debtToIncomeRatio = totalDebt / safeAnnualIncome;
-  const solvencyScore = Math.max(0, 30 - (debtToIncomeRatio * 30));
+  // <=30% DTI = 30 points, 60%+ DTI = 0 points
+  const rawDebtToIncomeRatio = monthlyIncome > 0
+    ? resolvedMonthlyDebtPayments / monthlyIncome
+    : (resolvedMonthlyDebtPayments > 0 ? 1 : 0);
+  const debtToIncomeRatio = Math.max(0, rawDebtToIncomeRatio);
+  const solvencyScore = calculateSolvencyScore(debtToIncomeRatio);
 
   // 3. Savings Performance Score (40 points max)
   // Target: 20%+ savings rate for max points
-  const savingsRate = monthlySavings / Math.max(monthlyIncome, 1);
-  const savingsScore = Math.min(40, (savingsRate / 0.20) * 40);
+  const rawSavingsRate = monthlyIncome > 0 ? monthlySavings / monthlyIncome : 0;
+  const savingsRate = Math.max(0, Math.min(1, rawSavingsRate));
+  const savingsScore = Math.min(
+    HEALTH_SCORE_MAX.savings,
+    (savingsRate / HEALTH_TARGETS.savingsRate) * HEALTH_SCORE_MAX.savings
+  );
 
   // Total score
   const totalScore = Math.round(liquidityScore + solvencyScore + savingsScore);
@@ -61,21 +104,21 @@ export function calculateHealthScore(data) {
     breakdown: {
       liquidity: {
         score: Math.round(liquidityScore * 10) / 10,
-        maxScore: 30,
+        maxScore: HEALTH_SCORE_MAX.liquidity,
         monthsOfRunway: Math.round(monthsOfRunway * 10) / 10,
-        targetMonths: 6
+        targetMonths: HEALTH_TARGETS.runwayMonths
       },
       solvency: {
         score: Math.round(solvencyScore * 10) / 10,
-        maxScore: 30,
+        maxScore: HEALTH_SCORE_MAX.solvency,
         debtToIncomeRatio: Math.round(debtToIncomeRatio * 100),
-        targetRatio: 0
+        targetRatio: Math.round(HEALTH_TARGETS.debtToIncomeRatio * 100)
       },
       savings: {
         score: Math.round(savingsScore * 10) / 10,
-        maxScore: 40,
+        maxScore: HEALTH_SCORE_MAX.savings,
         savingsRate: Math.round(savingsRate * 100),
-        targetRate: 20
+        targetRate: Math.round(HEALTH_TARGETS.savingsRate * 100)
       }
     }
   };
@@ -293,15 +336,19 @@ export function generateQuickWins(data, healthScore) {
     totalDebt = 0,
     annualIncome = 0,
     monthlyExpenses = 0,
-    monthlySavings = 0
+    monthlySavings = 0,
+    monthlyDebtPayments = 0
   } = data;
 
+  const monthlyIncome = annualIncome > 0 ? annualIncome / 12 : 0;
+  const resolvedMonthlyDebtPayments = resolveMonthlyDebtPayments(monthlyDebtPayments, totalDebt);
   const { breakdown } = healthScore;
   const wins = [];
+  const targetDtiPercent = Math.round(HEALTH_TARGETS.debtToIncomeRatio * 100);
 
   // Liquidity recommendations
-  if (breakdown.liquidity.monthsOfRunway < 6) {
-    const targetEmergencyFund = monthlyExpenses * 6;
+  if (breakdown.liquidity.monthsOfRunway < HEALTH_TARGETS.runwayMonths) {
+    const targetEmergencyFund = monthlyExpenses * HEALTH_TARGETS.runwayMonths;
     const amountNeeded = Math.max(0, targetEmergencyFund - liquidAssets);
     if (amountNeeded > 0) {
       wins.push({
@@ -309,7 +356,7 @@ export function generateQuickWins(data, healthScore) {
         category: 'liquidity',
         icon: 'Shield',
         title: 'Build Emergency Fund',
-        description: `Add $${formatNumber(amountNeeded)} to reach 6 months of expenses`,
+        description: `Add $${formatNumber(amountNeeded)} to reach ${HEALTH_TARGETS.runwayMonths} months of expenses`,
         impact: 'High',
         gradeImpact: calculateGradeImpactForLiquidity(amountNeeded, monthlyExpenses, breakdown.liquidity.score)
       });
@@ -317,41 +364,40 @@ export function generateQuickWins(data, healthScore) {
   }
 
   // Debt recommendations
-  if (breakdown.solvency.debtToIncomeRatio > 30) {
-    const targetDebt = annualIncome * 0.3;
-    const debtToPayOff = Math.max(0, totalDebt - targetDebt);
+  if (breakdown.solvency.debtToIncomeRatio > targetDtiPercent) {
+    const targetPayment = monthlyIncome * HEALTH_TARGETS.debtToIncomeRatio;
+    const paymentReduction = Math.max(0, resolvedMonthlyDebtPayments - targetPayment);
     wins.push({
       priority: 2,
       category: 'solvency',
       icon: 'TrendingDown',
-      title: 'Reduce Debt Load',
-      description: `Pay off $${formatNumber(debtToPayOff)} to improve your debt-to-income ratio`,
+      title: 'Lower Debt Payments',
+      description: `Reduce payments by $${formatNumber(paymentReduction)}/month to reach a ${targetDtiPercent}% DTI`,
       impact: 'High',
-      gradeImpact: '+ up to 10 points'
+      gradeImpact: calculateGradeImpactForSolvency(resolvedMonthlyDebtPayments, annualIncome, breakdown.solvency.score)
     });
   }
 
   // Savings rate recommendations
-  const monthlyIncome = annualIncome / 12;
-  const currentSavingsRate = (monthlySavings / monthlyIncome) * 100;
+  const currentSavingsRate = monthlyIncome > 0 ? monthlySavings / monthlyIncome : 0;
   
-  if (currentSavingsRate < 20) {
-    const targetSavings = monthlyIncome * 0.2;
+  if (monthlyIncome > 0 && currentSavingsRate < HEALTH_TARGETS.savingsRate) {
+    const targetSavings = monthlyIncome * HEALTH_TARGETS.savingsRate;
     const additionalSavings = Math.max(0, targetSavings - monthlySavings);
     wins.push({
       priority: 3,
       category: 'savings',
       icon: 'PiggyBank',
       title: 'Boost Savings Rate',
-      description: `Save an extra $${formatNumber(additionalSavings)}/month to reach 20% savings rate`,
+      description: `Save an extra $${formatNumber(additionalSavings)}/month to reach ${Math.round(HEALTH_TARGETS.savingsRate * 100)}% savings rate`,
       impact: 'Medium',
-      gradeImpact: '+ up to 15 points'
+      gradeImpact: calculateGradeImpactForSavings(monthlySavings, annualIncome, breakdown.savings.score)
     });
   }
 
   // Investment diversification (if heavy on cash)
-  if (liquidAssets > monthlyExpenses * 12) {
-    const excessCash = liquidAssets - (monthlyExpenses * 6);
+  if (liquidAssets > monthlyExpenses * (HEALTH_TARGETS.runwayMonths * 2)) {
+    const excessCash = liquidAssets - (monthlyExpenses * HEALTH_TARGETS.runwayMonths);
     if (excessCash > 5000) {
       wins.push({
         priority: 4,
@@ -386,9 +432,32 @@ export function generateQuickWins(data, healthScore) {
  * Calculate how much a liquidity improvement would affect the grade
  */
 function calculateGradeImpactForLiquidity(amountToAdd, monthlyExpenses, currentScore) {
-  const newMonthsOfRunway = (amountToAdd / monthlyExpenses) + (currentScore / 30 * 6);
-  const newScore = Math.min(30, (newMonthsOfRunway / 6) * 30);
+  const safeMonthlyExpenses = Math.max(monthlyExpenses, 1);
+  const newMonthsOfRunway = (amountToAdd / safeMonthlyExpenses) + (currentScore / HEALTH_SCORE_MAX.liquidity * HEALTH_TARGETS.runwayMonths);
+  const newScore = Math.min(
+    HEALTH_SCORE_MAX.liquidity,
+    (newMonthsOfRunway / HEALTH_TARGETS.runwayMonths) * HEALTH_SCORE_MAX.liquidity
+  );
   const pointsGained = Math.round(newScore - currentScore);
+  return `+ ${pointsGained} points`;
+}
+
+function calculateGradeImpactForSolvency(_monthlyDebtPayments, annualIncome, currentScore) {
+  const monthlyIncome = annualIncome > 0 ? annualIncome / 12 : 0;
+  if (monthlyIncome <= 0) return '+ 0 points';
+  const targetRatio = HEALTH_TARGETS.debtToIncomeRatio;
+  const newScore = calculateSolvencyScore(targetRatio);
+  const pointsGained = Math.max(0, Math.round(newScore - currentScore));
+  return `+ ${pointsGained} points`;
+}
+
+function calculateGradeImpactForSavings(monthlySavings, annualIncome, currentScore) {
+  const monthlyIncome = annualIncome > 0 ? annualIncome / 12 : 0;
+  if (monthlyIncome <= 0) return '+ 0 points';
+  const targetSavings = monthlyIncome * HEALTH_TARGETS.savingsRate;
+  if (monthlySavings >= targetSavings) return '+ 0 points';
+  const newScore = HEALTH_SCORE_MAX.savings;
+  const pointsGained = Math.max(0, Math.round(newScore - currentScore));
   return `+ ${pointsGained} points`;
 }
 
@@ -396,8 +465,11 @@ function calculateGradeImpactForLiquidity(amountToAdd, monthlyExpenses, currentS
  * Format large numbers with commas
  */
 export function formatNumber(num) {
+  if (num >= 1000000000) {
+    return (num / 1000000000).toFixed(1).replace(/\.0$/, '') + 'B';
+  }
   if (num >= 1000000) {
-    return (num / 1000000).toFixed(1) + 'M';
+    return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
   }
   if (num >= 1000) {
     return (num / 1000).toFixed(0) + 'K';
@@ -451,9 +523,17 @@ export function validateInputs(data) {
   if (data.liquidAssets !== undefined && data.liquidAssets < 0) {
     errors.liquidAssets = 'Assets cannot be negative';
   }
+
+  if (data.totalDebt !== undefined && data.totalDebt < 0) {
+    errors.totalDebt = 'Debt cannot be negative';
+  }
   
   if (data.monthlyExpenses !== undefined && data.monthlyExpenses < 0) {
     errors.monthlyExpenses = 'Expenses cannot be negative';
+  }
+  
+  if (data.monthlyDebtPayments !== undefined && data.monthlyDebtPayments < 0) {
+    errors.monthlyDebtPayments = 'Debt payments cannot be negative';
   }
 
   return {

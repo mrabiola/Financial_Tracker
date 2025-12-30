@@ -17,7 +17,6 @@ import {
   Check,
   X,
   BarChart3,
-  PieChart as PieChartIcon,
   Calendar
 } from 'lucide-react';
 import {
@@ -27,10 +26,7 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
-  PieChart,
-  Pie,
-  Cell
+  Tooltip
 } from 'recharts';
 
 // Helper function to get account icon
@@ -243,19 +239,6 @@ const MobileNetWorthView = ({
     }
     return data;
   }, [accounts, selectedMonth, getSnapshotValue]);
-
-  // Pie chart data for asset distribution
-  const assetDistribution = useMemo(() => {
-    return (accounts.assets || [])
-      .map(asset => ({
-        name: asset.name,
-        value: getSnapshotValue(asset.id, selectedMonth)
-      }))
-      .filter(item => item.value > 0)
-      .sort((a, b) => b.value - a.value);
-  }, [accounts.assets, selectedMonth, getSnapshotValue]);
-
-  const COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6'];
 
   const handleAddAccount = async () => {
     if (!newAccountName.trim()) return;
@@ -631,67 +614,6 @@ const MobileNetWorthView = ({
           </AreaChart>
         </ResponsiveContainer>
       </div>
-
-      {/* Asset Distribution Pie */}
-      {assetDistribution.length > 0 && activeSection === 'assets' && (
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-4">
-          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-            <PieChartIcon className="w-5 h-5 text-green-500" />
-            Asset Distribution
-          </h3>
-          <div className="h-44 relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={assetDistribution}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={45}
-                  outerRadius={70}
-                  paddingAngle={2}
-                  dataKey="value"
-                >
-                  {assetDistribution.map((entry, index) => (
-                    <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(value) => formatCurrency(value)}
-                  contentStyle={{
-                    backgroundColor: 'var(--tooltip-bg)',
-                    border: '1px solid var(--tooltip-border)',
-                    borderRadius: '8px',
-                    color: 'var(--tooltip-text)',
-                    fontSize: '12px'
-                  }}
-                  labelStyle={{ color: 'var(--tooltip-text)' }}
-                  itemStyle={{ color: 'var(--tooltip-text)' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            {/* Center Total Label */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="text-center">
-                <div className="text-[10px] text-gray-500 dark:text-gray-400">Total</div>
-                <div className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                  {currencySymbol}{formatCompact(totals.assets)}
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="flex flex-wrap justify-center gap-3 mt-2">
-            {assetDistribution.slice(0, 5).map((item, idx) => (
-              <div key={item.name} className="flex items-center gap-1.5 text-xs">
-                <div
-                  className="w-2.5 h-2.5 rounded-full"
-                  style={{ backgroundColor: COLORS[idx % COLORS.length] }}
-                />
-                <span className="text-gray-600 dark:text-gray-400">{item.name}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Add Account Bottom Sheet Modal */}
       <AnimatePresence>

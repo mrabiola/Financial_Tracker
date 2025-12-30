@@ -21,6 +21,7 @@ import {
   ComposedChart, 
   Bar, 
   Line, 
+  LineChart,
   XAxis, 
   YAxis, 
   CartesianGrid, 
@@ -143,11 +144,81 @@ const MobileCashflowView = ({
     }).filter(cat => cat.amount > 0 || timeFrame === '1M');
   }, [expenseCategories, cashflowData, timeFrame, filteredMonthIndices]);
 
+  // Group smaller categories into "Other" using a 5% threshold
+  const processedIncomeData = useMemo(() => {
+    if (!preparedIncomeData.length) return { majorItems: [], minorItems: [], totalValue: 0 };
+
+    const totalValue = preparedIncomeData.reduce((sum, item) => sum + item.amount, 0);
+    const threshold = totalValue * 0.05;
+    const majorItems = [];
+    const minorItems = [];
+
+    preparedIncomeData.forEach((item) => {
+      const entry = { name: item.name, value: item.amount, icon: item.icon };
+      if (entry.value >= threshold) {
+        majorItems.push(entry);
+      } else {
+        minorItems.push(entry);
+      }
+    });
+
+    if (minorItems.length > 0) {
+      const otherTotal = minorItems.reduce((sum, item) => sum + item.value, 0);
+      majorItems.push({
+        name: 'Other',
+        value: otherTotal,
+        icon: '💰',
+        isOther: true,
+        count: minorItems.length
+      });
+    }
+
+    return { majorItems, minorItems, totalValue };
+  }, [preparedIncomeData]);
+
+  const processedExpenseData = useMemo(() => {
+    if (!preparedExpenseData.length) return { majorItems: [], minorItems: [], totalValue: 0 };
+
+    const totalValue = preparedExpenseData.reduce((sum, item) => sum + item.amount, 0);
+    const threshold = totalValue * 0.05;
+    const majorItems = [];
+    const minorItems = [];
+
+    preparedExpenseData.forEach((item) => {
+      const entry = { name: item.name, value: item.amount, icon: item.icon };
+      if (entry.value >= threshold) {
+        majorItems.push(entry);
+      } else {
+        minorItems.push(entry);
+      }
+    });
+
+    if (minorItems.length > 0) {
+      const otherTotal = minorItems.reduce((sum, item) => sum + item.value, 0);
+      majorItems.push({
+        name: 'Other',
+        value: otherTotal,
+        icon: '📦',
+        isOther: true,
+        count: minorItems.length
+      });
+    }
+
+    return { majorItems, minorItems, totalValue };
+  }, [preparedExpenseData]);
+
   // Calculate totals
   const totalIncome = preparedIncomeData.reduce((sum, cat) => sum + cat.amount, 0);
   const totalExpenses = preparedExpenseData.reduce((sum, cat) => sum + cat.amount, 0);
   const netFlow = totalIncome - totalExpenses;
   const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome * 100) : 0;
+  const incomeDistribution = processedIncomeData.majorItems;
+  const expenseDistribution = processedExpenseData.majorItems;
+  const timeLabel = timeFrame === '1M'
+    ? `${MONTHS[selectedMonth]} ${selectedYear}`
+    : timeFrame === 'ALL'
+      ? `${selectedYear}`
+      : timeFrame;
 
   // Chart data
   const chartData = useMemo(() => {
@@ -158,6 +229,41 @@ const MobileCashflowView = ({
       netFlow: (metrics.monthlyIncome[idx] || 0) - (metrics.monthlyExpenses[idx] || 0)
     }));
   }, [metrics, filteredMonthIndices]);
+
+  const trendData = useMemo(() => {
+    if (timeFrame === '1M') return [];
+    const movingAvgWindow = 3;
+
+    return filteredMonthIndices.map((monthIndex) => {
+      const startIdx = Math.max(0, monthIndex - movingAvgWindow + 1);
+      const endIdx = monthIndex + 1;
+      const avgIncome = metrics.monthlyIncome.slice(startIdx, endIdx)
+        .reduce((sum, val) => sum + val, 0) / (endIdx - startIdx);
+      const avgExpenses = metrics.monthlyExpenses.slice(startIdx, endIdx)
+        .reduce((sum, val) => sum + val, 0) / (endIdx - startIdx);
+
+      return {
+        month: MONTHS[monthIndex],
+        income: metrics.monthlyIncome[monthIndex] || 0,
+        expenses: metrics.monthlyExpenses[monthIndex] || 0,
+        movingAvgIncome: monthIndex >= movingAvgWindow - 1 ? avgIncome : null,
+        movingAvgExpenses: monthIndex >= movingAvgWindow - 1 ? avgExpenses : null
+      };
+    });
+  }, [timeFrame, filteredMonthIndices, metrics]);
+
+  const topSpendingData = useMemo(() => {
+    const data = preparedExpenseData.filter(item => item.amount > 0);
+    const total = data.reduce((sum, item) => sum + item.amount, 0);
+
+    return data
+      .slice()
+      .sort((a, b) => b.amount - a.amount)
+      .map((item) => ({
+        ...item,
+        percentage: total > 0 ? (item.amount / total) * 100 : 0
+      }));
+  }, [preparedExpenseData]);
 
   // Handle opening quick entry
   const handleCategoryTap = (category, type) => {
@@ -504,8 +610,142 @@ const MobileCashflowView = ({
         </div>
       )}
 
+      {/* Top Spending Categories */}
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-4">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1 flex items-center gap-2">
+          <BarChart3 className="w-5 h-5 text-orange-500" />
+          Top Spending Categories
+        </h3>
+        <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-3">
+          {timeLabel}
+        </p>
+        {topSpendingData.length === 0 ? (
+          <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-4">
+            No expenses recorded for this period.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {topSpendingData.slice(0, 6).map((item, index) => (
+              <div key={item.name} className="space-y-1">
+                <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">{item.icon || '📦'}</span>
+                    <span className="text-gray-900 dark:text-gray-100 truncate max-w-[140px]">
+                      {item.name}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">
+                      {currencySymbol}{formatCompact(item.amount)}
+                    </span>
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400 ml-1">
+                      ({item.percentage.toFixed(1)}%)
+                    </span>
+                  </div>
+                </div>
+                <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.min(item.percentage, 100)}%`,
+                      backgroundColor: COLORS[index % COLORS.length]
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+            {topSpendingData.length > 6 && (
+              <div className="text-[10px] text-gray-500 dark:text-gray-400 text-center">
+                +{topSpendingData.length - 6} more categories
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Income vs Expense Trends */}
+      {timeFrame !== '1M' && trendData.length > 1 && (
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-4">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+            <Activity className="w-5 h-5 text-indigo-500" />
+            Income vs Expense Trends
+          </h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={trendData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--chart-axis)' }} />
+              <YAxis tick={{ fontSize: 11, fill: 'var(--chart-axis)' }} tickFormatter={(v) => `${currencySymbol}${formatCompact(v)}`} width={55} />
+              <Tooltip
+                formatter={(value, name) => [formatCurrency(value), name]}
+                contentStyle={{
+                  backgroundColor: 'var(--tooltip-bg)',
+                  border: '1px solid var(--tooltip-border)',
+                  borderRadius: '8px',
+                  color: 'var(--tooltip-text)',
+                  fontSize: '12px'
+                }}
+                labelStyle={{ color: 'var(--tooltip-text)' }}
+                itemStyle={{ color: 'var(--tooltip-text)' }}
+              />
+              <Line
+                type="monotone"
+                dataKey="income"
+                stroke="#10b981"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                name="Income"
+              />
+              <Line
+                type="monotone"
+                dataKey="expenses"
+                stroke="#ef4444"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                name="Expenses"
+              />
+              <Line
+                type="monotone"
+                dataKey="movingAvgIncome"
+                stroke="#059669"
+                strokeWidth={2}
+                strokeDasharray="6 6"
+                dot={false}
+                name="Avg Income"
+              />
+              <Line
+                type="monotone"
+                dataKey="movingAvgExpenses"
+                stroke="#dc2626"
+                strokeWidth={2}
+                strokeDasharray="6 6"
+                dot={false}
+                name="Avg Expenses"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+          <div className="flex justify-center gap-4 mt-3 text-xs text-gray-600 dark:text-gray-400">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
+              Income
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
+              Expenses
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-4 h-0.5 bg-emerald-600" />
+              Avg Income
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-4 h-0.5 bg-red-600" />
+              Avg Expenses
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Pie Chart for Distribution */}
-      {(activeSection === 'expenses' ? preparedExpenseData : preparedIncomeData).filter(c => c.amount > 0).length > 0 && (
+      {(activeSection === 'expenses' ? expenseDistribution : incomeDistribution).length > 0 && (
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-4">
           <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
             <PieChartIcon className={`w-5 h-5 ${activeSection === 'income' ? 'text-green-500' : 'text-red-500'}`} />
@@ -515,23 +755,28 @@ const MobileCashflowView = ({
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={(activeSection === 'expenses' ? preparedExpenseData : preparedIncomeData).filter(c => c.amount > 0)}
+                  data={activeSection === 'expenses' ? expenseDistribution : incomeDistribution}
                   cx="50%"
                   cy="50%"
                   innerRadius={50}
                   outerRadius={80}
                   paddingAngle={2}
-                  dataKey="amount"
+                  dataKey="value"
                   nameKey="name"
                 >
-                  {(activeSection === 'expenses' ? preparedExpenseData : preparedIncomeData)
-                    .filter(c => c.amount > 0)
+                  {(activeSection === 'expenses' ? expenseDistribution : incomeDistribution)
                     .map((entry, index) => (
                       <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
                     ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value) => formatCurrency(value)}
+                  formatter={(value, name, props) => {
+                    if (props.payload?.isOther) {
+                      const suffix = activeSection === 'income' ? 'sources' : 'categories';
+                      return [formatCurrency(value), `${name} (${props.payload.count} ${suffix})`];
+                    }
+                    return [formatCurrency(value), name];
+                  }}
                   contentStyle={{
                     backgroundColor: 'var(--tooltip-bg)',
                     border: '1px solid var(--tooltip-border)',
@@ -550,8 +795,9 @@ const MobileCashflowView = ({
                 <div className="text-[10px] text-gray-500 dark:text-gray-400">Total</div>
                 <div className="text-sm font-bold text-gray-900 dark:text-gray-100">
                   {currencySymbol}{formatCompact(
-                    (activeSection === 'expenses' ? preparedExpenseData : preparedIncomeData)
-                      .reduce((sum, c) => sum + c.amount, 0)
+                    activeSection === 'expenses'
+                      ? processedExpenseData.totalValue
+                      : processedIncomeData.totalValue
                   )}
                 </div>
               </div>
@@ -559,8 +805,7 @@ const MobileCashflowView = ({
           </div>
           {/* Legend */}
           <div className="flex flex-wrap justify-center gap-3 mt-2">
-            {(activeSection === 'expenses' ? preparedExpenseData : preparedIncomeData)
-              .filter(c => c.amount > 0)
+            {(activeSection === 'expenses' ? expenseDistribution : incomeDistribution)
               .slice(0, 6)
               .map((cat, idx) => (
                 <div key={cat.name} className="flex items-center gap-1.5 text-xs">
@@ -568,7 +813,9 @@ const MobileCashflowView = ({
                     className="w-2.5 h-2.5 rounded-full" 
                     style={{ backgroundColor: COLORS[idx % COLORS.length] }}
                   />
-                  <span className="text-gray-600 dark:text-gray-400">{cat.name}</span>
+                  <span className="text-gray-600 dark:text-gray-400">
+                    {cat.isOther ? `${cat.name} (${cat.count})` : cat.name}
+                  </span>
                 </div>
               ))}
           </div>

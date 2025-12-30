@@ -62,6 +62,19 @@ CREATE TABLE IF NOT EXISTS goals (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Create financial health snapshots table
+CREATE TABLE IF NOT EXISTS financial_health_snapshots (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  score INTEGER NOT NULL,
+  grade TEXT NOT NULL,
+  breakdown JSONB DEFAULT '{}'::jsonb,
+  inputs JSONB DEFAULT '{}'::jsonb,
+  source TEXT DEFAULT 'diagnostic',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_financial_years_user_id ON financial_years(user_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_user_id ON accounts(user_id);
@@ -69,6 +82,8 @@ CREATE INDEX IF NOT EXISTS idx_accounts_year_id ON accounts(year_id);
 CREATE INDEX IF NOT EXISTS idx_account_snapshots_account_id ON account_snapshots(account_id);
 CREATE INDEX IF NOT EXISTS idx_goals_user_id ON goals(user_id);
 CREATE INDEX IF NOT EXISTS idx_goals_year_id ON goals(year_id);
+CREATE INDEX IF NOT EXISTS idx_financial_health_snapshots_user_id ON financial_health_snapshots(user_id);
+CREATE INDEX IF NOT EXISTS idx_financial_health_snapshots_created_at ON financial_health_snapshots(created_at);
 
 -- Enable Row Level Security
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
@@ -76,6 +91,7 @@ ALTER TABLE financial_years ENABLE ROW LEVEL SECURITY;
 ALTER TABLE accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE account_snapshots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE goals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE financial_health_snapshots ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS policies for profiles
 CREATE POLICY "Users can view own profile" ON profiles
@@ -163,6 +179,19 @@ CREATE POLICY "Users can update own goals" ON goals
 CREATE POLICY "Users can delete own goals" ON goals
   FOR DELETE USING (auth.uid() = user_id);
 
+-- Create RLS policies for financial health snapshots
+CREATE POLICY "Users can view own health snapshots" ON financial_health_snapshots
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own health snapshots" ON financial_health_snapshots
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own health snapshots" ON financial_health_snapshots
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own health snapshots" ON financial_health_snapshots
+  FOR DELETE USING (auth.uid() = user_id);
+
 -- Create function to automatically create profile on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
@@ -201,4 +230,7 @@ CREATE TRIGGER update_account_snapshots_updated_at BEFORE UPDATE ON account_snap
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_goals_updated_at BEFORE UPDATE ON goals
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_financial_health_snapshots_updated_at BEFORE UPDATE ON financial_health_snapshots
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
