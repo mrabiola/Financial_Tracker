@@ -72,26 +72,27 @@ const MobileDatePicker = ({
         </button>
       </div>
 
-      {/* Full Date Picker Modal */}
+      {/* Full Date Picker Modal - using same wrapper pattern as ConversionModal */}
       <AnimatePresence>
         {isOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsOpen(false)}
-              className="fixed inset-0 bg-black/50 z-50"
-            />
+          <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex min-h-screen items-center justify-center p-4">
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsOpen(false)}
+                className="fixed inset-0 bg-black/50"
+              />
 
-            {/* Modal */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-900 rounded-2xl p-4 z-50 w-[85%] max-w-xs shadow-xl"
-            >
+              {/* Modal */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative bg-white dark:bg-gray-900 rounded-2xl p-4 w-[90%] max-w-xs shadow-xl"
+              >
               {/* Header */}
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
@@ -212,7 +213,8 @@ const MobileDatePicker = ({
                 </button>
               </div>
             </motion.div>
-          </>
+            </div>
+          </div>
         )}
       </AnimatePresence>
     </>
