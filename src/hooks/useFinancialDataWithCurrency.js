@@ -497,6 +497,34 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
     }
   };
 
+  const deleteSnapshot = async (accountId, month) => {
+    try {
+      const { error } = await supabase
+        .from('account_snapshots')
+        .delete()
+        .eq('account_id', accountId)
+        .eq('month', month)
+        .eq('year', selectedYear);
+
+      if (error) throw error;
+
+      const key = `${accountId}_${month}`;
+      setSnapshots(prev => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      setSnapshotsCurrency(prev => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    } catch (err) {
+      console.error('Error deleting snapshot:', err);
+      setError(err.message);
+    }
+  };
+
   // Add goal with currency support
   const addGoal = async (name, targetAmount) => {
     if (!yearData) return null;
@@ -617,6 +645,7 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
     deleteGoal,
     getSnapshotValue,
     getSnapshotCurrencyData,
+    deleteSnapshot,
     fetchMultiYearSnapshots,
     reload: loadData
   };

@@ -32,6 +32,7 @@ import {
 } from 'recharts';
 import MobileCategoryCard from './MobileCategoryCard';
 import MobileQuickEntry from './MobileQuickEntry';
+import ConfirmModal from '../common/ConfirmModal';
 
 // Months array defined outside component to avoid recreation
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -91,7 +92,13 @@ const MobileCashflowView = ({
   const [newCategoryIcon, setNewCategoryIcon] = useState('💰');
   
   // Delete confirmation state
-  const [deleteConfirm, setDeleteConfirm] = useState({ show: false, category: null });
+  const [deleteConfirm, setDeleteConfirm] = useState({ show: false, category: null, type: null });
+  const closeDeleteConfirm = () => setDeleteConfirm({ show: false, category: null, type: null });
+  const handleConfirmDelete = () => {
+    if (deleteConfirm.category && deleteConfirm.type) {
+      deleteCategory(deleteConfirm.type, deleteConfirm.category.name);
+    }
+  };
 
   // Common emoji icons for categories
   const categoryIcons = ['💰', '🏠', '🚗', '🍔', '🛒', '💊', '🎬', '✈️', '📱', '💼', '📚', '🎁', '⚡', '💧', '🏥', '👔', '🎮', '🐕', '💳', '📦'];
@@ -292,14 +299,13 @@ const MobileCashflowView = ({
   };
 
   // Handle deleting category (called after confirmation)
-  const handleDeleteCategory = (categoryName) => {
-    const type = activeSection === 'income' ? 'income' : 'expenses';
+  const handleDeleteCategory = (type, categoryName) => {
     deleteCategory(type, categoryName);
   };
 
   // Request delete - shows confirmation modal
-  const handleRequestDeleteCategory = (category) => {
-    setDeleteConfirm({ show: true, category });
+  const handleRequestDeleteCategory = (category, type) => {
+    setDeleteConfirm({ show: true, category, type });
   };
 
   const COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#f97316'];
@@ -465,8 +471,8 @@ const MobileCashflowView = ({
                 budget={0} // No budget tracking yet
                 color={activeSection === 'income' ? 'green' : COLORS[index % COLORS.length].includes('ef4444') ? 'red' : 'blue'}
                 onClick={() => handleCategoryTap(category, activeSection === 'income' ? 'income' : 'expenses')}
-                onDelete={() => handleDeleteCategory(category.name)}
-                onRequestDelete={() => handleRequestDeleteCategory(category)}
+                onDelete={() => handleDeleteCategory(activeSection === 'income' ? 'income' : 'expenses', category.name)}
+                onRequestDelete={() => handleRequestDeleteCategory(category, activeSection === 'income' ? 'income' : 'expenses')}
                 formatCurrency={(v) => `${currencySymbol}${formatCompact(v)}`}
                 showBudget={false}
                 type={activeSection}
@@ -838,81 +844,16 @@ const MobileCashflowView = ({
       />
 
       {/* Delete Confirmation Modal */}
-      <AnimatePresence>
-        {deleteConfirm.show && deleteConfirm.category && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setDeleteConfirm({ show: false, category: null })}
-              className="fixed inset-0 bg-black/50 z-50"
-            />
-            
-            {/* Modal */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="fixed inset-x-4 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-900 rounded-xl shadow-xl z-50 max-w-sm mx-auto overflow-hidden"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-red-100 dark:bg-red-900/30">
-                    <X className="w-4 h-4 text-red-600" />
-                  </div>
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    Delete Category
-                  </h3>
-                </div>
-                <button
-                  onClick={() => setDeleteConfirm({ show: false, category: null })}
-                  className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Content */}
-              <div className="p-4">
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                  Are you sure you want to delete this category? This will also remove all data for this category.
-                </p>
-                <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-lg p-2">
-                  <span className="text-lg">{deleteConfirm.category.icon}</span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {deleteConfirm.category.name}
-                  </span>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex border-t border-gray-200 dark:border-gray-800">
-                <button
-                  onClick={() => setDeleteConfirm({ show: false, category: null })}
-                  className="flex-1 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    if (deleteConfirm.category) {
-                      handleDeleteCategory(deleteConfirm.category.name);
-                    }
-                    setDeleteConfirm({ show: false, category: null });
-                  }}
-                  className="flex-1 py-3 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 border-l border-gray-200 dark:border-gray-800 transition-colors"
-                >
-                  Delete
-                </button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      <ConfirmModal
+        isOpen={deleteConfirm.show && Boolean(deleteConfirm.category)}
+        onClose={closeDeleteConfirm}
+        onConfirm={handleConfirmDelete}
+        title="Delete category"
+        message="This will remove all data for this category."
+        itemName={deleteConfirm.category?.name || ''}
+        confirmLabel="Delete"
+        variant="danger"
+      />
 
       {/* Floating Action Button */}
       <motion.button

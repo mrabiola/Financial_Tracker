@@ -309,6 +309,29 @@ export const useFinancialData = (selectedYear) => {
     }
   };
 
+  const deleteSnapshot = async (accountId, month) => {
+    try {
+      const { error } = await supabase
+        .from('account_snapshots')
+        .delete()
+        .eq('account_id', accountId)
+        .eq('month', month)
+        .eq('year', selectedYear);
+
+      if (error) throw error;
+
+      const key = `${accountId}_${month}`;
+      setSnapshots(prev => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    } catch (err) {
+      console.error('Error deleting snapshot:', err);
+      setError(err.message);
+    }
+  };
+
   // Add goal
   const addGoal = async (name, targetAmount) => {
     if (!yearData) return null;
@@ -402,6 +425,7 @@ export const useFinancialData = (selectedYear) => {
     addAccount,
     deleteAccount,
     updateSnapshot,
+    deleteSnapshot,
     addGoal,
     updateGoalProgress,
     deleteGoal,

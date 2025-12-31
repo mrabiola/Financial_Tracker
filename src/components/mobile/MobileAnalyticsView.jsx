@@ -47,6 +47,7 @@ const MobileAnalyticsView = ({
   accounts,
   goals,
   getSnapshotValue,
+  getEffectiveSnapshotValue,
   formatCurrency,
   getCurrencySymbol,
   currency,
@@ -56,6 +57,7 @@ const MobileAnalyticsView = ({
 }) => {
   const currentMonth = new Date().getMonth();
   const currencySymbol = getCurrencySymbol ? getCurrencySymbol() : '$';
+  const getDisplaySnapshotValue = getEffectiveSnapshotValue || getSnapshotValue;
   const healthBands = [
     { from: 90, to: 100, color: '#dcfce7' },
     { from: 75, to: 90, color: '#e7f5ff' },
@@ -102,11 +104,11 @@ const MobileAnalyticsView = ({
     let liabilityTotal = 0;
 
     (accounts.assets || []).forEach(asset => {
-      assetTotal += getSnapshotValue(asset.id, selectedMonth);
+      assetTotal += getDisplaySnapshotValue(asset.id, selectedMonth);
     });
 
     (accounts.liabilities || []).forEach(liability => {
-      liabilityTotal += getSnapshotValue(liability.id, selectedMonth);
+      liabilityTotal += getDisplaySnapshotValue(liability.id, selectedMonth);
     });
 
     return {
@@ -114,7 +116,7 @@ const MobileAnalyticsView = ({
       liabilities: liabilityTotal,
       netWorth: assetTotal - liabilityTotal
     };
-  }, [accounts, selectedMonth, getSnapshotValue]);
+  }, [accounts, selectedMonth, getDisplaySnapshotValue]);
 
   // Calculate previous month totals for comparison
   const prevTotals = useMemo(() => {
@@ -123,11 +125,11 @@ const MobileAnalyticsView = ({
     let liabilityTotal = 0;
 
     (accounts.assets || []).forEach(asset => {
-      assetTotal += getSnapshotValue(asset.id, prevMonth);
+      assetTotal += getDisplaySnapshotValue(asset.id, prevMonth);
     });
 
     (accounts.liabilities || []).forEach(liability => {
-      liabilityTotal += getSnapshotValue(liability.id, prevMonth);
+      liabilityTotal += getDisplaySnapshotValue(liability.id, prevMonth);
     });
 
     return {
@@ -135,7 +137,7 @@ const MobileAnalyticsView = ({
       liabilities: liabilityTotal,
       netWorth: assetTotal - liabilityTotal
     };
-  }, [accounts, selectedMonth, getSnapshotValue]);
+  }, [accounts, selectedMonth, getDisplaySnapshotValue]);
 
   // Calculate change
   const change = {
@@ -170,10 +172,10 @@ const MobileAnalyticsView = ({
       let liabilities = 0;
 
       (accounts.assets || []).forEach(asset => {
-        assets += getSnapshotValue(asset.id, monthIdx);
+        assets += getDisplaySnapshotValue(asset.id, monthIdx);
       });
       (accounts.liabilities || []).forEach(liability => {
-        liabilities += getSnapshotValue(liability.id, monthIdx);
+        liabilities += getDisplaySnapshotValue(liability.id, monthIdx);
       });
 
       data.push({
@@ -184,7 +186,7 @@ const MobileAnalyticsView = ({
       });
     }
     return data;
-  }, [accounts, selectedMonth, getSnapshotValue, timeFrame, currentMonth]);
+  }, [accounts, selectedMonth, getDisplaySnapshotValue, timeFrame, currentMonth]);
 
   const yearlyTrendData = useMemo(() => {
     if (!multiYearData || Object.keys(multiYearData).length === 0) return [];
@@ -247,10 +249,10 @@ const MobileAnalyticsView = ({
 
     if (year === selectedYear) {
       (accounts.assets || []).forEach(asset => {
-        assetTotal += getSnapshotValue(asset.id, monthIndex);
+        assetTotal += getDisplaySnapshotValue(asset.id, monthIndex);
       });
       (accounts.liabilities || []).forEach(liability => {
-        liabilityTotal += getSnapshotValue(liability.id, monthIndex);
+        liabilityTotal += getDisplaySnapshotValue(liability.id, monthIndex);
       });
     } else {
       Object.keys(yearSnapshots).forEach((key) => {
@@ -277,7 +279,7 @@ const MobileAnalyticsView = ({
       liabilities: liabilityTotal,
       netWorth: assetTotal - liabilityTotal
     };
-  }, [accounts.assets, accounts.liabilities, getSnapshotValue, multiYearData, selectedYear]);
+  }, [accounts.assets, accounts.liabilities, getDisplaySnapshotValue, multiYearData, selectedYear]);
 
   const comparisonChartData = useMemo(() => {
     if (netWorthView !== 'comparison') {
@@ -356,7 +358,7 @@ const MobileAnalyticsView = ({
     let totalValue = 0;
 
     (accounts.assets || []).forEach(asset => {
-      const value = getSnapshotValue(asset.id, selectedMonth);
+      const value = getDisplaySnapshotValue(asset.id, selectedMonth);
       if (value > 0) {
         breakdown.push({ name: asset.name, value });
         totalValue += value;
@@ -365,7 +367,7 @@ const MobileAnalyticsView = ({
 
     breakdown.sort((a, b) => b.value - a.value);
     return { breakdown, totalValue };
-  }, [accounts.assets, selectedMonth, getSnapshotValue]);
+  }, [accounts.assets, selectedMonth, getDisplaySnapshotValue]);
 
   const assetSummaryData = useMemo(() => {
     const { breakdown, totalValue } = assetBreakdownData;

@@ -1,4 +1,5 @@
 import React, { act } from 'react';
+import { Simulate } from 'react-dom/test-utils';
 import { createRoot } from 'react-dom/client';
 
 global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -28,6 +29,32 @@ jest.mock('recharts', () => {
   };
 });
 
+jest.mock('framer-motion', () => {
+  const React = require('react');
+  const stripMotionProps = (props) => {
+    const {
+      whileTap,
+      initial,
+      animate,
+      exit,
+      transition,
+      ...rest
+    } = props;
+    return rest;
+  };
+
+  const MockDiv = React.forwardRef(({ children, ...props }, ref) => (
+    <div ref={ref} {...stripMotionProps(props)}>
+      {children}
+    </div>
+  ));
+
+  return {
+    motion: { div: MockDiv },
+    AnimatePresence: ({ children }) => <div>{children}</div>
+  };
+});
+
 jest.mock('react-router-dom', () => ({
   useNavigate: () => jest.fn()
 }));
@@ -49,21 +76,29 @@ jest.mock('../../contexts/CurrencyContext', () => ({
   })
 }));
 
+const mockUpdateSnapshot = jest.fn();
+const mockDeleteSnapshot = jest.fn();
+const mockGetSnapshotValue = jest.fn(() => 0);
+const mockGetSnapshotCurrencyData = jest.fn(() => null);
+const mockAddAccount = jest.fn();
+const mockAccounts = { assets: [{ id: 'asset-1', name: 'Cash' }], liabilities: [] };
+
 jest.mock('../../hooks/useFinancialDataDemo', () => ({
   useFinancialDataDemo: () => ({
     loading: false,
     error: null,
-    accounts: { assets: [], liabilities: [] },
+    accounts: mockAccounts,
     goals: [],
-    addAccount: jest.fn(),
+    addAccount: mockAddAccount,
     deleteAccount: jest.fn(),
-    updateSnapshot: jest.fn(),
+    updateSnapshot: mockUpdateSnapshot,
+    deleteSnapshot: mockDeleteSnapshot,
     addGoal: jest.fn(),
     updateGoalProgress: jest.fn(),
     deleteGoal: jest.fn(),
-    getSnapshotValue: jest.fn(() => 0),
-    getSnapshotCurrencyData: jest.fn(() => null),
-    fetchMultiYearSnapshots: jest.fn(() => Promise.resolve({})),
+    getSnapshotValue: mockGetSnapshotValue,
+    getSnapshotCurrencyData: mockGetSnapshotCurrencyData,
+    fetchMultiYearSnapshots: null,
     reload: jest.fn(),
     isDemo: true
   })
@@ -100,10 +135,6 @@ jest.mock('../../hooks/useCashflowData', () => ({
   })
 }));
 
-jest.mock('../../hooks/useApiAssets', () => ({
-  useApiAssets: () => ({ addApiAsset: jest.fn() })
-}));
-
 jest.mock('../../utils/diagnosticStorage', () => ({
   buildBaselineSettings: jest.fn(),
   buildHealthSnapshotPayload: jest.fn(),
@@ -118,7 +149,6 @@ jest.mock('../mobile/MobileCashflowView', () => () => <div>MobileCashflowView</d
 jest.mock('../mobile/MobileDatePicker', () => () => <div>MobileDatePicker</div>);
 jest.mock('../diagnostic/DiagnosticBaselineModal', () => () => <div>DiagnosticBaselineModal</div>);
 jest.mock('./SimpleImportModal', () => () => <div>SimpleImportModal</div>);
-jest.mock('./SmartAssetModal', () => () => <div>SmartAssetModal</div>);
 jest.mock('./CashflowSection', () => () => <div>CashflowSection</div>);
 
 const NetWorthTracker = require('./NetWorthTracker').default;
@@ -131,6 +161,9 @@ describe('NetWorthTracker', () => {
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
+    mockUpdateSnapshot.mockClear();
+    mockDeleteSnapshot.mockClear();
+    mockAddAccount.mockClear();
   });
 
   afterEach(() => {
@@ -183,5 +216,110 @@ describe('NetWorthTracker', () => {
 
     expect(container.textContent).toContain('Net Worth Comparison');
     expect(container.textContent).toContain('ALL');
+  });
+
+  it('confirms copy previous month and shows undo', async () => {
+    act(() => {
+      root.render(<NetWorthTracker />);
+    });
+
+    const copyButton = container.querySelector('button[title="Copy values from previous month"]');
+    expect(copyButton).toBeTruthy();
+
+    act(() => {
+      copyButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(container.textContent).toContain('Copy net worth values');
+
+    const confirmButton = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent.trim() === 'Copy'
+    );
+
+    expect(confirmButton).toBeTruthy();
+
+    await act(async () => {
+      confirmButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(mockUpdateSnapshot).toHaveBeenCalled();
+    expect(container.textContent).toContain('Undo copy');
+  });
+
+  it('shows a delete confirmation for assets', () => {
+    act(() => {
+      root.render(<NetWorthTracker />);
+    });
+
+    const deleteButton = container.querySelector('button[aria-label="Delete asset"]');
+    expect(deleteButton).toBeTruthy();
+
+    act(() => {
+      deleteButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(container.textContent).toContain('Delete asset');
+  });
+
+  it('adds an asset from the inline add form', async () => {
+    act(() => {
+      root.render(<NetWorthTracker />);
+    });
+
+    const addAssetButton = Array.from(container.querySelectorAll('button')).find((button) =>
+      button.textContent.includes('Add Asset')
+    );
+    expect(addAssetButton).toBeTruthy();
+
+    act(() => {
+      addAssetButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    const input = container.querySelector('input[placeholder="Account name (e.g., House, 401k, Savings)"]');
+    expect(input).toBeTruthy();
+
+    act(() => {
+      Simulate.change(input, { target: { value: 'Test Asset' } });
+    });
+
+    const saveButton = container.querySelector('button[aria-label="Save asset"]');
+    expect(saveButton).toBeTruthy();
+
+    await act(async () => {
+      saveButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(mockAddAccount).toHaveBeenCalledWith('Test Asset', 'asset');
+  });
+
+  it('adds a liability from the inline add form', async () => {
+    act(() => {
+      root.render(<NetWorthTracker />);
+    });
+
+    const addLiabilityButton = Array.from(container.querySelectorAll('button')).find((button) =>
+      button.textContent.includes('Add Liability')
+    );
+    expect(addLiabilityButton).toBeTruthy();
+
+    act(() => {
+      addLiabilityButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    const input = container.querySelector('input[placeholder="Account name (e.g., Credit Card, Mortgage, Student Loan)"]');
+    expect(input).toBeTruthy();
+
+    act(() => {
+      Simulate.change(input, { target: { value: 'Test Liability' } });
+    });
+
+    const saveButton = container.querySelector('button[aria-label="Save liability"]');
+    expect(saveButton).toBeTruthy();
+
+    await act(async () => {
+      saveButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(mockAddAccount).toHaveBeenCalledWith('Test Liability', 'liability');
   });
 });

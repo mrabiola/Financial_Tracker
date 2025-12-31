@@ -28,6 +28,7 @@ import {
   CartesianGrid,
   Tooltip
 } from 'recharts';
+import ConfirmModal from '../common/ConfirmModal';
 
 // Helper function to get account icon
 const getAccountIcon = (name) => {
@@ -140,6 +141,7 @@ const MobileNetWorthView = ({
   accounts,
   goals,
   getSnapshotValue,
+  getEffectiveSnapshotValue,
   updateSnapshot,
   addAccount,
   deleteAccount,
@@ -153,6 +155,7 @@ const MobileNetWorthView = ({
   copyPreviousMonth
 }) => {
   const currencySymbol = getCurrencySymbol ? getCurrencySymbol() : '$';
+  const getDisplaySnapshotValue = getEffectiveSnapshotValue || getSnapshotValue;
 
   // Smart formatting: shows full number with commas, abbreviates only for very large values
   const formatCompact = (value) => {
@@ -189,7 +192,28 @@ const MobileNetWorthView = ({
   const [showEditMonthPicker, setShowEditMonthPicker] = useState(false);
 
   // Delete confirmation state
-  const [deleteConfirm, setDeleteConfirm] = useState({ show: false, account: null, type: null });
+  const [deleteConfirm, setDeleteConfirm] = useState({
+    show: false,
+    target: null,
+    targetType: null,
+    accountType: null
+  });
+  const closeDeleteConfirm = () => {
+    setDeleteConfirm({
+      show: false,
+      target: null,
+      targetType: null,
+      accountType: null
+    });
+  };
+  const handleConfirmDelete = () => {
+    if (!deleteConfirm.target) return;
+    if (deleteConfirm.targetType === 'goal') {
+      deleteGoal(deleteConfirm.target.id);
+    } else {
+      deleteAccount(deleteConfirm.target.id, deleteConfirm.accountType);
+    }
+  };
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -197,11 +221,11 @@ const MobileNetWorthView = ({
     let liabilityTotal = 0;
 
     (accounts.assets || []).forEach(asset => {
-      assetTotal += getSnapshotValue(asset.id, selectedMonth);
+      assetTotal += getDisplaySnapshotValue(asset.id, selectedMonth);
     });
 
     (accounts.liabilities || []).forEach(liability => {
-      liabilityTotal += getSnapshotValue(liability.id, selectedMonth);
+      liabilityTotal += getDisplaySnapshotValue(liability.id, selectedMonth);
     });
 
     return {
@@ -209,7 +233,7 @@ const MobileNetWorthView = ({
       liabilities: liabilityTotal,
       netWorth: assetTotal - liabilityTotal
     };
-  }, [accounts, selectedMonth, getSnapshotValue]);
+  }, [accounts, selectedMonth, getDisplaySnapshotValue]);
 
   // Prepare chart data (last 6 months)
   const chartData = useMemo(() => {
@@ -224,10 +248,10 @@ const MobileNetWorthView = ({
       let liabilities = 0;
       
       (accounts.assets || []).forEach(asset => {
-        assets += getSnapshotValue(asset.id, monthIdx);
+        assets += getDisplaySnapshotValue(asset.id, monthIdx);
       });
       (accounts.liabilities || []).forEach(liability => {
-        liabilities += getSnapshotValue(liability.id, monthIdx);
+        liabilities += getDisplaySnapshotValue(liability.id, monthIdx);
       });
 
       data.push({
@@ -238,7 +262,7 @@ const MobileNetWorthView = ({
       });
     }
     return data;
-  }, [accounts, selectedMonth, getSnapshotValue]);
+  }, [accounts, selectedMonth, getDisplaySnapshotValue]);
 
   const handleAddAccount = async () => {
     if (!newAccountName.trim()) return;
@@ -269,7 +293,7 @@ const MobileNetWorthView = ({
   // Open edit modal for an account
   const openEditAccount = (account, type) => {
     setEditingAccount({ ...account, type });
-    setEditAccountValue(getSnapshotValue(account.id, selectedMonth).toString());
+    setEditAccountValue(getDisplaySnapshotValue(account.id, selectedMonth).toString());
     setEditAccountMonth(selectedMonth);
     setShowEditAccount(true);
   };
@@ -443,7 +467,12 @@ const MobileNetWorthView = ({
                               <Edit2 className="w-3 h-3" />
                             </button>
                             <button
-                              onClick={() => deleteGoal(goal.id)}
+                              onClick={() => setDeleteConfirm({
+                                show: true,
+                                target: goal,
+                                targetType: 'goal',
+                                accountType: null
+                              })}
                               className="p-1 text-gray-400 hover:text-red-500 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
                             >
                               <Trash2 className="w-3 h-3" />
@@ -552,10 +581,15 @@ const MobileNetWorthView = ({
                 <MobileAccountCard
                   key={account.id}
                   account={account}
-                  value={getSnapshotValue(account.id, selectedMonth)}
+                  value={getDisplaySnapshotValue(account.id, selectedMonth)}
                   onEdit={() => openEditAccount(account, activeSection === 'assets' ? 'asset' : 'liability')}
                   onDelete={() => deleteAccount(account.id, activeSection === 'assets' ? 'asset' : 'liability')}
-                  onRequestDelete={(acc) => setDeleteConfirm({ show: true, account: acc, type: activeSection === 'assets' ? 'asset' : 'liability' })}
+                  onRequestDelete={(acc) => setDeleteConfirm({
+                    show: true,
+                    target: acc,
+                    targetType: 'account',
+                    accountType: activeSection === 'assets' ? 'asset' : 'liability'
+                  })}
                   formatCurrency={formatCurrency}
                   type={activeSection === 'assets' ? 'asset' : 'liability'}
                 />
@@ -877,7 +911,7 @@ const MobileNetWorthView = ({
                                 setEditAccountMonth(idx);
                                 setShowEditMonthPicker(false);
                                 // Update value to show current value for selected month
-                                setEditAccountValue(getSnapshotValue(editingAccount.id, idx).toString());
+                                setEditAccountValue(getDisplaySnapshotValue(editingAccount.id, idx).toString());
                               }}
                               className={`
                                 py-1.5 rounded-md text-xs font-medium transition-colors
@@ -920,80 +954,20 @@ const MobileNetWorthView = ({
       </AnimatePresence>
 
       {/* Delete Confirmation Modal */}
-      <AnimatePresence>
-        {deleteConfirm.show && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setDeleteConfirm({ show: false, account: null, type: null })}
-              className="fixed inset-0 bg-black/50 z-50"
-            />
-            
-            {/* Modal */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="fixed inset-x-4 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-900 rounded-xl shadow-xl z-50 max-w-sm mx-auto overflow-hidden"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-red-100 dark:bg-red-900/30">
-                    <Trash2 className="w-4 h-4 text-red-600" />
-                  </div>
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    Delete {deleteConfirm.type === 'asset' ? 'Asset' : 'Liability'}
-                  </h3>
-                </div>
-                <button
-                  onClick={() => setDeleteConfirm({ show: false, account: null, type: null })}
-                  className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Content */}
-              <div className="p-4">
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                  Are you sure you want to delete this {deleteConfirm.type}?
-                </p>
-                {deleteConfirm.account && (
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    "{deleteConfirm.account.name}"
-                  </p>
-                )}
-              </div>
-
-              {/* Actions */}
-              <div className="flex border-t border-gray-200 dark:border-gray-800">
-                <button
-                  onClick={() => setDeleteConfirm({ show: false, account: null, type: null })}
-                  className="flex-1 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    if (deleteConfirm.account) {
-                      deleteAccount(deleteConfirm.account.id, deleteConfirm.type);
-                    }
-                    setDeleteConfirm({ show: false, account: null, type: null });
-                  }}
-                  className="flex-1 py-3 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 border-l border-gray-200 dark:border-gray-800 transition-colors"
-                >
-                  Delete
-                </button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      <ConfirmModal
+        isOpen={deleteConfirm.show}
+        onClose={closeDeleteConfirm}
+        onConfirm={handleConfirmDelete}
+        title={deleteConfirm.targetType === 'goal'
+          ? 'Delete goal'
+          : `Delete ${deleteConfirm.accountType === 'liability' ? 'liability' : 'asset'}`}
+        message={deleteConfirm.targetType === 'goal'
+          ? 'This will permanently remove this goal and its progress.'
+          : 'This will remove this account and its saved balances.'}
+        itemName={deleteConfirm.target?.name || ''}
+        confirmLabel="Delete"
+        variant="danger"
+      />
 
       {/* Floating Action Button */}
       <motion.button

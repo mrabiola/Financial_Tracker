@@ -185,6 +185,28 @@ export const useFinancialDataDemo = (selectedYear) => {
     return { success: result.success };
   }, [isDemo, demoData, updateDemoData, selectedYear]);
 
+  const demoDeleteSnapshot = useCallback(async (accountId, month) => {
+    if (!isDemo || !demoData) return { success: false };
+
+    const updatedSnapshots = { ...demoData.snapshots };
+    const key = `${month}-${selectedYear}`;
+
+    if (updatedSnapshots[accountId]) {
+      const accountSnapshots = { ...updatedSnapshots[accountId] };
+      delete accountSnapshots[key];
+      if (Object.keys(accountSnapshots).length === 0) {
+        delete updatedSnapshots[accountId];
+      } else {
+        updatedSnapshots[accountId] = accountSnapshots;
+      }
+    }
+
+    const updatedData = { ...demoData, snapshots: updatedSnapshots };
+    const result = await updateDemoData(updatedData);
+
+    return { success: result.success };
+  }, [isDemo, demoData, updateDemoData, selectedYear]);
+
   const demoAddGoal = useCallback(async (name, targetAmount) => {
     if (!isDemo || !demoData) return null;
 
@@ -284,6 +306,7 @@ export const useFinancialDataDemo = (selectedYear) => {
       updateAccount: demoUpdateAccount,
       deleteAccount: demoDeleteAccount,
       updateSnapshot: demoUpdateSnapshot,
+      deleteSnapshot: demoDeleteSnapshot,
       addGoal: demoAddGoal,
       updateGoal: demoUpdateGoal,
       updateGoalProgress: demoUpdateGoalProgress,

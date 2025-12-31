@@ -10,10 +10,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCashflowData } from '../../hooks/useCashflowData';
 import { useFinancialHealthTrend } from '../../hooks/useFinancialHealthTrend';
 import LoadingSpinner from '../common/LoadingSpinner';
+import ConfirmModal from '../common/ConfirmModal';
 import SimpleImportModal from './SimpleImportModal';
-import SmartAssetModal from './SmartAssetModal';
 import CashflowSection from './CashflowSection';
-import { useApiAssets } from '../../hooks/useApiAssets';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import MobileNetWorthView from '../mobile/MobileNetWorthView';
 import MobileCashflowView from '../mobile/MobileCashflowView';
@@ -26,6 +25,11 @@ import {
   clearStoredDiagnosticResults,
   getStoredDiagnosticResults
 } from '../../utils/diagnosticStorage';
+import {
+  getEffectiveSnapshotValue,
+  getLatestSnapshotMonth,
+  hasAnySnapshotForMonth
+} from '../../utils/snapshotUtils';
 
 const NetWorthTracker = () => {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -59,6 +63,7 @@ const NetWorthTracker = () => {
     addAccount: addAccountToDb,
     deleteAccount: deleteAccountFromDb,
     updateSnapshot,
+    deleteSnapshot,
     addGoal: addGoalToDb,
     updateGoalProgress,
     deleteGoal: deleteGoalFromDb,
@@ -75,9 +80,6 @@ const NetWorthTracker = () => {
     loading: healthTrendLoading,
     reload: reloadHealthTrend
   } = useFinancialHealthTrend();
-
-  // API assets hook (will get yearId internally)
-  const { addApiAsset } = useApiAssets();
 
   // Cashflow data hook
   const {
@@ -106,8 +108,6 @@ const NetWorthTracker = () => {
   const [newGoalTarget, setNewGoalTarget] = useState('');
   const [showImportOptions, setShowImportOptions] = useState(false);
   const [showSimpleImportModal, setShowSimpleImportModal] = useState(false);
-  const [showSmartAssetModal, setShowSmartAssetModal] = useState(false);
-  const [smartAssetType, setSmartAssetType] = useState('asset');
   const [dropdownPosition, setDropdownPosition] = useState({ alignRight: false, alignTop: false });
   const [assetChartView, setAssetChartView] = useState('summary'); // 'summary' or 'detailed'
   const [showOtherTooltip, setShowOtherTooltip] = useState(false);
@@ -118,6 +118,21 @@ const NetWorthTracker = () => {
   const [baselineSaving, setBaselineSaving] = useState(false);
   const [baselineError, setBaselineError] = useState('');
   const hasCheckedBaseline = useRef(false);
+  const [copyConfirm, setCopyConfirm] = useState({
+    isOpen: false,
+    type: null,
+    monthIndex: null,
+    prevMonthIndex: null,
+    hasExistingData: false,
+    year: null
+  });
+  const [copyUndo, setCopyUndo] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState({
+    isOpen: false,
+    type: null,
+    item: null,
+    accountType: null
+  });
 
   // New state for MoM/YoY view and time periods
   const [chartViewType, setChartViewType] = useState('MoM'); // 'MoM' or 'YoY'
@@ -153,6 +168,12 @@ const NetWorthTracker = () => {
       document.removeEventListener('keydown', handleEscape);
     };
   }, [showImportOptions, showMonthPopup, showYearPopup]);
+
+  useEffect(() => {
+    if (copyUndo && copyUndo.year !== selectedYear) {
+      setCopyUndo(null);
+    }
+  }, [copyUndo, selectedYear]);
 
   // Calculate dropdown position based on available space
   const calculateDropdownPosition = () => {
@@ -209,6 +230,12 @@ const NetWorthTracker = () => {
     };
   }, [showImportOptions]);
 
+  const openNewAccountForm = (type) => {
+    setNewAccountType(type);
+    setNewAccountName('');
+    setShowNewAccount(true);
+  };
+
   // Add new account
   const addAccount = async () => {
     if (!newAccountName) return;
@@ -248,6 +275,29 @@ const NetWorthTracker = () => {
     await updateSnapshot(accountId, monthIndex, value);
   };
 
+  const allAccounts = useMemo(
+    () => [
+      ...(accounts.assets || []),
+      ...(accounts.liabilities || [])
+    ],
+    [accounts.assets, accounts.liabilities]
+  );
+
+  const hasSnapshotForAccountMonth = useCallback(
+    (accountId, monthIndex) => Boolean(getSnapshotCurrencyData?.(accountId, monthIndex)),
+    [getSnapshotCurrencyData]
+  );
+
+  const getEffectiveValueForMonth = useCallback(
+    (accountId, monthIndex) => getEffectiveSnapshotValue({
+      accountId,
+      monthIndex,
+      hasSnapshot: hasSnapshotForAccountMonth,
+      getSnapshotValue
+    }),
+    [getSnapshotValue, hasSnapshotForAccountMonth]
+  );
+
 
   // Copy previous month's values
   const copyPreviousMonth = async () => {
@@ -264,27 +314,139 @@ const NetWorthTracker = () => {
     }
   };
 
-  // Calculate totals for a specific month
-  const calculateTotalsForMonth = (monthIndex) => {
-    let assetTotal = 0;
-    let liabilityTotal = 0;
+  const buildNetWorthUndoPayload = useCallback((monthIndex) => {
+    return allAccounts.map((account) => ({
+      accountId: account.id,
+      hadSnapshot: hasSnapshotForAccountMonth(account.id, monthIndex),
+      value: getSnapshotValue(account.id, monthIndex),
+      currencyData: getSnapshotCurrencyData?.(account.id, monthIndex) || null
+    }));
+  }, [allAccounts, getSnapshotValue, getSnapshotCurrencyData, hasSnapshotForAccountMonth]);
 
-    (accounts.assets || []).forEach(asset => {
-      assetTotal += getSnapshotValue(asset.id, monthIndex);
+  const buildCashflowUndoPayload = useCallback((monthIndex) => {
+    const income = {};
+    const expenses = {};
+
+    Object.entries(cashflowData.income || {}).forEach(([category, values]) => {
+      income[category] = values?.[monthIndex] ?? 0;
     });
 
-    (accounts.liabilities || []).forEach(liability => {
-      liabilityTotal += getSnapshotValue(liability.id, monthIndex);
+    Object.entries(cashflowData.expenses || {}).forEach(([category, values]) => {
+      expenses[category] = values?.[monthIndex] ?? 0;
     });
 
-    return {
-      assets: assetTotal,
-      liabilities: liabilityTotal,
-      netWorth: assetTotal - liabilityTotal
-    };
+    return { income, expenses };
+  }, [cashflowData]);
+
+  const hasCashflowDataForMonth = useMemo(() => {
+    const hasValues = (values = {}) =>
+      Object.values(values).some((monthsData) =>
+        Array.isArray(monthsData) && (monthsData[selectedMonth] || 0) !== 0
+      );
+
+    return hasValues(cashflowData.income) || hasValues(cashflowData.expenses);
+  }, [cashflowData, selectedMonth]);
+
+  const requestCopyPreviousMonth = (type) => {
+    const prevMonthIndex = selectedMonth === 0 ? 11 : selectedMonth - 1;
+    const hasExistingData = type === 'cashflow' ? hasCashflowDataForMonth : monthHasSnapshots;
+
+    setCopyConfirm({
+      isOpen: true,
+      type,
+      monthIndex: selectedMonth,
+      prevMonthIndex,
+      hasExistingData,
+      year: selectedYear
+    });
   };
 
-  const totals = calculateTotalsForMonth(selectedMonth);
+  const handleConfirmCopy = async () => {
+    if (!copyConfirm.type) return;
+
+    const { type, monthIndex, prevMonthIndex } = copyConfirm;
+
+    if (type === 'cashflow') {
+      const undoPayload = buildCashflowUndoPayload(monthIndex);
+      const didCopy = copyCashflowPreviousMonth(monthIndex);
+      if (didCopy) {
+        setCopyUndo({
+          type,
+          monthIndex,
+          prevMonthIndex,
+          payload: undoPayload,
+          year: selectedYear
+        });
+      }
+    } else {
+      const undoPayload = buildNetWorthUndoPayload(monthIndex);
+      await copyPreviousMonth();
+      setCopyUndo({
+        type,
+        monthIndex,
+        prevMonthIndex,
+        payload: undoPayload,
+        year: selectedYear
+      });
+    }
+  };
+
+  const handleUndoCopy = async () => {
+    if (!copyUndo) return;
+
+    if (copyUndo.type === 'cashflow') {
+      Object.entries(copyUndo.payload.income || {}).forEach(([category, value]) => {
+        saveCashflowData(category, 'income', copyUndo.monthIndex, value);
+      });
+      Object.entries(copyUndo.payload.expenses || {}).forEach(([category, value]) => {
+        saveCashflowData(category, 'expenses', copyUndo.monthIndex, value);
+      });
+    } else {
+      for (const snapshot of copyUndo.payload) {
+        if (!snapshot.hadSnapshot && deleteSnapshot) {
+          await deleteSnapshot(snapshot.accountId, copyUndo.monthIndex);
+          continue;
+        }
+
+        const currencyData = snapshot.currencyData;
+        const value = currencyData?.originalValue ?? snapshot.value;
+        const currency = currencyData?.originalCurrency ?? null;
+        await updateSnapshot(snapshot.accountId, copyUndo.monthIndex, value, currency);
+      }
+    }
+
+    setCopyUndo(null);
+  };
+
+  const closeCopyConfirm = () => {
+    setCopyConfirm({
+      isOpen: false,
+      type: null,
+      monthIndex: null,
+      prevMonthIndex: null,
+      hasExistingData: false,
+      year: null
+    });
+  };
+
+  const closeDeleteConfirm = () => {
+    setDeleteConfirm({
+      isOpen: false,
+      type: null,
+      item: null,
+      accountType: null
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirm.type || !deleteConfirm.item) return;
+
+    if (deleteConfirm.type === 'goal') {
+      await deleteGoal(deleteConfirm.item.id);
+    } else {
+      await deleteAccount(deleteConfirm.item.id, deleteConfirm.accountType);
+    }
+  };
 
   // Get icon for account based on name
   const getAccountIcon = (accountName) => {
@@ -435,6 +597,72 @@ const NetWorthTracker = () => {
     }
     setAvailableYears(years);
   }, []);
+
+  const monthHasSnapshots = useMemo(
+    () => hasAnySnapshotForMonth({
+      accounts: allAccounts,
+      monthIndex: selectedMonth,
+      hasSnapshot: hasSnapshotForAccountMonth
+    }),
+    [allAccounts, selectedMonth, hasSnapshotForAccountMonth]
+  );
+
+  const latestMonthWithData = useMemo(
+    () => getLatestSnapshotMonth({
+      accounts: allAccounts,
+      monthIndex: selectedMonth,
+      hasSnapshot: hasSnapshotForAccountMonth
+    }),
+    [allAccounts, selectedMonth, hasSnapshotForAccountMonth]
+  );
+  const showStaleDataNotice = !monthHasSnapshots && latestMonthWithData !== null;
+
+  // Calculate totals for a specific month
+  const calculateTotalsForMonth = (monthIndex) => {
+    let assetTotal = 0;
+    let liabilityTotal = 0;
+
+    (accounts.assets || []).forEach(asset => {
+      assetTotal += getEffectiveValueForMonth(asset.id, monthIndex);
+    });
+
+    (accounts.liabilities || []).forEach(liability => {
+      liabilityTotal += getEffectiveValueForMonth(liability.id, monthIndex);
+    });
+
+    return {
+      assets: assetTotal,
+      liabilities: liabilityTotal,
+      netWorth: assetTotal - liabilityTotal
+    };
+  };
+
+  const totals = calculateTotalsForMonth(selectedMonth);
+  const staleDataMessage = showStaleDataNotice
+    ? `No ${months[selectedMonth]} data yet. Showing ${months[latestMonthWithData]} balances.`
+    : '';
+  const copyUndoMessage = copyUndo
+    ? `Copied ${months[copyUndo.prevMonthIndex]} ${copyUndo.year} into ${months[copyUndo.monthIndex]} ${copyUndo.year} (${copyUndo.type === 'cashflow' ? 'Cashflow' : 'Net worth'}).`
+    : '';
+  const copyConfirmSourceLabel = copyConfirm.prevMonthIndex !== null
+    ? `${months[copyConfirm.prevMonthIndex]} ${copyConfirm.year ?? selectedYear}`
+    : '';
+  const copyConfirmTargetLabel = copyConfirm.monthIndex !== null
+    ? `${months[copyConfirm.monthIndex]} ${copyConfirm.year ?? selectedYear}`
+    : '';
+  const copyConfirmTitle = copyConfirm.type === 'cashflow'
+    ? 'Copy cashflow values'
+    : 'Copy net worth values';
+  const copyConfirmMessage = copyConfirm.hasExistingData
+    ? `This will overwrite values already entered for ${copyConfirmTargetLabel}. You can undo once after copying.`
+    : `Copy values from ${copyConfirmSourceLabel} into ${copyConfirmTargetLabel}. You can undo once after copying.`;
+  const copyConfirmLabel = copyConfirm.hasExistingData ? 'Copy & replace' : 'Copy';
+  const deleteConfirmTitle = deleteConfirm.type === 'goal'
+    ? 'Delete goal'
+    : `Delete ${deleteConfirm.accountType === 'liabilities' ? 'liability' : 'asset'}`;
+  const deleteConfirmMessage = deleteConfirm.type === 'goal'
+    ? 'This will permanently remove this goal and its progress.'
+    : 'This will remove this account and its saved balances.';
 
   // Create stable account IDs array to prevent unnecessary re-renders
   const accountIds = useMemo(() => {
@@ -694,11 +922,11 @@ const NetWorthTracker = () => {
     if (year === selectedYear) {
       // For current selected year, use current accounts structure
       (accounts.assets || []).forEach(asset => {
-        assetTotal += getSnapshotValue(asset.id, monthIndex);
+        assetTotal += getEffectiveValueForMonth(asset.id, monthIndex);
       });
 
       (accounts.liabilities || []).forEach(liability => {
-        liabilityTotal += getSnapshotValue(liability.id, monthIndex);
+        liabilityTotal += getEffectiveValueForMonth(liability.id, monthIndex);
       });
     } else {
       // For historical years, iterate through ALL snapshot keys to find accounts
@@ -743,7 +971,7 @@ const NetWorthTracker = () => {
       liabilities: liabilityTotal,
       netWorth: assetTotal - liabilityTotal
     };
-  }, [accounts.assets, accounts.liabilities, getSnapshotValue, multiYearData, selectedYear]);
+  }, [accounts.assets, accounts.liabilities, getEffectiveValueForMonth, multiYearData, selectedYear]);
 
   // Prepare Year-over-Year comparison data
   const prepareYoYChartData = () => {
@@ -978,7 +1206,7 @@ const NetWorthTracker = () => {
     
     // Calculate all asset values
     (accounts.assets || []).forEach(asset => {
-      const value = getValue(asset.id, selectedMonth);
+      const value = getEffectiveValueForMonth(asset.id, selectedMonth);
       // Only include assets with positive values
       if (value > 0) {
         breakdown.push({
@@ -993,7 +1221,7 @@ const NetWorthTracker = () => {
     breakdown.sort((a, b) => b.value - a.value);
     
     return { breakdown, totalValue };
-  }, [accounts.assets, selectedMonth, getValue]);
+  }, [accounts.assets, selectedMonth, getEffectiveValueForMonth]);
 
   // Memoize summary data with "Other" grouping
   const summaryData = useMemo(() => {
@@ -1104,7 +1332,7 @@ const NetWorthTracker = () => {
           <div className="flex items-center gap-1">
             {/* Copy Previous Button - Icon only with tooltip */}
             <button
-              onClick={activeTab === 'cashflow' ? copyCashflowPreviousMonth : copyPreviousMonth}
+              onClick={() => requestCopyPreviousMonth(activeTab === 'cashflow' ? 'cashflow' : 'networth')}
               className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
               title="Copy values from previous month"
             >
@@ -1119,6 +1347,23 @@ const NetWorthTracker = () => {
             />
           </div>
         </div>
+
+        {copyUndo && (
+          <div className="mb-3 rounded-lg border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-950/40 px-3 py-2 text-xs text-blue-700 dark:text-blue-200 flex items-center justify-between gap-2">
+            <span>{copyUndoMessage}</span>
+            <button
+              onClick={handleUndoCopy}
+              className="text-blue-700 dark:text-blue-200 font-semibold hover:underline"
+            >
+              Undo
+            </button>
+          </div>
+        )}
+        {activeTab !== 'cashflow' && showStaleDataNotice && (
+          <div className="mb-3 rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-xs text-amber-700 dark:text-amber-200">
+            {staleDataMessage}
+          </div>
+        )}
 
         {/* Mobile Tab Navigation */}
         <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 mb-3">
@@ -1167,6 +1412,7 @@ const NetWorthTracker = () => {
             accounts={accounts}
             goals={goals}
             getSnapshotValue={getSnapshotValue}
+            getEffectiveSnapshotValue={getEffectiveValueForMonth}
             updateSnapshot={updateSnapshot}
             addAccount={addAccountToDb}
             deleteAccount={deleteAccountFromDb}
@@ -1189,6 +1435,7 @@ const NetWorthTracker = () => {
             accounts={accounts}
             goals={goals}
             getSnapshotValue={getSnapshotValue}
+            getEffectiveSnapshotValue={getEffectiveValueForMonth}
             formatCurrency={formatCurrency}
             getCurrencySymbol={getCurrencySymbol}
             currency={currency}
@@ -1225,6 +1472,25 @@ const NetWorthTracker = () => {
           onSkip={handleBaselineSkip}
           isSaving={baselineSaving}
           error={baselineError}
+        />
+        <ConfirmModal
+          isOpen={copyConfirm.isOpen}
+          onClose={closeCopyConfirm}
+          onConfirm={handleConfirmCopy}
+          title={copyConfirmTitle}
+          message={copyConfirmMessage}
+          confirmLabel={copyConfirmLabel}
+          variant="warning"
+        />
+        <ConfirmModal
+          isOpen={deleteConfirm.isOpen}
+          onClose={closeDeleteConfirm}
+          onConfirm={handleConfirmDelete}
+          title={deleteConfirmTitle}
+          message={deleteConfirmMessage}
+          itemName={deleteConfirm.item?.name || ''}
+          confirmLabel="Delete"
+          variant="danger"
         />
       </div>
     );
@@ -1349,7 +1615,7 @@ const NetWorthTracker = () => {
 
               {/* Copy Previous Button - Icon only */}
               <button
-                onClick={activeTab === 'cashflow' ? copyCashflowPreviousMonth : copyPreviousMonth}
+                onClick={() => requestCopyPreviousMonth(activeTab === 'cashflow' ? 'cashflow' : 'networth')}
                 className="p-2 bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors shadow-sm"
                 title="Copy values from previous month"
               >
@@ -1411,11 +1677,28 @@ const NetWorthTracker = () => {
                   )}
                 </div>
               </div>
-            </div>
           </div>
+        </div>
 
-          {/* Dynamic Dashboard Cards Based on Active Tab */}
-          {activeTab === 'cashflow' ? (
+        {copyUndo && (
+          <div className="mb-4 rounded-lg border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-950/40 px-4 py-2 text-sm text-blue-700 dark:text-blue-200 flex items-center justify-between gap-3">
+            <span>{copyUndoMessage}</span>
+            <button
+              onClick={handleUndoCopy}
+              className="text-blue-700 dark:text-blue-200 font-semibold hover:underline"
+            >
+              Undo copy
+            </button>
+          </div>
+        )}
+        {activeTab !== 'cashflow' && showStaleDataNotice && (
+          <div className="mb-4 rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/40 px-4 py-2 text-sm text-amber-700 dark:text-amber-200">
+            {staleDataMessage}
+          </div>
+        )}
+
+        {/* Dynamic Dashboard Cards Based on Active Tab */}
+        {activeTab === 'cashflow' ? (
             // Cashflow Dashboard Cards
             (() => {
               const metrics = calculateCashflowMetrics(selectedMonth);
@@ -1683,9 +1966,15 @@ const NetWorthTracker = () => {
                             {progress.toFixed(0)}%
                           </span>
                           <button
-                            onClick={() => deleteGoal(goal.id)}
+                            onClick={() => setDeleteConfirm({
+                              isOpen: true,
+                              type: 'goal',
+                              item: goal,
+                              accountType: null
+                            })}
                             className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-all"
                             title="Delete goal"
+                            aria-label="Delete goal"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -1751,7 +2040,7 @@ const NetWorthTracker = () => {
                   Assets
                 </h2>
                 <button
-                  onClick={() => { setSmartAssetType('asset'); setShowSmartAssetModal(true); }}
+                  onClick={() => openNewAccountForm('asset')}
                   className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
                 >
                   <Plus className="w-4 h-4" />
@@ -1775,10 +2064,18 @@ const NetWorthTracker = () => {
                         className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
                       />
                     </div>
-                    <button onClick={addAccount} className="p-1 bg-green-500 text-white rounded hover:bg-green-600">
+                    <button
+                      onClick={addAccount}
+                      className="p-1 bg-green-500 text-white rounded hover:bg-green-600"
+                      aria-label="Save asset"
+                    >
                       <Check className="w-4 h-4" />
                     </button>
-                    <button onClick={() => setShowNewAccount(false)} className="p-1 bg-red-500 text-white rounded hover:bg-red-600">
+                    <button
+                      onClick={() => setShowNewAccount(false)}
+                      className="p-1 bg-red-500 text-white rounded hover:bg-red-600"
+                      aria-label="Cancel asset"
+                    >
                       <X className="w-4 h-4" />
                     </button>
                   </div>
@@ -1862,8 +2159,14 @@ const NetWorthTracker = () => {
                       })}
                       <td className="p-2 border-b text-center">
                         <button
-                          onClick={() => deleteAccount(asset.id, 'assets')}
+                          onClick={() => setDeleteConfirm({
+                            isOpen: true,
+                            type: 'account',
+                            item: asset,
+                            accountType: 'assets'
+                          })}
                           className="p-1 text-red-500 hover:bg-red-50 rounded"
+                          aria-label="Delete asset"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1883,7 +2186,7 @@ const NetWorthTracker = () => {
                   Liabilities
                 </h2>
                 <button
-                  onClick={() => { setSmartAssetType('liability'); setShowSmartAssetModal(true); }}
+                  onClick={() => openNewAccountForm('liability')}
                   className="flex items-center gap-1 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
                 >
                   <Plus className="w-4 h-4" />
@@ -1907,10 +2210,18 @@ const NetWorthTracker = () => {
                         className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
                       />
                     </div>
-                    <button onClick={addAccount} className="p-1 bg-green-500 text-white rounded hover:bg-green-600">
+                    <button
+                      onClick={addAccount}
+                      className="p-1 bg-green-500 text-white rounded hover:bg-green-600"
+                      aria-label="Save liability"
+                    >
                       <Check className="w-4 h-4" />
                     </button>
-                    <button onClick={() => setShowNewAccount(false)} className="p-1 bg-red-500 text-white rounded hover:bg-red-600">
+                    <button
+                      onClick={() => setShowNewAccount(false)}
+                      className="p-1 bg-red-500 text-white rounded hover:bg-red-600"
+                      aria-label="Cancel liability"
+                    >
                       <X className="w-4 h-4" />
                     </button>
                   </div>
@@ -1993,8 +2304,14 @@ const NetWorthTracker = () => {
                       })}
                       <td className="p-2 border-b text-center">
                         <button
-                          onClick={() => deleteAccount(liability.id, 'liabilities')}
+                          onClick={() => setDeleteConfirm({
+                            isOpen: true,
+                            type: 'account',
+                            item: liability,
+                            accountType: 'liabilities'
+                          })}
                           className="p-1 text-red-500 hover:bg-red-50 rounded"
+                          aria-label="Delete liability"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -2801,24 +3118,6 @@ const NetWorthTracker = () => {
         accounts={{ assets: accounts.assets || [], liabilities: accounts.liabilities || [] }}
       />
 
-      {/* Smart Asset Modal */}
-      {showSmartAssetModal && (
-        <SmartAssetModal
-          isOpen={showSmartAssetModal}
-          onClose={() => setShowSmartAssetModal(false)}
-          onSave={async (assetData) => {
-            // Set the type for the old manual flow if needed
-            if (assetData.asset_type === 'manual') {
-              setNewAccountType(assetData.type);
-            }
-            await addApiAsset(assetData);
-            reload(); // Reload data to show new asset
-          }}
-          selectedYear={selectedYear}
-          accountType={smartAssetType}
-        />
-      )}
-
       <DiagnosticBaselineModal
         isOpen={showBaselineModal}
         baseline={baselinePayload}
@@ -2826,6 +3125,25 @@ const NetWorthTracker = () => {
         onSkip={handleBaselineSkip}
         isSaving={baselineSaving}
         error={baselineError}
+      />
+      <ConfirmModal
+        isOpen={copyConfirm.isOpen}
+        onClose={closeCopyConfirm}
+        onConfirm={handleConfirmCopy}
+        title={copyConfirmTitle}
+        message={copyConfirmMessage}
+        confirmLabel={copyConfirmLabel}
+        variant="warning"
+      />
+      <ConfirmModal
+        isOpen={deleteConfirm.isOpen}
+        onClose={closeDeleteConfirm}
+        onConfirm={handleConfirmDelete}
+        title={deleteConfirmTitle}
+        message={deleteConfirmMessage}
+        itemName={deleteConfirm.item?.name || ''}
+        confirmLabel="Delete"
+        variant="danger"
       />
     </div>
   );

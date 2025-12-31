@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Trash2, TrendingUp, TrendingDown, Activity, DollarSign, AlertCircle, CheckCircle, Edit, BarChart3, LineChart, ChevronDown, Eraser, X, Clock } from 'lucide-react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Line, PieChart, Pie, Cell, Bar, LineChart as RechartsLineChart } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
+import ConfirmModal from '../common/ConfirmModal';
 
 const CashflowSection = ({
   selectedYear,
@@ -29,6 +30,7 @@ const CashflowSection = ({
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [showInsights] = useState(true); // eslint-disable-line no-unused-vars
   const [openDeleteDropdown, setOpenDeleteDropdown] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, type: null, category: null });
   const [timeFrame, setTimeFrame] = useState('ALL'); // '1M', 'YTD', '3M', '6M', 'ALL'
   const [showIncomeOtherTooltip, setShowIncomeOtherTooltip] = useState(false);
   const [showExpenseOtherTooltip, setShowExpenseOtherTooltip] = useState(false);
@@ -136,9 +138,19 @@ const CashflowSection = ({
   };
 
   // Delete entire category row
-  const handleDeleteCategoryRow = (type, categoryName) => {
-    deleteCategory(type, categoryName);
+  const handleDeleteCategoryRow = (type, category) => {
+    setDeleteConfirm({ isOpen: true, type, category });
     setOpenDeleteDropdown(null);
+  };
+
+  const closeDeleteConfirm = () => {
+    setDeleteConfirm({ isOpen: false, type: null, category: null });
+  };
+
+  const handleConfirmDeleteCategory = () => {
+    if (!deleteConfirm.category) return;
+    deleteCategory(deleteConfirm.type, deleteConfirm.category.name);
+    closeDeleteConfirm();
   };
 
   // Auto-select icon based on category name
@@ -575,7 +587,7 @@ const CashflowSection = ({
                                 Clear Data
                               </button>
                               <button
-                                onClick={() => handleDeleteCategoryRow('income', category.name)}
+                                onClick={() => handleDeleteCategoryRow('income', category)}
                                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-colors"
                               >
                                 <X className="w-4 h-4" />
@@ -761,7 +773,7 @@ const CashflowSection = ({
                                 Clear Data
                               </button>
                               <button
-                                onClick={() => handleDeleteCategoryRow('expenses', category.name)}
+                                onClick={() => handleDeleteCategoryRow('expenses', category)}
                                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-colors"
                               >
                                 <X className="w-4 h-4" />
@@ -1295,6 +1307,16 @@ const CashflowSection = ({
           )}
         </div>
       </div>
+      <ConfirmModal
+        isOpen={deleteConfirm.isOpen}
+        onClose={closeDeleteConfirm}
+        onConfirm={handleConfirmDeleteCategory}
+        title="Delete category"
+        message="This will remove all data for this category."
+        itemName={deleteConfirm.category?.name || ''}
+        confirmLabel="Delete"
+        variant="danger"
+      />
     </motion.div>
   );
 };
