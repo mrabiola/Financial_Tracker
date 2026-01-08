@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   year_id UUID REFERENCES financial_years(id) ON DELETE CASCADE NOT NULL,
+  canonical_id UUID NOT NULL DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
   type TEXT CHECK (type IN ('asset', 'liability')) NOT NULL,
   icon TEXT,
@@ -79,6 +80,7 @@ CREATE TABLE IF NOT EXISTS financial_health_snapshots (
 CREATE INDEX IF NOT EXISTS idx_financial_years_user_id ON financial_years(user_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_user_id ON accounts(user_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_year_id ON accounts(year_id);
+CREATE INDEX IF NOT EXISTS idx_accounts_user_canonical_id ON accounts(user_id, canonical_id);
 CREATE INDEX IF NOT EXISTS idx_account_snapshots_account_id ON account_snapshots(account_id);
 CREATE INDEX IF NOT EXISTS idx_goals_user_id ON goals(user_id);
 CREATE INDEX IF NOT EXISTS idx_goals_year_id ON goals(year_id);

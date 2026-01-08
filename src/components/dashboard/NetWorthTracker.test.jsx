@@ -76,10 +76,26 @@ jest.mock('../../contexts/CurrencyContext', () => ({
   })
 }));
 
+beforeAll(() => {
+  jest.useFakeTimers().setSystemTime(new Date('2026-06-15T12:00:00Z'));
+});
+
+afterAll(() => {
+  jest.useRealTimers();
+});
+
 const mockUpdateSnapshot = jest.fn();
 const mockDeleteSnapshot = jest.fn();
-const mockGetSnapshotValue = jest.fn(() => 0);
-const mockGetSnapshotCurrencyData = jest.fn(() => null);
+const mockGetSnapshotValue = jest.fn((_accountId, monthIndex) => {
+  const currentMonth = new Date().getMonth();
+  const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+  return monthIndex === prevMonth ? 100 : 0;
+});
+const mockGetSnapshotCurrencyData = jest.fn((_accountId, monthIndex) => {
+  const currentMonth = new Date().getMonth();
+  const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+  return monthIndex === prevMonth ? { originalValue: 100, originalCurrency: 'USD' } : null;
+});
 const mockAddAccount = jest.fn();
 const mockAccounts = { assets: [{ id: 'asset-1', name: 'Cash' }], liabilities: [] };
 

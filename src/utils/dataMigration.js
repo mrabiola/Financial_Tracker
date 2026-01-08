@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '../lib/supabase';
+import { getAccountCanonicalKey, getAccountLegacyKey } from './accountUtils';
 
 /**
  * Check if user needs multi-year data migration
@@ -94,6 +95,30 @@ export const migrateToMultiYear = async (userId) => {
 
     if (accountError) throw accountError;
 
+    const currentYearRecord = userYears.find((yearRecord) => yearRecord.year === currentYear);
+    let existingCanonicalIds = new Set();
+    let existingLegacyKeys = new Set();
+
+    if (currentYearRecord) {
+      const { data: currentYearAccounts, error: currentYearAccountsError } = await supabase
+        .from('accounts')
+        .select('id, name, type, canonical_id')
+        .eq('year_id', currentYearRecord.id);
+
+      if (currentYearAccountsError) throw currentYearAccountsError;
+
+      existingCanonicalIds = new Set(
+        (currentYearAccounts || [])
+          .map((account) => getAccountCanonicalKey(account) || account.id)
+          .filter(Boolean)
+      );
+      existingLegacyKeys = new Set(
+        (currentYearAccounts || [])
+          .map((account) => getAccountLegacyKey(account))
+          .filter(Boolean)
+      );
+    }
+
     // Step 4: For each account, ensure it exists in each year
     const accountsToCreate = [];
     userYears.forEach(yearRecord => {
@@ -101,14 +126,29 @@ export const migrateToMultiYear = async (userId) => {
         // Check if account already exists for this year
         const existsForYear = account.year_id === yearRecord.id;
         if (!existsForYear && yearRecord.year === currentYear) {
+          const canonicalId = getAccountCanonicalKey(account) || account.id;
+          const legacyKey = getAccountLegacyKey(account);
+          if (
+            (canonicalId && existingCanonicalIds.has(canonicalId)) ||
+            (legacyKey && existingLegacyKeys.has(legacyKey))
+          ) {
+            return;
+          }
           // Only create accounts for current year to avoid duplicates
           // Future years will be created as needed
           accountsToCreate.push({
             ...account,
             id: undefined, // Let database generate new ID
             year_id: yearRecord.id,
+            canonical_id: canonicalId,
             created_at: new Date().toISOString()
           });
+          if (canonicalId) {
+            existingCanonicalIds.add(canonicalId);
+          }
+          if (legacyKey) {
+            existingLegacyKeys.add(legacyKey);
+          }
         }
       });
     });

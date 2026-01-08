@@ -8,6 +8,7 @@ export const getEffectiveSnapshotValue = ({
     return getSnapshotValue(accountId, monthIndex);
   }
 
+  // Look backwards within the current year only
   for (let i = monthIndex - 1; i >= 0; i -= 1) {
     if (hasSnapshot(accountId, i)) {
       return getSnapshotValue(accountId, i);

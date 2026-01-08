@@ -6,6 +6,7 @@ import {
   convertValue,
   saveLastKnownCurrency
 } from '../utils/currencyConversion';
+import { getAccountCanonicalKey, getAccountLegacyKey } from '../utils/accountUtils';
 
 export const useFinancialDataWithCurrency = (selectedYear) => {
   const { user } = useAuth();
@@ -305,13 +306,111 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
     }
   }, [user, displayCurrency]);
 
+  // Copy accounts from previous year to current year (structure only, not values)
+  const copyAccountsFromPreviousYear = useCallback(async (currentYearId) => {
+    if (!user) return [];
+
+    try {
+      // Get previous year's financial_year record
+      const { data: prevYearData, error: prevYearError } = await supabase
+        .from('financial_years')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('year', selectedYear - 1)
+        .single();
+
+      if (prevYearError || !prevYearData) {
+        console.log('No previous year data found to copy accounts from');
+        return [];
+      }
+
+      // Fetch accounts from previous year
+      const { data: prevAccounts, error: accountsError } = await supabase
+        .from('accounts')
+        .select('*')
+        .eq('year_id', prevYearData.id)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+
+      if (accountsError) throw accountsError;
+      if (!prevAccounts || prevAccounts.length === 0) {
+        return [];
+      }
+
+      const { data: existingAccounts, error: existingError } = await supabase
+        .from('accounts')
+        .select('id, name, type, canonical_id')
+        .eq('year_id', currentYearId)
+        .eq('is_active', true);
+
+      if (existingError) throw existingError;
+
+      const existingCanonicalIds = new Set(
+        (existingAccounts || [])
+          .map((acc) => getAccountCanonicalKey(acc) || acc.id)
+          .filter(Boolean)
+      );
+      const existingLegacyKeys = new Set(
+        (existingAccounts || [])
+          .map((acc) => getAccountLegacyKey(acc))
+          .filter(Boolean)
+      );
+
+      // Create copies of accounts in current year (without snapshot values)
+      const newAccounts = [];
+      for (const account of prevAccounts) {
+        const canonicalId = getAccountCanonicalKey(account) || account.id;
+        const legacyKey = getAccountLegacyKey(account);
+
+        if (
+          (canonicalId && existingCanonicalIds.has(canonicalId)) ||
+          (legacyKey && existingLegacyKeys.has(legacyKey))
+        ) {
+          continue;
+        }
+
+        const { data: newAccount, error: insertError } = await supabase
+          .from('accounts')
+          .insert([
+            {
+              user_id: user.id,
+              year_id: currentYearId,
+              name: account.name,
+              type: account.type,
+              sort_order: account.sort_order,
+              is_active: true,
+              canonical_id: canonicalId
+            }
+          ])
+          .select()
+          .single();
+
+        if (!insertError && newAccount) {
+          newAccounts.push(newAccount);
+          if (canonicalId) {
+            existingCanonicalIds.add(canonicalId);
+          }
+          if (legacyKey) {
+            existingLegacyKeys.add(legacyKey);
+          }
+        }
+      }
+
+      console.log(`Copied ${newAccounts.length} accounts from ${selectedYear - 1} to ${selectedYear}`);
+      return newAccounts;
+    } catch (err) {
+      console.error('Error copying accounts from previous year:', err);
+      return [];
+    }
+  }, [user, selectedYear]);
+
   // Load all data with debounce to prevent duplicate calls
   const loadData = useCallback(async () => {
     // Prevent duplicate simultaneous loads
     if (loadingRef.current) {
       return;
     }
-    
+
     loadingRef.current = true;
     setLoading(true);
     setError(null);
@@ -320,8 +419,22 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
       const year = await fetchOrCreateYear();
       if (year) {
         setYearData(year);
-        
-        const accountsData = await fetchAccountsAndReturn(year.id);
+
+        let accountsData = await fetchAccountsAndReturn(year.id);
+
+        // If no accounts exist in current year, try to copy from previous year
+        if (!accountsData || accountsData.length === 0) {
+          console.log('No accounts in current year, attempting to copy from previous year...');
+          accountsData = await copyAccountsFromPreviousYear(year.id);
+
+          if (accountsData && accountsData.length > 0) {
+            // Update local state with the newly created accounts
+            const assets = accountsData.filter(a => a.type === 'asset');
+            const liabilities = accountsData.filter(a => a.type === 'liability');
+            setAccounts({ assets, liabilities });
+          }
+        }
+
         await fetchGoals(year.id);
 
         if (accountsData && accountsData.length > 0) {
@@ -341,7 +454,7 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
         loadingRef.current = false;
       }, 100);
     }
-  }, [fetchOrCreateYear, fetchAccountsAndReturn, fetchGoals, fetchSnapshots]);
+  }, [fetchOrCreateYear, fetchAccountsAndReturn, fetchGoals, fetchSnapshots, copyAccountsFromPreviousYear]);
 
   // Convert all values when currency changes
   useEffect(() => {
@@ -438,15 +551,19 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
     try {
       const numValue = parseFloat(value) || 0;
       const currency = inputCurrency || displayCurrency;
-      
+
+      console.log(`[updateSnapshot] accountId=${accountId.slice(0,8)}..., month=${month}, year=${selectedYear}, value=${value}, numValue=${numValue}`);
+
       // Check if snapshot exists
       const { data: existing } = await supabase
         .from('account_snapshots')
-        .select('id')
+        .select('id, value')
         .eq('account_id', accountId)
         .eq('month', month)
         .eq('year', selectedYear)
         .single();
+
+      console.log(`[updateSnapshot] existing snapshot:`, existing ? `id=${existing.id.slice(0,8)}..., oldValue=${existing.value}` : 'none');
 
       const snapshotData = {
         value: numValue, // Keep display value for backward compatibility
@@ -457,11 +574,13 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
 
       let result;
       if (existing) {
+        console.log(`[updateSnapshot] UPDATING existing snapshot to ${numValue}`);
         result = await supabase
           .from('account_snapshots')
           .update(snapshotData)
           .eq('id', existing.id);
       } else {
+        console.log(`[updateSnapshot] INSERTING new snapshot with ${numValue}`);
         result = await supabase
           .from('account_snapshots')
           .insert([
@@ -474,12 +593,17 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
           ]);
       }
 
-      if (result.error) throw result.error;
+      if (result.error) {
+        console.error(`[updateSnapshot] ERROR:`, result.error);
+        throw result.error;
+      }
+
+      console.log(`[updateSnapshot] SUCCESS, rows affected: ${result.data?.length || result.count || 'unknown'}`);
 
       // Update local state with converted value
       const key = `${accountId}_${month}`;
       const displayValue = await convertValue(numValue, currency, displayCurrency);
-      
+
       setSnapshots(prev => ({ ...prev, [key]: displayValue }));
       setSnapshotsCurrency(prev => ({
         ...prev,
@@ -492,7 +616,7 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
         }
       }));
     } catch (err) {
-      console.error('Error updating snapshot:', err);
+      console.error('[updateSnapshot] Exception:', err);
       setError(err.message);
     }
   };

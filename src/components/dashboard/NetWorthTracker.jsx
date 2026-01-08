@@ -30,6 +30,7 @@ import {
   getLatestSnapshotMonth,
   hasAnySnapshotForMonth
 } from '../../utils/snapshotUtils';
+import { getAccountCanonicalKey, getAccountLegacyKey } from '../../utils/accountUtils';
 
 const NetWorthTracker = () => {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -123,6 +124,8 @@ const NetWorthTracker = () => {
     type: null,
     monthIndex: null,
     prevMonthIndex: null,
+    sourceYear: null,
+    targetYear: null,
     hasExistingData: false,
     year: null
   });
@@ -265,11 +268,6 @@ const NetWorthTracker = () => {
     await deleteAccountFromDb(accountId, type);
   };
 
-  // Get value for a specific account and month
-  const getValue = useCallback((accountId, monthIndex) => {
-    return getSnapshotValue(accountId, monthIndex);
-  }, [getSnapshotValue]);
-
   // Set value for a specific account and month
   const setValue = async (accountId, monthIndex, value) => {
     await updateSnapshot(accountId, monthIndex, value);
@@ -298,20 +296,144 @@ const NetWorthTracker = () => {
     [getSnapshotValue, hasSnapshotForAccountMonth]
   );
 
+  const getTableCellValue = useCallback(
+    (accountId, monthIndex) => {
+      const hasSnapshot = hasSnapshotForAccountMonth(accountId, monthIndex);
 
-  // Copy previous month's values
+      if (hasSnapshot) {
+        return {
+          value: getSnapshotValue(accountId, monthIndex),
+          isCarryForward: false,
+          hasSnapshot
+        };
+      }
+
+      if (monthIndex === selectedMonth) {
+        return {
+          value: getEffectiveValueForMonth(accountId, monthIndex),
+          isCarryForward: true,
+          hasSnapshot
+        };
+      }
+
+      return {
+        value: 0,
+        isCarryForward: false,
+        hasSnapshot
+      };
+    },
+    [getSnapshotValue, getEffectiveValueForMonth, hasSnapshotForAccountMonth, selectedMonth]
+  );
+
+
+  // Copy previous month's values (with cross-year support)
   const copyPreviousMonth = async () => {
     const prevMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
-    
+    const sourceYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
+
     const allAccounts = [
       ...(accounts.assets || []),
       ...(accounts.liabilities || [])
     ];
 
-    for (const account of allAccounts) {
-      const prevValue = getSnapshotValue(account.id, prevMonth);
-      await setValue(account.id, selectedMonth, prevValue);
+    console.log('=== COPY PREVIOUS MONTH ===');
+    console.log('Selected month:', selectedMonth, '(month 0 = January)');
+    console.log('Selected year:', selectedYear);
+    console.log('Will write to month:', selectedMonth, 'only, not all months');
+
+    let prevYearSnapshots = null;
+    const prevYearAccountsByCanonical = new Map();
+    const prevYearAccountsByLegacy = new Map();
+
+    if (selectedMonth === 0) {
+      // Cross-year copy: need to fetch previous year's data
+      console.log('Cross-year copy: fetching data from year', sourceYear);
+
+      // First, ensure multi-year data is loaded
+      let loadedData = null;
+      if (!multiYearData[sourceYear]?.snapshots) {
+        console.log('Previous year data not in cache, loading...');
+        loadedData = await loadMultiYearData(true);
+      }
+
+      prevYearSnapshots = loadedData?.[sourceYear] ?? multiYearData[sourceYear];
+
+      // Fetch previous year's accounts to match by name
+      const { data: prevYearFinancial } = await supabase
+        .from('financial_years')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('year', sourceYear)
+        .single();
+
+      if (prevYearFinancial) {
+        const { data: prevYearAccounts } = await supabase
+          .from('accounts')
+          .select('id, name, type, canonical_id')
+          .eq('year_id', prevYearFinancial.id)
+          .eq('is_active', true);
+
+        if (prevYearAccounts) {
+          console.log('Previous year accounts:', prevYearAccounts.map(a => `${a.type}: ${a.name}`));
+          prevYearAccounts.forEach((account) => {
+            const canonicalKey = getAccountCanonicalKey(account);
+            if (canonicalKey && !prevYearAccountsByCanonical.has(canonicalKey)) {
+              prevYearAccountsByCanonical.set(canonicalKey, account.id);
+            }
+
+            const legacyKey = getAccountLegacyKey(account);
+            if (legacyKey && !prevYearAccountsByLegacy.has(legacyKey)) {
+              prevYearAccountsByLegacy.set(legacyKey, account.id);
+            }
+          });
+        }
+      }
     }
+
+    let didCopy = false;
+
+    for (const account of allAccounts) {
+      let prevValue;
+      let hasPrevSnapshot = false;
+
+      if (selectedMonth === 0) {
+        // Copying from December of previous year - match by account name
+        const canonicalKey = getAccountCanonicalKey(account);
+        let prevAccountId = canonicalKey ? prevYearAccountsByCanonical.get(canonicalKey) : null;
+
+        if (!prevAccountId) {
+          const legacyKey = getAccountLegacyKey(account);
+          prevAccountId = legacyKey ? prevYearAccountsByLegacy.get(legacyKey) : null;
+        }
+
+        if (prevAccountId && prevYearSnapshots?.snapshots) {
+          const snapshotKey = `${prevAccountId}_${prevMonth}`;
+          hasPrevSnapshot = Object.prototype.hasOwnProperty.call(prevYearSnapshots.snapshots, snapshotKey);
+          if (hasPrevSnapshot) {
+            prevValue = prevYearSnapshots.snapshots[snapshotKey] ?? 0;
+            console.log(`[${account.type.toUpperCase()}] ${account.name}: copying ${prevValue} from ${snapshotKey} to account ${account.id} month ${selectedMonth}`);
+          }
+        } else {
+          prevValue = 0;
+        }
+      } else {
+        // Copying from within the same year
+        hasPrevSnapshot = hasSnapshotForAccountMonth(account.id, prevMonth);
+        if (hasPrevSnapshot) {
+          prevValue = getSnapshotValue(account.id, prevMonth);
+        }
+      }
+
+      if (!hasPrevSnapshot) {
+        continue;
+      }
+
+      console.log(`>>> setValue(accountId=${account.id}, month=${selectedMonth}, value=${prevValue})`);
+      await setValue(account.id, selectedMonth, prevValue);
+      didCopy = true;
+    }
+    console.log('=== COPY COMPLETE ===');
+    return didCopy;
   };
 
   const buildNetWorthUndoPayload = useCallback((monthIndex) => {
@@ -349,6 +471,7 @@ const NetWorthTracker = () => {
 
   const requestCopyPreviousMonth = (type) => {
     const prevMonthIndex = selectedMonth === 0 ? 11 : selectedMonth - 1;
+    const sourceYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
     const hasExistingData = type === 'cashflow' ? hasCashflowDataForMonth : monthHasSnapshots;
 
     setCopyConfirm({
@@ -356,6 +479,8 @@ const NetWorthTracker = () => {
       type,
       monthIndex: selectedMonth,
       prevMonthIndex,
+      sourceYear, // The year of the source month
+      targetYear: selectedYear, // The year of the target month
       hasExistingData,
       year: selectedYear
     });
@@ -364,7 +489,7 @@ const NetWorthTracker = () => {
   const handleConfirmCopy = async () => {
     if (!copyConfirm.type) return;
 
-    const { type, monthIndex, prevMonthIndex } = copyConfirm;
+    const { type, monthIndex, prevMonthIndex, sourceYear, targetYear } = copyConfirm;
 
     if (type === 'cashflow') {
       const undoPayload = buildCashflowUndoPayload(monthIndex);
@@ -375,19 +500,23 @@ const NetWorthTracker = () => {
           monthIndex,
           prevMonthIndex,
           payload: undoPayload,
-          year: selectedYear
+          sourceYear: sourceYear ?? selectedYear,
+          year: targetYear ?? selectedYear
         });
       }
     } else {
       const undoPayload = buildNetWorthUndoPayload(monthIndex);
-      await copyPreviousMonth();
-      setCopyUndo({
-        type,
-        monthIndex,
-        prevMonthIndex,
-        payload: undoPayload,
-        year: selectedYear
-      });
+      const didCopy = await copyPreviousMonth();
+      if (didCopy) {
+        setCopyUndo({
+          type,
+          monthIndex,
+          prevMonthIndex,
+          payload: undoPayload,
+          sourceYear: sourceYear ?? selectedYear,
+          year: targetYear ?? selectedYear
+        });
+      }
     }
   };
 
@@ -424,6 +553,8 @@ const NetWorthTracker = () => {
       type: null,
       monthIndex: null,
       prevMonthIndex: null,
+      sourceYear: null,
+      targetYear: null,
       hasExistingData: false,
       year: null
     });
@@ -500,7 +631,8 @@ const NetWorthTracker = () => {
   // Handle cell editing
   const startEdit = (accountId, monthIndex) => {
     setEditingCell(`${accountId}_${monthIndex}`);
-    setTempValue(getValue(accountId, monthIndex).toString());
+    const { value } = getTableCellValue(accountId, monthIndex);
+    setTempValue(value.toString());
   };
 
   const saveEdit = async () => {
@@ -642,10 +774,10 @@ const NetWorthTracker = () => {
     ? `No ${months[selectedMonth]} data yet. Showing ${months[latestMonthWithData]} balances.`
     : '';
   const copyUndoMessage = copyUndo
-    ? `Copied ${months[copyUndo.prevMonthIndex]} ${copyUndo.year} into ${months[copyUndo.monthIndex]} ${copyUndo.year} (${copyUndo.type === 'cashflow' ? 'Cashflow' : 'Net worth'}).`
+    ? `Copied ${months[copyUndo.prevMonthIndex]} ${copyUndo.sourceYear ?? copyUndo.year} into ${months[copyUndo.monthIndex]} ${copyUndo.year} (${copyUndo.type === 'cashflow' ? 'Cashflow' : 'Net worth'}).`
     : '';
   const copyConfirmSourceLabel = copyConfirm.prevMonthIndex !== null
-    ? `${months[copyConfirm.prevMonthIndex]} ${copyConfirm.year ?? selectedYear}`
+    ? `${months[copyConfirm.prevMonthIndex]} ${copyConfirm.sourceYear ?? copyConfirm.year ?? selectedYear}`
     : '';
   const copyConfirmTargetLabel = copyConfirm.monthIndex !== null
     ? `${months[copyConfirm.monthIndex]} ${copyConfirm.year ?? selectedYear}`
@@ -677,20 +809,41 @@ const NetWorthTracker = () => {
     return ids;
   }, [accounts.assets, accounts.liabilities]);
 
-  // Load multi-year data for YoY charts
-  const loadMultiYearData = useCallback(async () => {
-    if (!fetchMultiYearSnapshots || availableYears.length === 0 || accountIds.length === 0) {
-      return;
+  // Load multi-year data for YoY charts and cross-year carry-forward
+  const loadMultiYearData = useCallback(async (includePrevYear = false) => {
+    if (!fetchMultiYearSnapshots || accountIds.length === 0) {
+      return null;
     }
 
     try {
-      const data = await fetchMultiYearSnapshots(accountIds, availableYears);
-      setMultiYearData(data);
+      let yearsToFetch = [...availableYears];
+
+      // If we need the previous year for cross-year carry-forward and it's not in availableYears
+      if (includePrevYear && !yearsToFetch.includes(selectedYear - 1)) {
+        yearsToFetch.push(selectedYear - 1);
+      }
+
+      // Also ensure the selected year is included
+      if (!yearsToFetch.includes(selectedYear)) {
+        yearsToFetch.push(selectedYear);
+      }
+
+      // Sort and deduplicate
+      yearsToFetch = [...new Set(yearsToFetch)].sort((a, b) => a - b);
+
+      if (yearsToFetch.length === 0) {
+        return null;
+      }
+
+      const data = await fetchMultiYearSnapshots(accountIds, yearsToFetch);
+      setMultiYearData(prev => ({ ...prev, ...data }));
       hasLoadedMultiYearData.current = true;
+      return data;
     } catch (error) {
       console.error('Error loading multi-year data:', error);
+      return null;
     }
-  }, [fetchMultiYearSnapshots, availableYears, accountIds]);
+  }, [fetchMultiYearSnapshots, availableYears, accountIds, selectedYear]);
 
   // Load multi-year data when switching to YoY view
   useEffect(() => {
@@ -698,6 +851,14 @@ const NetWorthTracker = () => {
       loadMultiYearData();
     }
   }, [chartViewType, loadMultiYearData, accountIds.length]);
+
+  // Load previous year's data when switching years or when on January (for cross-year carry-forward)
+  useEffect(() => {
+    if (accountIds.length > 0 && selectedYear) {
+      // Always load the previous year's data to enable carry-forward
+      loadMultiYearData(true);
+    }
+  }, [selectedYear, accountIds.length, loadMultiYearData]);
 
   // Preload multi-year data when accounts first become available
   useEffect(() => {
@@ -2120,7 +2281,7 @@ const NetWorthTracker = () => {
                       {months.map((_, monthIdx) => {
                         const cellKey = `${asset.id}_${monthIdx}`;
                         const isEditing = editingCell === cellKey;
-                        const value = getValue(asset.id, monthIdx);
+                        const { value, hasSnapshot } = getTableCellValue(asset.id, monthIdx);
                         
                         return (
                           <td key={monthIdx} className={`p-2 border-b border-gray-200 dark:border-gray-800 text-center ${monthIdx === selectedMonth ? 'bg-blue-50 dark:bg-blue-950/40' : ''}`}>
@@ -2143,7 +2304,7 @@ const NetWorthTracker = () => {
                                 className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800/50 rounded px-1 relative group"
                               >
                                 {value > 0 ? formatCurrency(value) : '-'}
-                                {value > 0 && (() => {
+                                {value > 0 && hasSnapshot && (() => {
                                   const currencyData = getSnapshotCurrencyData(asset.id, monthIdx);
                                   const indicator = currencyData ? getConversionIndicator(currencyData) : '';
                                   return indicator ? (
@@ -2265,7 +2426,7 @@ const NetWorthTracker = () => {
                       {months.map((_, monthIdx) => {
                         const cellKey = `${liability.id}_${monthIdx}`;
                         const isEditing = editingCell === cellKey;
-                        const value = getValue(liability.id, monthIdx);
+                        const { value, hasSnapshot } = getTableCellValue(liability.id, monthIdx);
                         
                         return (
                           <td key={monthIdx} className={`p-2 border-b border-gray-200 dark:border-gray-800 text-center ${monthIdx === selectedMonth ? 'bg-blue-50 dark:bg-blue-950/40' : ''}`}>
@@ -2288,7 +2449,7 @@ const NetWorthTracker = () => {
                                 className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800/50 rounded px-1 relative group"
                               >
                                 {value > 0 ? formatCurrency(value) : '-'}
-                                {value > 0 && (() => {
+                                {value > 0 && hasSnapshot && (() => {
                                   const currencyData = getSnapshotCurrencyData(liability.id, monthIdx);
                                   const indicator = currencyData ? getConversionIndicator(currencyData) : '';
                                   return indicator ? (
