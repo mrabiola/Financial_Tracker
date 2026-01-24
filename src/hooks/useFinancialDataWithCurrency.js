@@ -159,7 +159,6 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
   // Fetch and convert account snapshots
   const fetchSnapshots = useCallback(async (accountIds) => {
     if (!accountIds || accountIds.length === 0) {
-      console.log('No account IDs provided for snapshot fetch');
       return;
     }
 
@@ -235,20 +234,6 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
 
       if (error) throw error;
 
-      console.log('🔍 REAL USER fetchMultiYearSnapshots DEBUG:');
-      console.log('📊 Raw snapshots from DB:', snapshots?.length || 0);
-      console.log('📅 Requested years:', years);
-      console.log('🏦 All historical account IDs:', allAccountIds.length);
-      console.log('🏦 Original current year account IDs:', accountIds?.length || 0);
-      if (snapshots?.length > 0) {
-        console.log('📋 Sample snapshot:', snapshots[0]);
-        const yearBreakdown = {};
-        snapshots.forEach(s => {
-          yearBreakdown[s.year] = (yearBreakdown[s.year] || 0) + 1;
-        });
-        console.log('📈 Snapshots by year:', yearBreakdown);
-      }
-
       // Process snapshots with currency conversion and organize by year
       const multiYearData = {};
 
@@ -280,16 +265,6 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
         };
       }));
 
-      console.log('✅ FINAL multiYearData result:');
-      Object.keys(multiYearData).forEach(year => {
-        const yearData = multiYearData[year];
-        console.log(`📅 Year ${year}: ${Object.keys(yearData.snapshots).length} snapshots`);
-        if (Object.keys(yearData.snapshots).length > 0) {
-          console.log(`   Sample keys:`, Object.keys(yearData.snapshots).slice(0, 3));
-          console.log(`   Sample values:`, Object.keys(yearData.snapshots).slice(0, 3).map(key => yearData.snapshots[key]));
-        }
-      });
-
       // Add account type mapping for YoY chart processing
       const accountTypeMap = {};
       (allUserAccounts || []).forEach(account => {
@@ -320,7 +295,6 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
         .single();
 
       if (prevYearError || !prevYearData) {
-        console.log('No previous year data found to copy accounts from');
         return [];
       }
 
@@ -396,7 +370,6 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
         }
       }
 
-      console.log(`Copied ${newAccounts.length} accounts from ${selectedYear - 1} to ${selectedYear}`);
       return newAccounts;
     } catch (err) {
       console.error('Error copying accounts from previous year:', err);
@@ -424,7 +397,6 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
 
         // If no accounts exist in current year, try to copy from previous year
         if (!accountsData || accountsData.length === 0) {
-          console.log('No accounts in current year, attempting to copy from previous year...');
           accountsData = await copyAccountsFromPreviousYear(year.id);
 
           if (accountsData && accountsData.length > 0) {
@@ -552,8 +524,6 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
       const numValue = parseFloat(value) || 0;
       const currency = inputCurrency || displayCurrency;
 
-      console.log(`[updateSnapshot] accountId=${accountId.slice(0,8)}..., month=${month}, year=${selectedYear}, value=${value}, numValue=${numValue}`);
-
       // Check if snapshot exists
       const { data: existing } = await supabase
         .from('account_snapshots')
@@ -562,8 +532,6 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
         .eq('month', month)
         .eq('year', selectedYear)
         .single();
-
-      console.log(`[updateSnapshot] existing snapshot:`, existing ? `id=${existing.id.slice(0,8)}..., oldValue=${existing.value}` : 'none');
 
       const snapshotData = {
         value: numValue, // Keep display value for backward compatibility
@@ -574,13 +542,11 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
 
       let result;
       if (existing) {
-        console.log(`[updateSnapshot] UPDATING existing snapshot to ${numValue}`);
         result = await supabase
           .from('account_snapshots')
           .update(snapshotData)
           .eq('id', existing.id);
       } else {
-        console.log(`[updateSnapshot] INSERTING new snapshot with ${numValue}`);
         result = await supabase
           .from('account_snapshots')
           .insert([
@@ -594,11 +560,8 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
       }
 
       if (result.error) {
-        console.error(`[updateSnapshot] ERROR:`, result.error);
         throw result.error;
       }
-
-      console.log(`[updateSnapshot] SUCCESS, rows affected: ${result.data?.length || result.count || 'unknown'}`);
 
       // Update local state with converted value
       const key = `${accountId}_${month}`;
@@ -616,7 +579,6 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
         }
       }));
     } catch (err) {
-      console.error('[updateSnapshot] Exception:', err);
       setError(err.message);
     }
   };
@@ -734,6 +696,32 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
     }
   };
 
+  // Update account metadata
+  const updateAccountMetadata = async (accountId, metadata) => {
+    try {
+      const { data, error } = await supabase
+        .from('accounts')
+        .update({ metadata })
+        .eq('id', accountId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Update local state
+      setAccounts(prev => ({
+        assets: prev.assets.map(a => a.id === accountId ? { ...a, ...data } : a),
+        liabilities: prev.liabilities.map(a => a.id === accountId ? { ...a, ...data } : a)
+      }));
+
+      return data;
+    } catch (err) {
+      console.error('Error updating account metadata:', err);
+      setError(err.message);
+      return null;
+    }
+  };
+
   // Get snapshot value (already converted to display currency)
   const getSnapshotValue = (accountId, month) => {
     const key = `${accountId}_${month}`;
@@ -767,6 +755,7 @@ export const useFinancialDataWithCurrency = (selectedYear) => {
     addGoal,
     updateGoalProgress,
     deleteGoal,
+    updateAccountMetadata,
     getSnapshotValue,
     getSnapshotCurrencyData,
     deleteSnapshot,

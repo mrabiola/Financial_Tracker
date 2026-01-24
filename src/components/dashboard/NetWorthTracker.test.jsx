@@ -112,6 +112,7 @@ jest.mock('../../hooks/useFinancialDataDemo', () => ({
     addGoal: jest.fn(),
     updateGoalProgress: jest.fn(),
     deleteGoal: jest.fn(),
+    snapshots: { 'asset-1_4': 100 },
     getSnapshotValue: mockGetSnapshotValue,
     getSnapshotCurrencyData: mockGetSnapshotCurrencyData,
     fetchMultiYearSnapshots: null,

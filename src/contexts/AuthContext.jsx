@@ -28,9 +28,7 @@ export const AuthProvider = ({ children }) => {
       if (session?.user && isDemoSession()) {
         const demoSessionId = getDemoSessionId();
         if (demoSessionId) {
-          cleanupDemoSession(demoSessionId).then(() => {
-            console.log('Cleaned up demo session after real user login');
-          });
+          cleanupDemoSession(demoSessionId);
         }
       }
 
@@ -46,9 +44,7 @@ export const AuthProvider = ({ children }) => {
       if (_event === 'SIGNED_IN' && session?.user && isDemoSession()) {
         const demoSessionId = getDemoSessionId();
         if (demoSessionId) {
-          cleanupDemoSession(demoSessionId).then(() => {
-            console.log('Cleaned up demo session after real user sign in');
-          });
+          cleanupDemoSession(demoSessionId);
         }
       }
 
@@ -72,7 +68,6 @@ export const AuthProvider = ({ children }) => {
         const demoSessionId = getDemoSessionId();
         if (demoSessionId) {
           await cleanupDemoSession(demoSessionId);
-          console.log('Demo session cleaned up during sign out');
         }
       }
 

@@ -127,13 +127,10 @@ export const useFinancialData = (selectedYear) => {
   // Fetch account snapshots
   const fetchSnapshots = useCallback(async (accountIds) => {
     if (!accountIds || accountIds.length === 0) {
-      console.log('No account IDs provided for snapshot fetch');
       return;
     }
 
     try {
-      console.log('Fetching snapshots for account IDs:', accountIds, 'year:', selectedYear);
-      
       const { data, error } = await supabase
         .from('account_snapshots')
         .select('*')
@@ -141,8 +138,6 @@ export const useFinancialData = (selectedYear) => {
         .eq('year', selectedYear);
 
       if (error) throw error;
-
-      console.log('Fetched', data?.length || 0, 'snapshots');
 
       // Convert snapshots to a map for easier access
       const snapshotMap = {};
@@ -180,10 +175,8 @@ export const useFinancialData = (selectedYear) => {
 
         // Now fetch snapshots using the actual accounts data
         if (accountsData && accountsData.length > 0) {
-          console.log('Loading snapshots for', accountsData.length, 'accounts');
           await fetchSnapshots(accountsData.map(a => a.id));
         } else {
-          console.log('No accounts found, skipping snapshot fetch');
           setSnapshots({}); // Clear any existing snapshots
         }
       }

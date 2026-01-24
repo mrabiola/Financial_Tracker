@@ -21,7 +21,7 @@ describe('snapshotUtils', () => {
     expect(value).toBe(1200);
   });
 
-  it('falls back to the latest prior month when missing', () => {
+  it('returns 0 when the current month has no snapshot', () => {
     const data = { 'asset-1_3': true };
     const hasSnapshot = (accountId, monthIndex) => Boolean(data[`${accountId}_${monthIndex}`]);
     const getSnapshotValue = () => 900;
@@ -33,7 +33,7 @@ describe('snapshotUtils', () => {
       getSnapshotValue
     });
 
-    expect(value).toBe(900);
+    expect(value).toBe(0);
   });
 
   it('finds the most recent month with data', () => {

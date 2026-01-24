@@ -19,6 +19,8 @@ import MobileCashflowView from '../mobile/MobileCashflowView';
 import MobileAnalyticsView from '../mobile/MobileAnalyticsView';
 import MobileDatePicker from '../mobile/MobileDatePicker';
 import DiagnosticBaselineModal from '../diagnostic/DiagnosticBaselineModal';
+import AccountDetailPanel from './AccountDetailPanel';
+import AccountMetadataModal from './AccountMetadataModal';
 import {
   buildBaselineSettings,
   buildHealthSnapshotPayload,
@@ -27,7 +29,6 @@ import {
 } from '../../utils/diagnosticStorage';
 import {
   getEffectiveSnapshotValue,
-  getLatestSnapshotMonth,
   hasAnySnapshotForMonth
 } from '../../utils/snapshotUtils';
 import { getAccountCanonicalKey, getAccountLegacyKey } from '../../utils/accountUtils';
@@ -68,6 +69,8 @@ const NetWorthTracker = () => {
     addGoal: addGoalToDb,
     updateGoalProgress,
     deleteGoal: deleteGoalFromDb,
+    updateAccountMetadata,
+    snapshots,
     getSnapshotValue,
     getSnapshotCurrencyData,
     fetchMultiYearSnapshots,
@@ -136,6 +139,11 @@ const NetWorthTracker = () => {
     item: null,
     accountType: null
   });
+
+  // Account detail state
+  const [expandedAccountId, setExpandedAccountId] = useState(null);
+  const [showMetadataModal, setShowMetadataModal] = useState(false);
+  const [editingAccountMetadata, setEditingAccountMetadata] = useState(null);
 
   // New state for MoM/YoY view and time periods
   const [chartViewType, setChartViewType] = useState('MoM'); // 'MoM' or 'YoY'
@@ -282,8 +290,28 @@ const NetWorthTracker = () => {
   );
 
   const hasSnapshotForAccountMonth = useCallback(
-    (accountId, monthIndex) => Boolean(getSnapshotCurrencyData?.(accountId, monthIndex)),
-    [getSnapshotCurrencyData]
+    (accountId, monthIndex) => {
+      // Check currency data first
+      if (getSnapshotCurrencyData?.(accountId, monthIndex)) {
+        return true;
+      }
+
+      // No snapshots available
+      if (!snapshots) {
+        return false;
+      }
+
+      // Check flat key format
+      const flatKey = `${accountId}_${monthIndex}`;
+      if (Object.prototype.hasOwnProperty.call(snapshots, flatKey)) {
+        return true;
+      }
+
+      // Check demo data format
+      const demoKey = `${monthIndex}-${selectedYear}`;
+      return Boolean(snapshots[accountId]?.[demoKey]);
+    },
+    [getSnapshotCurrencyData, snapshots, selectedYear]
   );
 
   const getEffectiveValueForMonth = useCallback(
@@ -336,23 +364,15 @@ const NetWorthTracker = () => {
       ...(accounts.liabilities || [])
     ];
 
-    console.log('=== COPY PREVIOUS MONTH ===');
-    console.log('Selected month:', selectedMonth, '(month 0 = January)');
-    console.log('Selected year:', selectedYear);
-    console.log('Will write to month:', selectedMonth, 'only, not all months');
-
     let prevYearSnapshots = null;
     const prevYearAccountsByCanonical = new Map();
     const prevYearAccountsByLegacy = new Map();
 
     if (selectedMonth === 0) {
       // Cross-year copy: need to fetch previous year's data
-      console.log('Cross-year copy: fetching data from year', sourceYear);
-
       // First, ensure multi-year data is loaded
       let loadedData = null;
       if (!multiYearData[sourceYear]?.snapshots) {
-        console.log('Previous year data not in cache, loading...');
         loadedData = await loadMultiYearData(true);
       }
 
@@ -374,7 +394,6 @@ const NetWorthTracker = () => {
           .eq('is_active', true);
 
         if (prevYearAccounts) {
-          console.log('Previous year accounts:', prevYearAccounts.map(a => `${a.type}: ${a.name}`));
           prevYearAccounts.forEach((account) => {
             const canonicalKey = getAccountCanonicalKey(account);
             if (canonicalKey && !prevYearAccountsByCanonical.has(canonicalKey)) {
@@ -411,7 +430,6 @@ const NetWorthTracker = () => {
           hasPrevSnapshot = Object.prototype.hasOwnProperty.call(prevYearSnapshots.snapshots, snapshotKey);
           if (hasPrevSnapshot) {
             prevValue = prevYearSnapshots.snapshots[snapshotKey] ?? 0;
-            console.log(`[${account.type.toUpperCase()}] ${account.name}: copying ${prevValue} from ${snapshotKey} to account ${account.id} month ${selectedMonth}`);
           }
         } else {
           prevValue = 0;
@@ -428,11 +446,10 @@ const NetWorthTracker = () => {
         continue;
       }
 
-      console.log(`>>> setValue(accountId=${account.id}, month=${selectedMonth}, value=${prevValue})`);
       await setValue(account.id, selectedMonth, prevValue);
       didCopy = true;
     }
-    console.log('=== COPY COMPLETE ===');
+
     return didCopy;
   };
 
@@ -576,6 +593,31 @@ const NetWorthTracker = () => {
       await deleteGoal(deleteConfirm.item.id);
     } else {
       await deleteAccount(deleteConfirm.item.id, deleteConfirm.accountType);
+    }
+  };
+
+  // Handle account row expansion toggle
+  const toggleAccountExpansion = (accountId) => {
+    if (expandedAccountId === accountId) {
+      setExpandedAccountId(null);
+    } else {
+      setExpandedAccountId(accountId);
+    }
+  };
+
+  // Handle opening metadata modal
+  const handleOpenMetadataModal = (account) => {
+    setEditingAccountMetadata(account);
+    setShowMetadataModal(true);
+  };
+
+  // Handle saving metadata
+  const handleSaveMetadata = async (accountId, metadata) => {
+    const result = await updateAccountMetadata(accountId, metadata);
+    if (result) {
+      setShowMetadataModal(false);
+      setEditingAccountMetadata(null);
+      await reload();
     }
   };
 
@@ -739,15 +781,7 @@ const NetWorthTracker = () => {
     [allAccounts, selectedMonth, hasSnapshotForAccountMonth]
   );
 
-  const latestMonthWithData = useMemo(
-    () => getLatestSnapshotMonth({
-      accounts: allAccounts,
-      monthIndex: selectedMonth,
-      hasSnapshot: hasSnapshotForAccountMonth
-    }),
-    [allAccounts, selectedMonth, hasSnapshotForAccountMonth]
-  );
-  const showStaleDataNotice = !monthHasSnapshots && latestMonthWithData !== null;
+  const showStaleDataNotice = !monthHasSnapshots;
 
   // Calculate totals for a specific month
   const calculateTotalsForMonth = (monthIndex) => {
@@ -771,7 +805,7 @@ const NetWorthTracker = () => {
 
   const totals = calculateTotalsForMonth(selectedMonth);
   const staleDataMessage = showStaleDataNotice
-    ? `No ${months[selectedMonth]} data yet. Showing ${months[latestMonthWithData]} balances.`
+    ? `No ${months[selectedMonth]} data yet.`
     : '';
   const copyUndoMessage = copyUndo
     ? `Copied ${months[copyUndo.prevMonthIndex]} ${copyUndo.sourceYear ?? copyUndo.year} into ${months[copyUndo.monthIndex]} ${copyUndo.year} (${copyUndo.type === 'cashflow' ? 'Cashflow' : 'Net worth'}).`
@@ -1290,25 +1324,18 @@ const NetWorthTracker = () => {
   // Prepare annual YoY data (for 3Y/5Y/ALL timeframes)
   const prepareAnnualYoYData = (years) => {
     const chartData = [];
-    console.log('Preparing annual YoY data for years:', years);
-    console.log('MultiYearData available:', Object.keys(multiYearData));
 
     years.forEach(year => {
-      console.log(`Processing year ${year}...`);
-
       // Calculate annual totals - look for the best available month data
       let yearTotal = 0;
       let hasData = false;
-      let bestMonth = -1;
 
       // Check all months for this year to find data
       for (let monthIdx = 0; monthIdx < 12; monthIdx++) {
         const totals = calculateTotalsForYearMonth(year, monthIdx);
-        console.log(`Year ${year}, Month ${monthIdx}:`, totals);
 
         if (totals.netWorth !== 0) {
           hasData = true;
-          bestMonth = monthIdx;
           yearTotal = totals.netWorth; // Keep updating to get the latest month's data
         }
       }
@@ -1323,7 +1350,6 @@ const NetWorthTracker = () => {
         if (currentTotals.netWorth !== 0 || !hasData) {
           yearTotal = currentTotals.netWorth;
           hasData = true;
-          console.log(`Using current real year ${year} data:`, currentTotals);
         }
       } else if (year === selectedYear) {
         // If viewing a past selected year, use December or last available month
@@ -1332,13 +1358,9 @@ const NetWorthTracker = () => {
           if (decemberTotals.netWorth !== 0) {
             yearTotal = decemberTotals.netWorth;
             hasData = true;
-            console.log(`Using selected year ${year} December data:`, decemberTotals);
           }
         }
       }
-
-      // Always include years in our target range, even with zero data to show progression
-      console.log(`Year ${year}: hasData=${hasData}, yearTotal=${yearTotal}, bestMonth=${bestMonth}`);
 
       chartData.push({
         year: year.toString(),
@@ -1350,8 +1372,6 @@ const NetWorthTracker = () => {
 
     // Sort by year
     chartData.sort((a, b) => a.yearNum - b.yearNum);
-
-    console.log('Final annual chart data:', chartData);
 
     return {
       chartData,
@@ -1580,6 +1600,7 @@ const NetWorthTracker = () => {
             addGoal={addGoalToDb}
             updateGoalProgress={updateGoalProgress}
             deleteGoal={deleteGoalFromDb}
+            updateAccountMetadata={updateAccountMetadata}
             formatCurrency={formatCurrency}
             formatCurrencyShort={formatCurrencyShort}
             getCurrencySymbol={getCurrencySymbol}
@@ -2271,68 +2292,90 @@ const NetWorthTracker = () => {
                 </thead>
                 <tbody>
                   {(accounts.assets || []).map(asset => (
-                    <tr key={asset.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
-                      <td className="p-2 border-b border-gray-200 dark:border-gray-800 font-medium sticky left-0 bg-white dark:bg-gray-900">
-                        <div className="flex items-center gap-2">
-                          <span className="text-green-600">{getAccountIcon(asset.name).icon}</span>
-                          {asset.name}
-                        </div>
-                      </td>
-                      {months.map((_, monthIdx) => {
-                        const cellKey = `${asset.id}_${monthIdx}`;
-                        const isEditing = editingCell === cellKey;
-                        const { value, hasSnapshot } = getTableCellValue(asset.id, monthIdx);
-                        
-                        return (
-                          <td key={monthIdx} className={`p-2 border-b border-gray-200 dark:border-gray-800 text-center ${monthIdx === selectedMonth ? 'bg-blue-50 dark:bg-blue-950/40' : ''}`}>
-                            {isEditing ? (
-                              <input
-                                type="number"
-                                value={tempValue}
-                                onChange={(e) => setTempValue(e.target.value)}
-                                onBlur={saveEdit}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') saveEdit();
-                                  if (e.key === 'Escape') cancelEdit();
-                                }}
-                                className="w-full px-1 py-0 border border-gray-300 dark:border-gray-700 rounded text-center bg-white dark:bg-gray-950"
-                                autoFocus
-                              />
-                            ) : (
-                              <div
-                                onClick={() => startEdit(asset.id, monthIdx)}
-                                className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800/50 rounded px-1 relative group"
-                              >
-                                {value > 0 ? formatCurrency(value) : '-'}
-                                {value > 0 && hasSnapshot && (() => {
-                                  const currencyData = getSnapshotCurrencyData(asset.id, monthIdx);
-                                  const indicator = currencyData ? getConversionIndicator(currencyData) : '';
-                                  return indicator ? (
-                                    <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                                      {indicator}
-                                    </span>
-                                  ) : null;
-                                })()}
-                              </div>
-                            )}
-                          </td>
-                        );
-                      })}
-                      <td className="p-2 border-b text-center">
-                        <button
-                          onClick={() => setDeleteConfirm({
-                            isOpen: true,
-                            type: 'account',
-                            item: asset,
-                            accountType: 'assets'
-                          })}
-                          className="p-1 text-red-500 hover:bg-red-50 rounded"
-                          aria-label="Delete asset"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
+                    <React.Fragment key={asset.id}>
+                      <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                        <td className="p-2 border-b border-gray-200 dark:border-gray-800 font-medium sticky left-0 bg-white dark:bg-gray-900">
+                          <div
+                            onClick={() => toggleAccountExpansion(asset.id)}
+                            className="flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors"
+                          >
+                            <span className="text-green-600">{getAccountIcon(asset.name).icon}</span>
+                            <span className="underline decoration-dotted underline-offset-2">{asset.name}</span>
+                          </div>
+                        </td>
+                        {months.map((_, monthIdx) => {
+                          const cellKey = `${asset.id}_${monthIdx}`;
+                          const isEditing = editingCell === cellKey;
+                          const { value, hasSnapshot } = getTableCellValue(asset.id, monthIdx);
+
+                          return (
+                            <td key={monthIdx} className={`p-2 border-b border-gray-200 dark:border-gray-800 text-center ${monthIdx === selectedMonth ? 'bg-blue-50 dark:bg-blue-950/40' : ''}`}>
+                              {isEditing ? (
+                                <input
+                                  type="number"
+                                  value={tempValue}
+                                  onChange={(e) => setTempValue(e.target.value)}
+                                  onBlur={saveEdit}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') saveEdit();
+                                    if (e.key === 'Escape') cancelEdit();
+                                  }}
+                                  className="w-full px-1 py-0 border border-gray-300 dark:border-gray-700 rounded text-center bg-white dark:bg-gray-950"
+                                  autoFocus
+                                />
+                              ) : (
+                                <div
+                                  onClick={() => startEdit(asset.id, monthIdx)}
+                                  className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800/50 rounded px-1 relative group"
+                                >
+                                  {value > 0 ? formatCurrency(value) : '-'}
+                                  {value > 0 && hasSnapshot && (() => {
+                                    const currencyData = getSnapshotCurrencyData(asset.id, monthIdx);
+                                    const indicator = currencyData ? getConversionIndicator(currencyData) : '';
+                                    return indicator ? (
+                                      <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                                        {indicator}
+                                      </span>
+                                    ) : null;
+                                  })()}
+                                </div>
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td className="p-2 border-b text-center">
+                          <button
+                            onClick={() => setDeleteConfirm({
+                              isOpen: true,
+                              type: 'account',
+                              item: asset,
+                              accountType: 'assets'
+                            })}
+                            className="p-1 text-red-500 hover:bg-red-50 rounded"
+                            aria-label="Delete asset"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                      {/* Detail Panel Row */}
+                      <AccountDetailPanel
+                        isExpanded={expandedAccountId === asset.id}
+                        account={asset}
+                        accountType="asset"
+                        currentValue={getSnapshotValue(asset.id, selectedMonth)}
+                        selectedMonth={selectedMonth}
+                        selectedYear={selectedYear}
+                        getSnapshotValue={getSnapshotValue}
+                        formatCurrency={formatCurrency}
+                        formatCurrencyShort={formatCurrencyShort}
+                        getCurrencySymbol={getCurrencySymbol}
+                        currency={currency}
+                        colSpan={14} // Account + 12 months + Actions
+                        onUpdateMetadata={updateAccountMetadata}
+                        onOpenFullModal={handleOpenMetadataModal}
+                      />
+                    </React.Fragment>
                   ))}
                 </tbody>
               </table>
@@ -2416,68 +2459,90 @@ const NetWorthTracker = () => {
                 </thead>
                 <tbody>
                   {(accounts.liabilities || []).map(liability => (
-                    <tr key={liability.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
-                      <td className="p-2 border-b border-gray-200 dark:border-gray-800 font-medium sticky left-0 bg-white dark:bg-gray-900">
-                        <div className="flex items-center gap-2">
-                          <span className="text-red-600">{getAccountIcon(liability.name).icon}</span>
-                          {liability.name}
-                        </div>
-                      </td>
-                      {months.map((_, monthIdx) => {
-                        const cellKey = `${liability.id}_${monthIdx}`;
-                        const isEditing = editingCell === cellKey;
-                        const { value, hasSnapshot } = getTableCellValue(liability.id, monthIdx);
-                        
-                        return (
-                          <td key={monthIdx} className={`p-2 border-b border-gray-200 dark:border-gray-800 text-center ${monthIdx === selectedMonth ? 'bg-blue-50 dark:bg-blue-950/40' : ''}`}>
-                            {isEditing ? (
-                              <input
-                                type="number"
-                                value={tempValue}
-                                onChange={(e) => setTempValue(e.target.value)}
-                                onBlur={saveEdit}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') saveEdit();
-                                  if (e.key === 'Escape') cancelEdit();
-                                }}
-                                className="w-full px-1 py-0 border border-gray-300 dark:border-gray-700 rounded text-center bg-white dark:bg-gray-950"
-                                autoFocus
-                              />
-                            ) : (
-                              <div
-                                onClick={() => startEdit(liability.id, monthIdx)}
-                                className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800/50 rounded px-1 relative group"
-                              >
-                                {value > 0 ? formatCurrency(value) : '-'}
-                                {value > 0 && hasSnapshot && (() => {
-                                  const currencyData = getSnapshotCurrencyData(liability.id, monthIdx);
-                                  const indicator = currencyData ? getConversionIndicator(currencyData) : '';
-                                  return indicator ? (
-                                    <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                                      {indicator}
-                                    </span>
-                                  ) : null;
-                                })()}
-                              </div>
-                            )}
-                          </td>
-                        );
-                      })}
-                      <td className="p-2 border-b text-center">
-                        <button
-                          onClick={() => setDeleteConfirm({
-                            isOpen: true,
-                            type: 'account',
-                            item: liability,
-                            accountType: 'liabilities'
-                          })}
-                          className="p-1 text-red-500 hover:bg-red-50 rounded"
-                          aria-label="Delete liability"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
+                    <React.Fragment key={liability.id}>
+                      <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                        <td className="p-2 border-b border-gray-200 dark:border-gray-800 font-medium sticky left-0 bg-white dark:bg-gray-900">
+                          <div
+                            onClick={() => toggleAccountExpansion(liability.id)}
+                            className="flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors"
+                          >
+                            <span className="text-red-600">{getAccountIcon(liability.name).icon}</span>
+                            <span className="underline decoration-dotted underline-offset-2">{liability.name}</span>
+                          </div>
+                        </td>
+                        {months.map((_, monthIdx) => {
+                          const cellKey = `${liability.id}_${monthIdx}`;
+                          const isEditing = editingCell === cellKey;
+                          const { value, hasSnapshot } = getTableCellValue(liability.id, monthIdx);
+
+                          return (
+                            <td key={monthIdx} className={`p-2 border-b border-gray-200 dark:border-gray-800 text-center ${monthIdx === selectedMonth ? 'bg-blue-50 dark:bg-blue-950/40' : ''}`}>
+                              {isEditing ? (
+                                <input
+                                  type="number"
+                                  value={tempValue}
+                                  onChange={(e) => setTempValue(e.target.value)}
+                                  onBlur={saveEdit}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') saveEdit();
+                                    if (e.key === 'Escape') cancelEdit();
+                                  }}
+                                  className="w-full px-1 py-0 border border-gray-300 dark:border-gray-700 rounded text-center bg-white dark:bg-gray-950"
+                                  autoFocus
+                                />
+                              ) : (
+                                <div
+                                  onClick={() => startEdit(liability.id, monthIdx)}
+                                  className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800/50 rounded px-1 relative group"
+                                >
+                                  {value > 0 ? formatCurrency(value) : '-'}
+                                  {value > 0 && hasSnapshot && (() => {
+                                    const currencyData = getSnapshotCurrencyData(liability.id, monthIdx);
+                                    const indicator = currencyData ? getConversionIndicator(currencyData) : '';
+                                    return indicator ? (
+                                      <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                                        {indicator}
+                                      </span>
+                                    ) : null;
+                                  })()}
+                                </div>
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td className="p-2 border-b text-center">
+                          <button
+                            onClick={() => setDeleteConfirm({
+                              isOpen: true,
+                              type: 'account',
+                              item: liability,
+                              accountType: 'liabilities'
+                            })}
+                            className="p-1 text-red-500 hover:bg-red-50 rounded"
+                            aria-label="Delete liability"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                      {/* Detail Panel Row */}
+                      <AccountDetailPanel
+                        isExpanded={expandedAccountId === liability.id}
+                        account={liability}
+                        accountType="liability"
+                        currentValue={getSnapshotValue(liability.id, selectedMonth)}
+                        selectedMonth={selectedMonth}
+                        selectedYear={selectedYear}
+                        getSnapshotValue={getSnapshotValue}
+                        formatCurrency={formatCurrency}
+                        formatCurrencyShort={formatCurrencyShort}
+                        getCurrencySymbol={getCurrencySymbol}
+                        currency={currency}
+                        colSpan={14} // Account + 12 months + Actions
+                        onUpdateMetadata={updateAccountMetadata}
+                        onOpenFullModal={handleOpenMetadataModal}
+                      />
+                    </React.Fragment>
                   ))}
                 </tbody>
               </table>
@@ -3305,6 +3370,18 @@ const NetWorthTracker = () => {
         itemName={deleteConfirm.item?.name || ''}
         confirmLabel="Delete"
         variant="danger"
+      />
+
+      {/* Account Metadata Modal */}
+      <AccountMetadataModal
+        isOpen={showMetadataModal}
+        onClose={() => {
+          setShowMetadataModal(false);
+          setEditingAccountMetadata(null);
+        }}
+        onSave={handleSaveMetadata}
+        account={editingAccountMetadata}
+        currency={getCurrencySymbol()}
       />
     </div>
   );

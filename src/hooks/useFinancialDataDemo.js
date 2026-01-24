@@ -254,13 +254,19 @@ export const useFinancialDataDemo = (selectedYear) => {
 
   const demoDeleteGoal = useCallback(async (goalId) => {
     if (!isDemo || !demoData) return { success: false };
-    
+
     const updatedGoals = (demoData.goals || []).filter(goal => goal.id !== goalId);
     const updatedData = { ...demoData, goals: updatedGoals };
     await updateDemoData(updatedData);
-    
+
     return { success: true };
   }, [isDemo, demoData, updateDemoData]);
+
+  const demoUpdateAccountMetadata = useCallback(async (accountId, metadata) => {
+    if (!isDemo || !demoData) return { success: false };
+
+    return demoUpdateAccount(accountId, { metadata });
+  }, [isDemo, demoData, demoUpdateAccount]);
 
   const demoUpdateAnnualGoal = useCallback(async (annualGoal) => {
     if (!isDemo || !demoData) return { success: false };
@@ -305,6 +311,7 @@ export const useFinancialDataDemo = (selectedYear) => {
       addAccount: demoAddAccount,
       updateAccount: demoUpdateAccount,
       deleteAccount: demoDeleteAccount,
+      updateAccountMetadata: demoUpdateAccountMetadata,
       updateSnapshot: demoUpdateSnapshot,
       deleteSnapshot: demoDeleteSnapshot,
       addGoal: demoAddGoal,

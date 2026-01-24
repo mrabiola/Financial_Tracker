@@ -41,7 +41,6 @@ export const DemoProvider = ({ children }) => {
     const handleStorageChange = (e) => {
       if (e.key === 'demo_session_id' && !e.newValue && isDemo) {
         // Demo session was cleared externally (e.g., from logout)
-        console.log('Demo session cleared externally, resetting state');
         setIsDemo(false);
         setDemoSessionId(null);
         setDemoData(null);
@@ -196,7 +195,6 @@ export const DemoProvider = ({ children }) => {
   const convertDemoToAccount = async (userData) => {
     // This will be implemented when integrating with the auth system
     // It will create a real user account and migrate demo data
-    console.log('Converting demo to account:', userData);
     return { success: false, error: 'Conversion not yet implemented' };
   };
 

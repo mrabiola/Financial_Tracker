@@ -206,9 +206,6 @@ const SimpleImportModal = ({ isOpen, onClose, onImport, selectedYear, accounts }
           if (filteredData.length <= 1) {
             throw new Error('No data found in the template. Please add your account information below the header row.');
           }
-          
-          console.log('Template validation - Filtered data:', filteredData);
-          console.log('Template validation - First row (headers):', filteredData[0]);
 
           // Validate template format
           const headers = filteredData[0].map(h => h?.toString().toLowerCase().trim());
@@ -238,11 +235,9 @@ const SimpleImportModal = ({ isOpen, onClose, onImport, selectedYear, accounts }
             for (const variation of variations) {
               const index = headers.findIndex(h => h.includes(variation));
               if (index !== -1) {
-                console.log(`Found column '${variation}' at index ${index}`);
                 return index;
               }
             }
-            console.log(`No column found for variations: ${variations}`);
             return -1;
           };
           
@@ -252,9 +247,7 @@ const SimpleImportModal = ({ isOpen, onClose, onImport, selectedYear, accounts }
           const monthIndex = findColumnIndex(['month']);
           const categoryIndex = findColumnIndex(['category']);
           const notesIndex = findColumnIndex(['notes', 'note', 'description']);
-          
-          console.log('Column indices:', { accountIndex, typeIndex, amountIndex, monthIndex, categoryIndex, notesIndex });
-          
+
           // Verify we found the required columns
           if (accountIndex === -1) {
             throw new Error(`Could not find 'Account Name' column. Please ensure your template has a column named 'Account Name'.`);
