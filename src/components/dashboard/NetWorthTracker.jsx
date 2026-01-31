@@ -879,27 +879,31 @@ const NetWorthTracker = () => {
     }
   }, [fetchMultiYearSnapshots, availableYears, accountIds, selectedYear]);
 
+  // Store loadMultiYearData in a ref to avoid including it in useEffect dependencies
+  const loadMultiYearDataRef = useRef(loadMultiYearData);
+  loadMultiYearDataRef.current = loadMultiYearData;
+
   // Load multi-year data when switching to YoY view
   useEffect(() => {
     if (chartViewType === 'YoY' && accountIds.length > 0) {
-      loadMultiYearData();
+      loadMultiYearDataRef.current();
     }
-  }, [chartViewType, loadMultiYearData, accountIds.length]);
+  }, [chartViewType, accountIds.length]);
 
   // Load previous year's data when switching years or when on January (for cross-year carry-forward)
   useEffect(() => {
     if (accountIds.length > 0 && selectedYear) {
       // Always load the previous year's data to enable carry-forward
-      loadMultiYearData(true);
+      loadMultiYearDataRef.current(true);
     }
-  }, [selectedYear, accountIds.length, loadMultiYearData]);
+  }, [selectedYear, accountIds.length]);
 
   // Preload multi-year data when accounts first become available
   useEffect(() => {
     if (accountIds.length > 0 && !hasLoadedMultiYearData.current) {
-      loadMultiYearData();
+      loadMultiYearDataRef.current();
     }
-  }, [accountIds.length, loadMultiYearData]);
+  }, [accountIds.length]);
 
   // Diagnostic baseline onboarding
   useEffect(() => {

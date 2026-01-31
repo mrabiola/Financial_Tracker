@@ -32,23 +32,35 @@ export const useFinancialDataDemo = (selectedYear) => {
     snapshotsCurrency: {}
   });
 
+  // Cache for year-filtered snapshots to avoid re-filtering on every render
+  const yearSnapshotCache = useRef({});
+
   // Load demo data when in demo mode, filtering by selected year
   useEffect(() => {
     if (isDemo && demoData) {
       // Clear the multi-year cache when demo data changes to ensure fresh data
       demoFetchCache.current = {};
-      // Filter snapshots by selected year
-      const yearFilteredSnapshots = {};
-      if (demoData.snapshots) {
-        Object.keys(demoData.snapshots).forEach(accountId => {
-          yearFilteredSnapshots[accountId] = {};
-          Object.keys(demoData.snapshots[accountId]).forEach(key => {
-            const [, year] = key.split('-');
-            if (parseInt(year) === selectedYear) {
-              yearFilteredSnapshots[accountId][key] = demoData.snapshots[accountId][key];
-            }
+
+      // Check if we already have cached filtered snapshots for this year
+      const cacheKey = `${selectedYear}_${demoData.accounts?.assets?.length}_${demoData.accounts?.liabilities?.length}`;
+      let yearFilteredSnapshots = yearSnapshotCache.current[cacheKey];
+
+      if (!yearFilteredSnapshots) {
+        // Filter snapshots by selected year
+        yearFilteredSnapshots = {};
+        if (demoData.snapshots) {
+          Object.keys(demoData.snapshots).forEach(accountId => {
+            yearFilteredSnapshots[accountId] = {};
+            Object.keys(demoData.snapshots[accountId]).forEach(key => {
+              const [, year] = key.split('-');
+              if (parseInt(year) === selectedYear) {
+                yearFilteredSnapshots[accountId][key] = demoData.snapshots[accountId][key];
+              }
+            });
           });
-        });
+        }
+        // Cache the filtered snapshots
+        yearSnapshotCache.current[cacheKey] = yearFilteredSnapshots;
       }
 
       // Only update state if accounts have actually changed
@@ -296,6 +308,63 @@ export const useFinancialDataDemo = (selectedYear) => {
     return demoData.snapshots[accountId]?.[key] || null;
   }, [demoData, selectedYear]);
 
+  // Memoized fetchMultiYearSnapshots to prevent infinite re-render loops
+  const demoFetchMultiYearSnapshots = useCallback(async (accountIds, years) => {
+    if (!demoData || !accountIds || !years) {
+      return {};
+    }
+
+    // Add a simple debounce mechanism
+    const cacheKey = `${accountIds.join(',')}_${years.join(',')}`;
+    if (demoFetchCache.current[cacheKey]) {
+      return demoFetchCache.current[cacheKey];
+    }
+
+    const multiYearData = {};
+    const currentYear = new Date().getFullYear();
+
+    // Safety check to prevent excessive computation
+    if (accountIds.length > 50 || years.length > 10) {
+      console.warn('Demo: Too many accounts or years requested, limiting generation');
+      return {};
+    }
+
+    years.forEach(year => {
+      if (year <= currentYear && year >= currentYear - 4) {
+        multiYearData[year] = {
+          snapshots: {},
+          snapshotsCurrency: {}
+        };
+
+        // Use actual demo snapshot data instead of generating new data
+        accountIds.forEach(accountId => {
+          for (let month = 0; month < 12; month++) {
+            const key = `${accountId}_${month}`;
+            const snapshotKey = `${month}-${year}`;
+
+            // Get the real snapshot data from demoData.snapshots
+            const snapshotData = demoData.snapshots?.[accountId]?.[snapshotKey];
+
+            if (snapshotData && snapshotData.value !== undefined) {
+              multiYearData[year].snapshots[key] = snapshotData.value;
+              multiYearData[year].snapshotsCurrency[key] = {
+                originalValue: snapshotData.original_value || snapshotData.value,
+                originalCurrency: snapshotData.original_currency || 'USD',
+                displayValue: snapshotData.value,
+                displayCurrency: 'USD',
+                entryDate: new Date(year, month, 15).toISOString()
+              };
+            }
+          }
+        });
+      }
+    });
+
+    // Cache the result to prevent regeneration
+    demoFetchCache.current[cacheKey] = multiYearData;
+    return multiYearData;
+  }, [demoData]);
+
   // Return appropriate data and functions based on mode
   if (isDemo) {
     return {
@@ -321,64 +390,10 @@ export const useFinancialDataDemo = (selectedYear) => {
       updateAnnualGoal: demoUpdateAnnualGoal,
       getSnapshotValue: demoGetSnapshotValue,
       getSnapshotCurrencyData: demoGetSnapshotCurrencyData,
-      
+
       // Demo multi-year data generation
       fetchSnapshots: async () => ({ success: true }),
-      fetchMultiYearSnapshots: async (accountIds, years) => {
-        if (!demoData || !accountIds || !years) {
-          return {};
-        }
-
-        // Add a simple debounce mechanism
-        const cacheKey = `${accountIds.join(',')}_${years.join(',')}`;
-        if (demoFetchCache.current[cacheKey]) {
-          return demoFetchCache.current[cacheKey];
-        }
-
-        const multiYearData = {};
-        const currentYear = new Date().getFullYear();
-
-        // Safety check to prevent excessive computation
-        if (accountIds.length > 50 || years.length > 10) {
-          console.warn('Demo: Too many accounts or years requested, limiting generation');
-          return {};
-        }
-
-        years.forEach(year => {
-          if (year <= currentYear && year >= currentYear - 4) {
-            multiYearData[year] = {
-              snapshots: {},
-              snapshotsCurrency: {}
-            };
-
-            // Use actual demo snapshot data instead of generating new data
-            accountIds.forEach(accountId => {
-              for (let month = 0; month < 12; month++) {
-                const key = `${accountId}_${month}`;
-                const snapshotKey = `${month}-${year}`;
-
-                // Get the real snapshot data from demoData.snapshots
-                const snapshotData = demoData.snapshots?.[accountId]?.[snapshotKey];
-
-                if (snapshotData && snapshotData.value !== undefined) {
-                  multiYearData[year].snapshots[key] = snapshotData.value;
-                  multiYearData[year].snapshotsCurrency[key] = {
-                    originalValue: snapshotData.original_value || snapshotData.value,
-                    originalCurrency: snapshotData.original_currency || 'USD',
-                    displayValue: snapshotData.value,
-                    displayCurrency: 'USD',
-                    entryDate: new Date(year, month, 15).toISOString()
-                  };
-                }
-              }
-            });
-          }
-        });
-
-        // Cache the result to prevent regeneration
-        demoFetchCache.current[cacheKey] = multiYearData;
-        return multiYearData;
-      },
+      fetchMultiYearSnapshots: demoFetchMultiYearSnapshots,
       updateAccountOrder: async () => ({ success: true }),
       toggleAccountActive: async () => ({ success: true }),
       loadData: async () => ({ success: true }),

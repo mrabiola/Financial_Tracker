@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { 
   isDemoSession, 
   getDemoSessionId, 
@@ -32,6 +32,10 @@ export const DemoProvider = ({ children }) => {
   const [showExpirationWarning, setShowExpirationWarning] = useState(false);
   const [remainingTime, setRemainingTime] = useState(undefined);
   const [loading, setLoading] = useState(true);
+
+  // Ref to track latest demoData without triggering useEffect re-renders
+  const demoDataRef = useRef(null);
+  demoDataRef.current = demoData;
 
   // Check for existing demo session on mount
   useEffect(() => {
@@ -74,14 +78,17 @@ export const DemoProvider = ({ children }) => {
 
   // Periodic save of demo data
   useEffect(() => {
-    if (!isDemo || !demoData) return;
+    if (!isDemo) return;
 
     const saveInterval = setInterval(() => {
-      saveDemoData(demoData, 'financial_data');
+      // Use ref to get latest demoData without recreating interval
+      if (demoDataRef.current) {
+        saveDemoData(demoDataRef.current, 'financial_data');
+      }
     }, 30000); // Auto-save every 30 seconds
 
     return () => clearInterval(saveInterval);
-  }, [isDemo, demoData]);
+  }, [isDemo]);
 
   const checkDemoSession = async () => {
     try {
